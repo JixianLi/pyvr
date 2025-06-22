@@ -105,7 +105,7 @@ No license; do whatever you want.
 **Author:**  
 [GitHub Copilot - Claude Sonnet 4 (preview) and GPT-4.1] 
 
-I made minimal changes to fix some API signatures.
+I made minimal changes to fix some API signatures and added those two lines.
 
 **Acknowledgments:**  
 - [GitHub Copilot](https://github.com/features/copilot)
