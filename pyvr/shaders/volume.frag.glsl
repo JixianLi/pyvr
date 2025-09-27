@@ -2,8 +2,7 @@
 
 uniform sampler3D volume_texture;
 uniform sampler3D normal_volume;
-uniform sampler2D opacity_lut;
-uniform sampler2D color_lut;
+uniform sampler2D transfer_function_lut;  // Combined RGBA transfer function texture
 
 uniform mat4 view_matrix;
 uniform mat4 projection_matrix;
@@ -91,8 +90,11 @@ void main() {
 
         if (is_valid_texture_coord(tex_coord)) {
             float density = texture(volume_texture, tex_coord).r;
-            float alpha = texture(opacity_lut, vec2(density, 0.5)).r;
-            vec3 rgb = texture(color_lut, vec2(density, 0.5)).rgb;
+            
+            // Single RGBA texture lookup for transfer function
+            vec4 rgba = texture(transfer_function_lut, vec2(density, 0.5));
+            vec3 rgb = rgba.rgb;
+            float alpha = rgba.a;
 
             vec3 normal = texture(normal_volume, tex_coord).rgb;
             normal = normalize(normal);

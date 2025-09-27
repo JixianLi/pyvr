@@ -1,5 +1,5 @@
 """
-Multi-view volume rendering example using PyVR v0.2.1+ API
+Multi-view volume rendering example using PyVR RGBA transfer function textures
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -95,12 +95,8 @@ for i, params in enumerate(camera_params):
     position, up = get_camera_pos_from_params(camera)
     renderer.set_camera(position=position, target=(0, 0, 0), up=up)
 
-    # Upload LUTs using ModernGLManager - transfer functions now focus only on LUTs
-    opacity_tex_unit = renderer.gl_manager.create_opacity_transfer_function_texture(otf)
-    renderer.gl_manager.set_uniform_int('opacity_lut', opacity_tex_unit)
-
-    color_tex_unit = renderer.gl_manager.create_color_transfer_function_texture(ctf)
-    renderer.gl_manager.set_uniform_int('color_lut', color_tex_unit)
+    # Set transfer functions using RGBA texture API
+    renderer.set_transfer_functions(ctf, otf)
 
     # Render
     start_ns = time.perf_counter_ns()

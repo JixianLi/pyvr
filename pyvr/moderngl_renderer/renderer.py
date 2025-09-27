@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import numpy as np
 from PIL import Image
@@ -190,3 +191,21 @@ class VolumeRenderer:
         """Set the target point the light is pointing to."""
         self.light_target = np.array(light_target, dtype=np.float32)
         self.gl_manager.set_uniform_vector("light_target", self.light_target)
+
+    def set_transfer_functions(self, color_transfer_function, opacity_transfer_function, 
+                             size: Optional[int] = None):
+        """
+        Set transfer functions for volume rendering using combined RGBA texture.
+        
+        Args:
+            color_transfer_function: ColorTransferFunction for RGB mapping
+            opacity_transfer_function: OpacityTransferFunction for alpha mapping  
+            size: Optional LUT size override (uses maximum of both TF sizes if None)
+            
+        Example:
+            renderer.set_transfer_functions(ctf, otf)
+        """
+        rgba_tex_unit = self.gl_manager.create_rgba_transfer_function_texture(
+            color_transfer_function, opacity_transfer_function, size
+        )
+        self.gl_manager.set_uniform_int('transfer_function_lut', rgba_tex_unit)
