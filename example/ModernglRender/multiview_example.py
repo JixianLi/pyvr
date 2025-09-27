@@ -1,12 +1,13 @@
 """
-Multi-view volume rendering example
+Multi-view volume rendering example using PyVR v0.2.1+ API
 """
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib 
 import time
 
-from pyvr.moderngl_renderer import VolumeRenderer, ColorTransferFunction, OpacityTransferFunction, get_camera_pos
+from pyvr.moderngl_renderer import VolumeRenderer
+from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
+from pyvr.camera import CameraParameters, get_camera_pos_from_params
 from pyvr.datasets import compute_normal_volume, create_sample_volume
 
 STEP_SIZE = 1e-3
@@ -26,9 +27,8 @@ renderer.load_volume(volume)
 renderer.load_normal_volume(normals)
 renderer.set_volume_bounds((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0))
 
-# Use plasma colormap (legacy v0.1.0 API through moderngl_renderer)
-ctf = ColorTransferFunction.from_matplotlib_colormap(
-    matplotlib.colormaps.get_cmap('plasma'))
+# Use plasma colormap with v0.2.1 API
+ctf = ColorTransferFunction.from_colormap('plasma')
 
 # Linear opacity from 0 to 0.1
 otf = OpacityTransferFunction.linear(0.0, 0.1)
@@ -83,30 +83,24 @@ ax_tf = fig.add_subplot(gs[2, :])
 
 # Rendered images
 for i, params in enumerate(camera_params):
-    # Compute camera position and up vector
-    position, up = get_camera_pos(
+    # Compute camera position and up vector using new v0.2.1 API
+    camera = CameraParameters.from_spherical(
         target=np.array([0, 0, 0], dtype=np.float32),
+        distance=params["distance"],
         azimuth=params["azimuth"],
         elevation=params["elevation"],
         roll=params["roll"],
-        distance=params["distance"],
-        init_pos=np.array([1, 0, 0], dtype=np.float32),
         init_up=np.array([0, 0, 1], dtype=np.float32)
     )
+    position, up = get_camera_pos_from_params(camera)
     renderer.set_camera(position=position, target=(0, 0, 0), up=up)
 
-    # Upload LUTs using the new ModernGLManager architecture
-    # NEW: Use ModernGLManager for better resource management
+    # Upload LUTs using ModernGLManager
     opacity_tex_unit = otf.to_texture(moderngl_manager=renderer.gl_manager)
     renderer.gl_manager.set_uniform_int('opacity_lut', opacity_tex_unit)
 
     color_tex_unit = ctf.to_texture(moderngl_manager=renderer.gl_manager)
     renderer.gl_manager.set_uniform_int('color_lut', color_tex_unit)
-    
-    # Legacy interface (still works but not recommended):
-    # opacity_tex = otf.to_texture(renderer.ctx)
-    # opacity_tex.use(location=2)
-    # renderer.program['opacity_lut'] = 2
 
     # Render
     start_ns = time.perf_counter_ns()

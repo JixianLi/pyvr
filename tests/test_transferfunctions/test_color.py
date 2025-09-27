@@ -153,30 +153,22 @@ def test_apply_to_array():
     np.testing.assert_array_almost_equal(result_2d[1, 1], [1.0, 1.0, 1.0], decimal=6)
 
 
-def test_matplotlib_colormap_integration():
-    """Test matplotlib colormap integration."""
-    try:
-        import matplotlib
-        import matplotlib.pyplot as plt
+def test_colormap_integration():
+    """Test colormap integration with string colormap names."""
+    # Test with different colormaps
+    for cmap_name in ['viridis', 'plasma', 'jet', 'coolwarm']:
+        ctf = ColorTransferFunction.from_colormap(cmap_name, lut_size=128)
         
-        # Test with different colormaps
-        for cmap_name in ['viridis', 'plasma', 'jet', 'coolwarm']:
-            cmap = matplotlib.colormaps.get_cmap(cmap_name)
-            ctf = ColorTransferFunction.from_matplotlib_colormap(cmap, lut_size=128)
-            
-            assert len(ctf.control_points) == 128
-            assert ctf.lut_size == 128
-            
-            # Test LUT generation
-            lut = ctf.to_lut()
-            assert lut.shape == (128, 3)
-            
-            # Colors should be in valid range
-            assert np.all(lut >= 0.0)
-            assert np.all(lut <= 1.0)
-    
-    except ImportError:
-        pytest.skip("matplotlib not available for testing")
+        assert len(ctf.control_points) == 128
+        assert ctf.lut_size == 128
+        
+        # Test LUT generation
+        lut = ctf.to_lut()
+        assert lut.shape == (128, 3)
+        
+        # Colors should be in valid range
+        assert np.all(lut >= 0.0)
+        assert np.all(lut <= 1.0)
 
 
 def test_validation():

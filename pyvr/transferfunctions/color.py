@@ -20,9 +20,8 @@ class ColorTransferFunction(BaseTransferFunction):
     Color values typically range from 0.0 to 1.0 for each RGB component.
     
     Examples:
-        # From matplotlib colormap
-        import matplotlib.pyplot as plt
-        ctf = ColorTransferFunction.from_matplotlib_colormap(plt.get_cmap('viridis'))
+        # From colormap string
+        ctf = ColorTransferFunction.from_colormap('viridis', value_range=(0.2, 0.8))
         
         # Custom control points
         ctf = ColorTransferFunction([
@@ -68,50 +67,6 @@ class ColorTransferFunction(BaseTransferFunction):
         """Color textures have 3 channels (RGB)."""
         return 3
     
-    def _create_texture_legacy(self, ctx: Any, size: Optional[int]) -> Any:
-        """Create texture using legacy ModernGL context method."""
-        import moderngl
-        
-        effective_size = size or self.lut_size
-        lut = self.to_lut(effective_size)
-        data = lut.reshape((effective_size, 1, 3)).astype(np.float32)
-        tex = ctx.texture((effective_size, 1), 3, data.tobytes(), dtype="f4")
-        tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
-        tex.repeat_x = False
-        tex.repeat_y = False
-        return tex
-    
-    @classmethod
-    def from_matplotlib_colormap(cls, cmap: Any, lut_size: int = 256) -> 'ColorTransferFunction':
-        """
-        Create a ColorTransferFunction from a matplotlib colormap.
-        
-        Args:
-            cmap: A matplotlib colormap instance (e.g., plt.get_cmap('viridis'))
-            lut_size: Number of control points to sample from the colormap
-            
-        Returns:
-            ColorTransferFunction instance with colors sampled from the colormap
-            
-        Example:
-            import matplotlib.pyplot as plt
-            viridis_ctf = ColorTransferFunction.from_matplotlib_colormap(
-                plt.get_cmap('viridis'), lut_size=512
-            )
-        """
-        x = np.linspace(0, 1, lut_size)
-        colors = cmap(x)
-        
-        # Use only RGB, ignore alpha if present
-        if colors.shape[1] == 4:
-            colors = colors[:, :3]
-        
-        control_points = [
-            (float(xi), tuple(map(float, rgb))) 
-            for xi, rgb in zip(x, colors)
-        ]
-        return cls(control_points, lut_size=lut_size)
-    
     @classmethod
     def grayscale(cls, lut_size: int = 256) -> 'ColorTransferFunction':
         """
@@ -138,6 +93,50 @@ class ColorTransferFunction(BaseTransferFunction):
             ColorTransferFunction that maps all scalars to the given color
         """
         return cls([(0.0, color), (1.0, color)], lut_size=lut_size)
+    
+    @classmethod
+    def from_colormap(cls, colormap_name: str, value_range: Tuple[float, float] = (0.0, 1.0), 
+                     lut_size: int = 256) -> 'ColorTransferFunction':
+        """
+        Create a ColorTransferFunction from a matplotlib colormap name.
+        
+        Args:
+            colormap_name: Name of matplotlib colormap (e.g., 'viridis', 'plasma', 'jet')
+            value_range: Tuple of (min_value, max_value) to map the colormap to
+            lut_size: Size of the lookup table
+            
+        Returns:
+            ColorTransferFunction with colors sampled from the colormap
+            
+        Example:
+            ctf = ColorTransferFunction.from_colormap('viridis', value_range=(0.2, 0.8))
+        """
+        try:
+            import matplotlib
+            import matplotlib.pyplot as plt
+            cmap = matplotlib.colormaps.get_cmap(colormap_name)
+        except ImportError:
+            raise ImportError("matplotlib is required for from_colormap method")
+        except Exception as e:
+            raise ValueError(f"Unknown colormap name '{colormap_name}': {e}")
+        
+        # Sample colormap
+        x = np.linspace(0, 1, lut_size)
+        colors = cmap(x)
+        
+        # Use only RGB, ignore alpha if present
+        if colors.shape[1] == 4:
+            colors = colors[:, :3]
+        
+        # Map to the specified value range
+        min_val, max_val = value_range
+        x_mapped = min_val + x * (max_val - min_val)
+        
+        control_points = [
+            (float(xi), tuple(map(float, rgb))) 
+            for xi, rgb in zip(x_mapped, colors)
+        ]
+        return cls(control_points, lut_size=lut_size)
     
     @classmethod
     def two_color_ramp(cls, color1: Tuple[float, float, float], 

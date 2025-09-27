@@ -15,7 +15,6 @@ Key improvements from v0.1.0:
 """
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib 
 import time
 
 from pyvr.moderngl_renderer import VolumeRenderer
@@ -44,10 +43,9 @@ renderer.load_volume(volume)
 renderer.load_normal_volume(normals)
 renderer.set_volume_bounds((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0))
 
-# NEW v0.2.0: Enhanced transfer functions with new features
-# Create color transfer function from matplotlib colormap
-ctf = ColorTransferFunction.from_matplotlib_colormap(
-    matplotlib.colormaps.get_cmap('plasma'))
+# NEW v0.2.1: Enhanced transfer functions with updated API
+# Create color transfer function from colormap
+ctf = ColorTransferFunction.from_colormap('plasma')
 
 # Create interesting opacity transfer function with peaks
 otf = OpacityTransferFunction.peaks(

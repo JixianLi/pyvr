@@ -77,8 +77,8 @@ def test_texture_creation_errors():
     """Test texture creation error handling."""
     tf = ConcreteTransferFunction()
     
-    # Should raise error if neither ctx nor moderngl_manager provided
-    with pytest.raises(ValueError, match="Either moderngl_manager or ctx must be provided"):
+    # Should raise error if moderngl_manager is None
+    with pytest.raises(TypeError, match="missing 1 required positional argument"):
         tf.to_texture()
 
 

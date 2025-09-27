@@ -15,18 +15,17 @@ Exceptions:
     InvalidControlPointError: Raised when control points are invalid
 
 Examples:
-    # Create a color transfer function from matplotlib colormap
-    import matplotlib.pyplot as plt
-    ctf = ColorTransferFunction.from_matplotlib_colormap(plt.get_cmap('viridis'))
+    # Create a color transfer function from colormap
+    ctf = ColorTransferFunction.from_colormap('viridis', value_range=(0.2, 0.8))
     
     # Create an opacity transfer function with linear ramp
     otf = OpacityTransferFunction.linear(0.0, 0.8)
     
     # Create opacity peaks at specific densities
-    otf = OpacityTransferFunction.peaks([0.3, 0.7], opacity=0.9, eps=0.05)
+    otf = OpacityTransferFunction.with_peaks([0.3, 0.7], opacities=[0.9, 0.9])
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 from .base import BaseTransferFunction, TransferFunctionError, InvalidControlPointError
 from .color import ColorTransferFunction

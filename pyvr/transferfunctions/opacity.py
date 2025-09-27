@@ -64,19 +64,6 @@ class OpacityTransferFunction(BaseTransferFunction):
         """Opacity textures have 1 channel."""
         return 1
     
-    def _create_texture_legacy(self, ctx: Any, size: Optional[int]) -> Any:
-        """Create texture using legacy ModernGL context method."""
-        import moderngl
-        
-        effective_size = size or self.lut_size
-        lut = self.to_lut(effective_size)
-        data = lut.reshape((effective_size, 1)).astype(np.float32)
-        tex = ctx.texture((effective_size, 1), 1, data.tobytes(), dtype="f4")
-        tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
-        tex.repeat_x = False
-        tex.repeat_y = False
-        return tex
-    
     @classmethod
     def linear(cls, low: float = 0.0, high: float = 1.0, lut_size: int = 256) -> 'OpacityTransferFunction':
         """

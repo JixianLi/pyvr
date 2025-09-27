@@ -190,13 +190,3 @@ class VolumeRenderer:
         """Set the target point the light is pointing to."""
         self.light_target = np.array(light_target, dtype=np.float32)
         self.gl_manager.set_uniform_vector("light_target", self.light_target)
-
-    @property
-    def ctx(self):
-        """Get the ModernGL context for backward compatibility."""
-        return self.gl_manager.get_context()
-
-    @property
-    def program(self):
-        """Get the shader program for backward compatibility."""
-        return self.gl_manager.program

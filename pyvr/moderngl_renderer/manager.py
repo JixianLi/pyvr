@@ -243,7 +243,3 @@ class ModernGLManager:
         self.color_texture.release()
         self.depth_texture.release()
         self.ctx.release()
-
-    def get_context(self):
-        """Get the ModernGL context (for backward compatibility)."""
-        return self.ctx
