@@ -1,7 +1,7 @@
 [project]
 name = "pyvr"
 version = "0.1.0"
-description = "Volume Renderers in Python"
+description = "GPU-Accelerated Volume Rendering in Python using OpenGL"
 authors = [
     {name = "Jixian Li",email = "jixianli@sci.utah.edu"}
 ]
@@ -14,15 +14,22 @@ dependencies = [
 [tool.poetry]
 
 [tool.poetry.dependencies]
-
-[tool.poetry.group.dev.dependencies]
-torch = ">= 2.0"
-torchvision = ">= 0.2"
 numpy = ">=2.3"
 matplotlib = ">=3.10"
 pillow = ">=11.0"
 scipy = ">=1.16"
 moderngl = ">=5.0"
+
+[tool.poetry.group.dev.dependencies]
+numpy = ">=2.3"
+matplotlib = ">=3.10"
+pillow = ">=11.0"
+scipy = ">=1.16"
+moderngl = ">=5.0"
+pytest = ">=7.0"
+pytest-cov = ">=7.0"
+black = ">=24.9"
+isort = ">=6.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

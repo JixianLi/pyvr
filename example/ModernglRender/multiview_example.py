@@ -1,3 +1,6 @@
+"""
+Multi-view volume rendering example
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib 
@@ -13,7 +16,8 @@ MAX_STEPS = int(1e3)
 VOLUME_SIZE = 256
 IMAGE_RES = 224
 
-# Create renderer
+# Create renderer (now uses ModernGLManager internally for better architecture)
+# VolumeRenderer handles high-level operations, ModernGLManager handles OpenGL resources
 renderer = VolumeRenderer(IMAGE_RES, IMAGE_RES,
                             step_size=1/VOLUME_SIZE, max_steps=MAX_STEPS)
 
@@ -31,8 +35,9 @@ ctf = ColorTransferFunction.from_matplotlib_colormap(
 # Linear opacity from 0 to 0.1
 otf = OpacityTransferFunction.linear(0.0, 0.1)
 
-renderer.set_diffuse_light(1.0);
-renderer.set_ambient_light(0.0);
+# Configure lighting (high-level operations handled by VolumeRenderer)
+renderer.set_diffuse_light(1.0)
+renderer.set_ambient_light(0.0)
 
 # Camera parameter sets to test
 # Camera parameter sets to test
@@ -58,17 +63,25 @@ camera_params = [
     },
 ]
 
-# --- Prepare figure: images on top, transfer functions below ---
+# --- Prepare figure: 2x2 grid for images with transfer function at bottom ---
 n_views = len(camera_params)
-fig_height = 8
-tf_rel_height = 0.25  # Transfer function plot height relative to image
-image_height = fig_height * (1 - tf_rel_height)
-tf_height = fig_height * tf_rel_height
-fig, axes = plt.subplots(
-    2, n_views,
-    figsize=(6 * n_views, fig_height),
-    gridspec_kw={'height_ratios': [image_height, tf_height]}
-)
+fig_width = 6
+fig_height = 7
+
+# Create figure with 2x2 grid for images and one subplot for transfer function
+fig = plt.figure(figsize=(fig_width, fig_height))
+gs = fig.add_gridspec(3, 2, height_ratios=[1, 1, 0.4], hspace=0.3)
+
+# Create 2x2 grid for images
+axes_images = [
+    fig.add_subplot(gs[0, 0]),  # Top left
+    fig.add_subplot(gs[0, 1]),  # Top right
+    fig.add_subplot(gs[1, 0]),  # Bottom left
+    fig.add_subplot(gs[1, 1])   # Bottom right
+]
+
+# Create subplot for transfer function spanning both columns at bottom
+ax_tf = fig.add_subplot(gs[2, :])
 
 # Rendered images
 for i, params in enumerate(camera_params):
@@ -84,14 +97,18 @@ for i, params in enumerate(camera_params):
     )
     renderer.set_camera(position=position, target=(0, 0, 0), up=up)
 
-    # Upload LUTs
-    opacity_tex = otf.to_texture(renderer.ctx)
-    opacity_tex.use(location=2)
-    renderer.program['opacity_lut'] = 2
+    # Upload LUTs using the new ModernGLManager architecture
+    # NEW: Use ModernGLManager for better resource management
+    opacity_tex_unit = otf.to_texture(moderngl_manager=renderer.gl_manager)
+    renderer.gl_manager.set_uniform_int('opacity_lut', opacity_tex_unit)
 
-    color_tex = ctf.to_texture(renderer.ctx)
-    color_tex.use(location=3)
-    renderer.program['color_lut'] = 3
+    color_tex_unit = ctf.to_texture(moderngl_manager=renderer.gl_manager)
+    renderer.gl_manager.set_uniform_int('color_lut', color_tex_unit)
+    
+    # Legacy interface (still works but not recommended):
+    # opacity_tex = otf.to_texture(renderer.ctx)
+    # opacity_tex.use(location=2)
+    # renderer.program['opacity_lut'] = 2
 
     # Render
     start_ns = time.perf_counter_ns()
@@ -100,30 +117,29 @@ for i, params in enumerate(camera_params):
     print(f"Render time: {(end_ns - start_ns) / 1e6:.2f} ms")
     data = np.frombuffer(data, dtype=np.uint8).reshape(
         (renderer.height, renderer.width, 4))
-    axes[0, i].imshow(data, origin='lower')
-    axes[0, i].set_title(
+    axes_images[i].imshow(data, origin='lower')
+    axes_images[i].set_title(
         f"Az: {np.degrees(params['azimuth']):.1f}°, El: {np.degrees(params['elevation']):.1f}°, Roll: {np.degrees(params['roll']):.1f}°")
-    axes[0, i].axis('off')
+    axes_images[i].axis('off')
 
-# --- Plot transfer functions below each image ---
+# --- Plot transfer function at the bottom ---
 lut_size = 256
 x = np.linspace(0, 1, lut_size)
 color_lut = ctf.to_lut(lut_size)
 opacity_lut = otf.to_lut(lut_size)
 
-for i in range(n_views):
-    ax = axes[1, i]
-    # Color bar
-    ax.imshow(color_lut[np.newaxis, :, :],
-                aspect='auto', extent=[0, 1, 0, 1])
-    # Opacity curve
-    ax.plot(x, opacity_lut, color='black')
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    ax.set_xlabel("Normalized Intensity")
-    ax.set_yticks([0, 0.05, 0.1, 0.5, 1.0])
-    ax.set_ylabel("Opacity / Color")
-    ax.set_title("Transfer Functions")
+# Color bar
+ax_tf.imshow(color_lut[np.newaxis, :, :],
+            aspect='auto', extent=[0, 1, 0, 1])
+# Opacity curve
+ax_tf.plot(x, opacity_lut, color='black', linewidth=2)
+ax_tf.set_xlim(0, 1)
+ax_tf.set_ylim(0, 1)
+ax_tf.set_xlabel("Scalar Value")
+ax_tf.set_yticks([0, 0.05, 0.1, 0.5, 1.0])
+ax_tf.set_ylabel("Opacity / Color")
+ax_tf.set_title("Transfer Functions (used for all 4 views)")
 
-plt.tight_layout()
+# Show the figure
+plt.subplots_adjust(hspace=0.3, wspace=0.2)
 plt.show()

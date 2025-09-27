@@ -9,7 +9,7 @@ from .volume_renderer import VolumeRenderer
 from .moderngl_manager import ModernGLManager
 from .camera_control import get_camera_pos
 
-# For backward compatibility, re-export common dataset functions
+# Re-export dataset functions for convenience
 from ..datasets import create_sample_volume, compute_normal_volume
 
 __all__ = [
