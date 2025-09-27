@@ -356,7 +356,8 @@ from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunctio
 ctf = ColorTransferFunction.from_matplotlib_colormap(plt.get_cmap('viridis'))
 
 # NEW v0.2.2 ✅
-ctf = ColorTransferFunction.from_colormap('viridis', value_range=(0.0, 1.0))
+ctf = ColorTransferFunction.from_colormap('plasma')
+otf = OpacityTransferFunction.linear(0.0, 0.1)
 renderer.set_transfer_functions(ctf, otf)  # High-performance RGBA API
 ```
 
@@ -369,10 +370,7 @@ position, up = get_camera_pos(target, azimuth, elevation, roll, distance)
 # NEW v0.2.2 ✅ (Preferred)
 from pyvr.camera import CameraParameters  
 camera = CameraParameters.from_spherical(target, distance, azimuth, elevation, roll)
-position, up = camera.get_camera_vectors()
-
-# NEW v0.2.2 ✅ (Legacy compatibility)  
-from pyvr.moderngl_renderer import get_camera_pos  # Still works!
+position, up = get_camera_pos_from_params(camera)
 ```
 
 ## 🔧 Configuration
@@ -487,7 +485,7 @@ This project is licensed under the WTFPL (Do What The F*ck You Want To Public Li
 
 ## 🏆 Acknowledgments
 
-- Claude Sonnet 4 model from GitHub Copilot for the creation of almost all code/documentation/test in this repository (some code was created by Claude Sonnet 3.5)
+- Claude Sonnet 4 model from GitHub Copilot for the creation of almost all code/documentation/test in this repository (some code was created by Claude Sonnet 3.5) <-- I wrote this sentence. That's about it for my contribution to this repo
 - ModernGL community for excellent OpenGL bindings
 - Contributors and testers who helped improve PyVR
 - The broader volume rendering and scientific visualization community

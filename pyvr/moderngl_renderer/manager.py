@@ -134,46 +134,48 @@ class ModernGLManager:
 
         return texture_unit
 
-    def create_rgba_transfer_function_texture(self, 
-                                            color_transfer_function, 
-                                            opacity_transfer_function, 
-                                            size: Optional[int] = None) -> int:
+    def create_rgba_transfer_function_texture(
+        self,
+        color_transfer_function,
+        opacity_transfer_function,
+        size: Optional[int] = None,
+    ) -> int:
         """
         Create a combined RGBA texture from color and opacity transfer functions.
-        
+
         This method combines RGB data from a ColorTransferFunction with alpha data
         from an OpacityTransferFunction into a single RGBA texture, enabling more
         efficient single-texture-lookup volume rendering.
-        
+
         Args:
             color_transfer_function: ColorTransferFunction instance for RGB channels
             opacity_transfer_function: OpacityTransferFunction instance for A channel
             size: Optional LUT size override (uses maximum of both TF sizes if None)
-            
+
         Returns:
             Texture unit (int) for use in shaders
-            
+
         Example:
             rgba_tex_unit = manager.create_rgba_transfer_function_texture(ctf, otf)
             program['transfer_function_lut'] = rgba_tex_unit
         """
         # Determine effective size - use provided size or max of both transfer functions
         if size is None:
-            size = max(color_transfer_function.lut_size, opacity_transfer_function.lut_size)
-        
+            size = max(
+                color_transfer_function.lut_size, opacity_transfer_function.lut_size
+            )
+
         # Generate LUTs from both transfer functions
         color_lut = color_transfer_function.to_lut(size)  # Shape: (size, 3)
         opacity_lut = opacity_transfer_function.to_lut(size)  # Shape: (size,)
-        
+
         # Combine into RGBA array
         rgba_lut = np.empty((size, 4), dtype=np.float32)
         rgba_lut[:, :3] = color_lut  # RGB channels
         rgba_lut[:, 3] = opacity_lut  # Alpha channel
-        
+
         # Create 4-channel texture
-        texture = self.ctx.texture(
-            (size, 1), 4, rgba_lut.tobytes(), dtype="f4"
-        )
+        texture = self.ctx.texture((size, 1), 4, rgba_lut.tobytes(), dtype="f4")
         texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
         texture.repeat_x = False
         texture.repeat_y = False
