@@ -1,13 +1,22 @@
 """
-Multi-view volume rendering example
+Multi-view volume rendering example - Updated for PyVR v0.2.0
+
+This example demonstrates the new modular transfer function API introduced in v0.2.0.
+Key changes from v0.1.0:
+- Transfer functions imported from pyvr.transferfunctions (instead of pyvr.moderngl_renderer.transfer_functions)
+- Camera functions imported from pyvr.camera (instead of pyvr.moderngl_renderer.camera_control) - will be available in Phase 3
 """
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib 
 import time
 
-from pyvr.moderngl_renderer import VolumeRenderer, ColorTransferFunction, OpacityTransferFunction, get_camera_pos
+from pyvr.moderngl_renderer import VolumeRenderer
 from pyvr.datasets import compute_normal_volume, create_sample_volume
+# NEW v0.2.0: Import transfer functions from the new modular location
+from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
+# NEW v0.2.0: Import camera functions from the new modular location
+from pyvr.camera import get_camera_pos
 
 STEP_SIZE = 1e-3
 MAX_STEPS = int(1e3)
@@ -26,18 +35,21 @@ renderer.load_volume(volume)
 renderer.load_normal_volume(normals)
 renderer.set_volume_bounds((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0))
 
-# Use plasma colormap (legacy v0.1.0 API through moderngl_renderer)
+# NEW v0.2.0: Use the new transfer function API
+# Create color transfer function from matplotlib colormap
 ctf = ColorTransferFunction.from_matplotlib_colormap(
     matplotlib.colormaps.get_cmap('plasma'))
 
-# Linear opacity from 0 to 0.1
+# Create linear opacity transfer function
 otf = OpacityTransferFunction.linear(0.0, 0.1)
+
+# Alternative: Create opacity transfer function with peaks for interesting effects
+# otf = OpacityTransferFunction.peaks([0.3, 0.7], opacity=0.2, eps=0.05, base=0.0)
 
 # Configure lighting (high-level operations handled by VolumeRenderer)
 renderer.set_diffuse_light(1.0)
 renderer.set_ambient_light(0.0)
 
-# Camera parameter sets to test
 # Camera parameter sets to test
 camera_params = [
     {"azimuth": 0, "elevation": 0, "roll": 0, "distance": 3},
@@ -95,8 +107,8 @@ for i, params in enumerate(camera_params):
     )
     renderer.set_camera(position=position, target=(0, 0, 0), up=up)
 
-    # Upload LUTs using the new ModernGLManager architecture
-    # NEW: Use ModernGLManager for better resource management
+    # NEW v0.2.0: Upload LUTs using the new ModernGLManager architecture
+    # This is the preferred method for v0.2.0
     opacity_tex_unit = otf.to_texture(moderngl_manager=renderer.gl_manager)
     renderer.gl_manager.set_uniform_int('opacity_lut', opacity_tex_unit)
 
@@ -136,7 +148,7 @@ ax_tf.set_ylim(0, 1)
 ax_tf.set_xlabel("Scalar Value")
 ax_tf.set_yticks([0, 0.05, 0.1, 0.5, 1.0])
 ax_tf.set_ylabel("Opacity / Color")
-ax_tf.set_title("Transfer Functions (used for all 4 views)")
+ax_tf.set_title("Transfer Functions - PyVR v0.2.0 (New Modular API)")
 
 # Show the figure
 plt.subplots_adjust(hspace=0.3, wspace=0.2)

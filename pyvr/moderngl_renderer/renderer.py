@@ -3,8 +3,9 @@ import os
 import numpy as np
 from PIL import Image
 
-from .moderngl_manager import ModernGLManager
-from .transfer_functions import ColorTransferFunction, OpacityTransferFunction
+from ..transferfunctions.color import ColorTransferFunction
+from ..transferfunctions.opacity import OpacityTransferFunction
+from .manager import ModernGLManager
 
 
 class VolumeRenderer:
@@ -46,8 +47,10 @@ class VolumeRenderer:
         # Create ModernGL manager
         self.gl_manager = ModernGLManager(width, height)
 
-        # Load shaders from external files
-        shader_dir = os.path.join(os.path.dirname(__file__), "shaders")
+        # Load shaders from shared shader directory
+        # Navigate from moderngl_renderer directory to the shared shaders directory
+        pyvr_dir = os.path.dirname(os.path.dirname(__file__))
+        shader_dir = os.path.join(pyvr_dir, "shaders")
         vertex_shader_path = os.path.join(shader_dir, "volume.vert.glsl")
         fragment_shader_path = os.path.join(shader_dir, "volume.frag.glsl")
         self.gl_manager.load_shaders(vertex_shader_path, fragment_shader_path)
