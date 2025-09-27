@@ -73,15 +73,6 @@ def test_call_method():
     np.testing.assert_array_equal(lut1, lut2)
 
 
-def test_texture_creation_errors():
-    """Test texture creation error handling."""
-    tf = ConcreteTransferFunction()
-    
-    # Should raise error if moderngl_manager is None
-    with pytest.raises(TypeError, match="missing 1 required positional argument"):
-        tf.to_texture()
-
-
 def test_validate_control_points_format():
     """Test control points validation function."""
     # Valid single-value control points

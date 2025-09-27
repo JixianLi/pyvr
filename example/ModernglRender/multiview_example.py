@@ -95,11 +95,11 @@ for i, params in enumerate(camera_params):
     position, up = get_camera_pos_from_params(camera)
     renderer.set_camera(position=position, target=(0, 0, 0), up=up)
 
-    # Upload LUTs using ModernGLManager
-    opacity_tex_unit = otf.to_texture(moderngl_manager=renderer.gl_manager)
+    # Upload LUTs using ModernGLManager - transfer functions now focus only on LUTs
+    opacity_tex_unit = renderer.gl_manager.create_opacity_transfer_function_texture(otf)
     renderer.gl_manager.set_uniform_int('opacity_lut', opacity_tex_unit)
 
-    color_tex_unit = ctf.to_texture(moderngl_manager=renderer.gl_manager)
+    color_tex_unit = renderer.gl_manager.create_color_transfer_function_texture(ctf)
     renderer.gl_manager.set_uniform_int('color_lut', color_tex_unit)
 
     # Render

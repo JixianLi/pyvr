@@ -60,10 +60,6 @@ class OpacityTransferFunction(BaseTransferFunction):
                     f"Control point {i} opacity {opacity} outside valid range [0.0, 1.0]"
                 )
     
-    def _get_texture_channels(self) -> int:
-        """Opacity textures have 1 channel."""
-        return 1
-    
     @classmethod
     def linear(cls, low: float = 0.0, high: float = 1.0, lut_size: int = 256) -> 'OpacityTransferFunction':
         """

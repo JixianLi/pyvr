@@ -5,6 +5,9 @@ This module provides transfer function implementations for volume rendering.
 Transfer functions define how scalar values in volume data are mapped to 
 colors and opacity for visualization.
 
+Transfer functions focus exclusively on control point management and LUT generation.
+Texture operations are handled by ModernGLManager for better separation of concerns.
+
 Classes:
     BaseTransferFunction: Abstract base class for all transfer functions
     ColorTransferFunction: Maps scalar values to RGB colors
@@ -23,6 +26,10 @@ Examples:
     
     # Create opacity peaks at specific densities
     otf = OpacityTransferFunction.with_peaks([0.3, 0.7], opacities=[0.9, 0.9])
+    
+    # Use with ModernGLManager for texture operations
+    opacity_tex_unit = renderer.gl_manager.create_opacity_transfer_function_texture(otf)
+    color_tex_unit = renderer.gl_manager.create_color_transfer_function_texture(ctf)
 """
 
 __version__ = "0.2.1"

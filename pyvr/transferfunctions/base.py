@@ -68,26 +68,6 @@ class BaseTransferFunction(ABC):
         """Convenience method - alias for to_lut()."""
         return self.to_lut(size)
     
-    def to_texture(self, moderngl_manager: Any, size: Optional[int] = None) -> int:
-        """
-        Generate a moderngl texture from the LUT.
-        
-        Args:
-            moderngl_manager: ModernGLManager instance
-            size: Size of the LUT. If None, uses self.lut_size.
-            
-        Returns:
-            Texture unit (int) for use in shaders
-        """
-        effective_size = size or self.lut_size
-        lut = self.to_lut(effective_size)
-        return moderngl_manager.create_lut_texture(lut, channels=self._get_texture_channels())
-    
-    @abstractmethod
-    def _get_texture_channels(self) -> int:
-        """Return the number of channels for texture creation."""
-        pass
-    
     def _validate_scalar_range(self, min_val: float = 0.0, max_val: float = 1.0) -> None:
         """
         Validate that control point scalars are within expected range.

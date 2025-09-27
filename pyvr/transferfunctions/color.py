@@ -63,10 +63,6 @@ class ColorTransferFunction(BaseTransferFunction):
                         f"Control point {i} RGB component {j} value {component} outside valid range [0.0, 1.0]"
                     )
     
-    def _get_texture_channels(self) -> int:
-        """Color textures have 3 channels (RGB)."""
-        return 3
-    
     @classmethod
     def grayscale(cls, lut_size: int = 256) -> 'ColorTransferFunction':
         """
