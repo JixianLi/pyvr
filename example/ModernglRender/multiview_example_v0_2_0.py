@@ -35,10 +35,9 @@ renderer.load_volume(volume)
 renderer.load_normal_volume(normals)
 renderer.set_volume_bounds((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0))
 
-# NEW v0.2.0: Use the new transfer function API
-# Create color transfer function from matplotlib colormap
-ctf = ColorTransferFunction.from_matplotlib_colormap(
-    matplotlib.colormaps.get_cmap('plasma'))
+# NEW v0.2.1: Use the updated transfer function API  
+# Create transfer functions using v0.2.1+ API
+ctf = ColorTransferFunction.from_colormap('viridis', value_range=(0.2, 0.8))
 
 # Create linear opacity transfer function
 otf = OpacityTransferFunction.linear(0.0, 0.1)
@@ -107,18 +106,12 @@ for i, params in enumerate(camera_params):
     )
     renderer.set_camera(position=position, target=(0, 0, 0), up=up)
 
-    # NEW v0.2.0: Upload LUTs using the new ModernGLManager architecture
-    # This is the preferred method for v0.2.0
-    opacity_tex_unit = otf.to_texture(moderngl_manager=renderer.gl_manager)
+    # NEW v0.2.1: Transfer functions focus only on LUTs, textures managed by ModernGLManager
+    opacity_tex_unit = renderer.gl_manager.create_opacity_transfer_function_texture(otf)
     renderer.gl_manager.set_uniform_int('opacity_lut', opacity_tex_unit)
 
-    color_tex_unit = ctf.to_texture(moderngl_manager=renderer.gl_manager)
+    color_tex_unit = renderer.gl_manager.create_color_transfer_function_texture(ctf)
     renderer.gl_manager.set_uniform_int('color_lut', color_tex_unit)
-    
-    # Legacy interface (still works but not recommended):
-    # opacity_tex = otf.to_texture(renderer.ctx)
-    # opacity_tex.use(location=2)
-    # renderer.program['opacity_lut'] = 2
 
     # Render
     start_ns = time.perf_counter_ns()

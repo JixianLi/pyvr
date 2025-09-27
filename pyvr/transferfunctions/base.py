@@ -68,40 +68,6 @@ class BaseTransferFunction(ABC):
         """Convenience method - alias for to_lut()."""
         return self.to_lut(size)
     
-    def to_texture(self, ctx: Optional[Any] = None, size: Optional[int] = None, 
-                  moderngl_manager: Optional[Any] = None) -> Union[Any, int]:
-        """
-        Generate a moderngl texture from the LUT.
-        
-        Args:
-            ctx: moderngl context (for backward compatibility)
-            size: Size of the LUT. If None, uses self.lut_size.
-            moderngl_manager: ModernGLManager instance (preferred method)
-            
-        Returns:
-            moderngl.Texture or texture unit (int) depending on the method used
-        """
-        if moderngl_manager is not None:
-            # New way: use ModernGLManager
-            effective_size = size or self.lut_size
-            lut = self.to_lut(effective_size)
-            return moderngl_manager.create_lut_texture(lut, channels=self._get_texture_channels())
-        elif ctx is not None:
-            # Legacy way: direct ModernGL context (for backward compatibility)
-            return self._create_texture_legacy(ctx, size)
-        else:
-            raise ValueError("Either moderngl_manager or ctx must be provided.")
-    
-    @abstractmethod
-    def _get_texture_channels(self) -> int:
-        """Return the number of channels for texture creation."""
-        pass
-    
-    @abstractmethod
-    def _create_texture_legacy(self, ctx: Any, size: Optional[int]) -> Any:
-        """Create texture using legacy ModernGL context method."""
-        pass
-    
     def _validate_scalar_range(self, min_val: float = 0.0, max_val: float = 1.0) -> None:
         """
         Validate that control point scalars are within expected range.

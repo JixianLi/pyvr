@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import moderngl
 import numpy as np
@@ -174,6 +175,36 @@ class ModernGLManager:
 
         return texture_unit
 
+    def create_color_transfer_function_texture(self, color_transfer_function, size: Optional[int] = None) -> int:
+        """
+        Create a texture from a ColorTransferFunction.
+        
+        Args:
+            color_transfer_function: ColorTransferFunction instance
+            size: Optional LUT size override
+            
+        Returns:
+            Texture unit (int) for use in shaders
+        """
+        effective_size = size or color_transfer_function.lut_size
+        lut = color_transfer_function.to_lut(effective_size)
+        return self.create_lut_texture(lut, channels=3)
+    
+    def create_opacity_transfer_function_texture(self, opacity_transfer_function, size: Optional[int] = None) -> int:
+        """
+        Create a texture from an OpacityTransferFunction.
+        
+        Args:
+            opacity_transfer_function: OpacityTransferFunction instance
+            size: Optional LUT size override
+            
+        Returns:
+            Texture unit (int) for use in shaders
+        """
+        effective_size = size or opacity_transfer_function.lut_size
+        lut = opacity_transfer_function.to_lut(effective_size)
+        return self.create_lut_texture(lut, channels=1)
+
     def set_uniform_matrix(self, name, matrix):
         """Set a matrix uniform in the shader program."""
         if self.program is None:
@@ -243,7 +274,3 @@ class ModernGLManager:
         self.color_texture.release()
         self.depth_texture.release()
         self.ctx.release()
-
-    def get_context(self):
-        """Get the ModernGL context (for backward compatibility)."""
-        return self.ctx

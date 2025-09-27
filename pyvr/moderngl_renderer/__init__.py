@@ -13,9 +13,6 @@ from ..transferfunctions.opacity import OpacityTransferFunction
 from .manager import ModernGLManager
 from .renderer import VolumeRenderer
 
-# Keep legacy camera function for backward compatibility
-from .camera_control import get_camera_pos
-
 __all__ = [
     "ColorTransferFunction",
     "OpacityTransferFunction", 
@@ -23,7 +20,6 @@ __all__ = [
     "ModernGLManager",
     "CameraController",
     "CameraParameters",
-    "get_camera_pos",  # Legacy function
     "create_sample_volume",
     "compute_normal_volume",
 ]

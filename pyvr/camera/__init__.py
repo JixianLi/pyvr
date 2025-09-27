@@ -22,16 +22,16 @@ Utility Functions:
     radians_to_degrees: Convert angles from radians to degrees
 
 Examples:
-    # Basic camera positioning (legacy interface)
-    pos, up = get_camera_pos(
-        target=np.array([0, 0, 0]),
-        azimuth=np.pi/4, elevation=np.pi/6, roll=0,
-        distance=5.0
+    # Using camera parameters (recommended interface)
+    params = CameraParameters.from_spherical(
+        target=np.array([0, 0, 0]), distance=5.0,
+        azimuth=np.pi/4, elevation=np.pi/6, roll=0
     )
+    pos, up = params.get_camera_vectors()
     
-    # Using camera parameters (new interface)
-    params = CameraParameters.isometric_view(distance=3.0)
-    pos, up = get_camera_pos_from_params(params)
+    # Camera presets
+    params = CameraParameters.preset_isometric_view(distance=3.0)
+    pos, up = params.get_camera_vectors()
     
     # Camera animation
     path = CameraPath([start_params, end_params])
@@ -44,7 +44,7 @@ Examples:
     pos, up = controller.get_position_and_up()
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 from .control import (
     get_camera_pos,

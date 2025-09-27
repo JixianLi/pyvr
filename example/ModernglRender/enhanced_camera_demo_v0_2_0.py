@@ -15,7 +15,6 @@ Key improvements from v0.1.0:
 """
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib 
 import time
 
 from pyvr.moderngl_renderer import VolumeRenderer
@@ -44,10 +43,9 @@ renderer.load_volume(volume)
 renderer.load_normal_volume(normals)
 renderer.set_volume_bounds((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0))
 
-# NEW v0.2.0: Enhanced transfer functions with new features
-# Create color transfer function from matplotlib colormap
-ctf = ColorTransferFunction.from_matplotlib_colormap(
-    matplotlib.colormaps.get_cmap('plasma'))
+# NEW v0.2.1: Enhanced transfer functions with updated API
+# Create color transfer function from colormap
+ctf = ColorTransferFunction.from_colormap('plasma')
 
 # Create interesting opacity transfer function with peaks
 otf = OpacityTransferFunction.peaks(
@@ -133,9 +131,9 @@ for i, (params, view_name) in enumerate(zip(all_camera_params, view_names)):
     position, up = get_camera_pos_from_params(params)
     renderer.set_camera(position=position, target=params.target, up=up)
     
-    # Upload transfer function LUTs
-    opacity_tex_unit = otf.to_texture(moderngl_manager=renderer.gl_manager)
-    color_tex_unit = ctf.to_texture(moderngl_manager=renderer.gl_manager)
+    # Upload transfer functions - ModernGLManager handles all texture operations
+    opacity_tex_unit = renderer.gl_manager.create_opacity_transfer_function_texture(otf)
+    color_tex_unit = renderer.gl_manager.create_color_transfer_function_texture(ctf)
     renderer.gl_manager.set_uniform_int('opacity_lut', opacity_tex_unit)
     renderer.gl_manager.set_uniform_int('color_lut', color_tex_unit)
     

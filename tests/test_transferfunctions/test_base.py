@@ -73,15 +73,6 @@ def test_call_method():
     np.testing.assert_array_equal(lut1, lut2)
 
 
-def test_texture_creation_errors():
-    """Test texture creation error handling."""
-    tf = ConcreteTransferFunction()
-    
-    # Should raise error if neither ctx nor moderngl_manager provided
-    with pytest.raises(ValueError, match="Either moderngl_manager or ctx must be provided"):
-        tf.to_texture()
-
-
 def test_validate_control_points_format():
     """Test control points validation function."""
     # Valid single-value control points
