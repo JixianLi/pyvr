@@ -4,7 +4,7 @@ import matplotlib
 import time
 
 from pyvr.moderngl_renderer.volume_renderer import VolumeRenderer
-from pyvr.moderngl_renderer.datasets import compute_normal_volume,create_sample_volume
+from pyvr.datasets import compute_normal_volume, create_sample_volume
 from pyvr.moderngl_renderer.transfer_functions import ColorTransferFunction, OpacityTransferFunction
 from pyvr.moderngl_renderer.camera_control import get_camera_pos
 

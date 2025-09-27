@@ -4,7 +4,7 @@ import time
 from pyvr.torch_renderer.volume_renderer import VolumeRenderer
 from pyvr.torch_renderer.camera import Camera
 from pyvr.torch_renderer.transfer_functions import ColorTransferFunction, OpacityTransferFunction
-from pyvr.torch_renderer.volume_data import create_test_volume
+from pyvr.datasets import create_test_volume
 
 # Configuration variables
 DEVICE = 'cpu'

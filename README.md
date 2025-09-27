@@ -4,113 +4,141 @@ PyVR is a Python-based toolkit for interactive and high-quality 3D volume render
 
 ## Features
 
-- **Multiple Rendering Backends**:  
+- **Multiple Rendering Backends**:
   - `moderngl_renderer`: GPU-accelerated, real-time OpenGL rendering using ModernGL.
   - `torch_renderer`: Fully vectorized, differentiable volume rendering in PyTorch.
 
-- **Flexible Transfer Functions**:  
+- **Flexible Transfer Functions**:
   - Piecewise linear opacity and color transfer functions.
   - Matplotlib colormap support.
 
-- **Camera Controls**:  
+- **Camera Controls**:
   - Quaternion-based camera orbit and roll (ModernGL).
   - Fully programmable camera in PyTorch.
 
-- **Lighting and Shading**:  
+- **Lighting and Shading**:
   - Ambient and diffuse lighting.
   - Gradient-based normal computation.
 
-- **Sample Volumes**:  
+- **Sample Volumes**:
   - Built-in synthetic datasets (sphere, torus, helix, medical phantom, etc.).
 
-- **Visualization Utilities**:  
+- **Visualization Utilities**:
   - Matplotlib integration for rendered images and transfer function plots.
 
 ## Installation
 
 ### Requirements
 
-- Python 3.8+
-- See [torch_renderer/requirements.txt](torch_renderer/requirements.txt) and [moderngl_renderer/requirements.txt](moderngl_renderer/requirements.txt) for dependencies.
+- Python 3.11+
+- Poetry (recommended) or pip
 
-### Install dependencies
+### Using Poetry
 
 ```sh
-pip install -r torch_renderer/requirements.txt
-pip install -r moderngl_renderer/requirements.txt
+poetry install
 ```
 
-## Usage
+### Using pip
+
+Install dependencies from the respective renderer directories:
+
+```sh
+pip install -r pyvr/torch_renderer/requirements.txt
+pip install -r pyvr/moderngl_renderer/requirements.txt
+```
+
+## Quick Start
 
 ### PyTorch Renderer
 
-Run the performance demo:
+Run a simple demo:
 
 ```sh
-python torch_renderer/volume_renderer.py
+python pyvr/torch_renderer/volume_renderer.py
 ```
 
-This will render a configurable 3D volume using the PyTorch backend and display the result with transfer function visualizations.
+This renders a 3D volume using PyTorch and displays the result with transfer function visualizations.
 
 ### ModernGL Renderer
 
-Run the ModernGL multi-view demo:
+Run the multi-view example:
 
 ```sh
-python moderngl_renderer/volume_renderer.py
+python example/ModernglRender/multiview_example.py
 ```
 
-This will render multiple views of a sample volume using the OpenGL backend and display the results with transfer function plots.
+This demonstrates real-time volume rendering with multiple views using OpenGL.
 
 > **Note:**  
 > All volume data is assumed to be in **(D, H, W)** order, corresponding to **(z, y, x)** axes.
+
+## Examples
+
+The `example/` directory contains ready-to-run demos:
+
+- `ModernglRender/multiview_example.py`: Multi-view volume rendering with ModernGL.
+- `TorchRenderer/simple_demo.py`: Basic volume rendering with PyTorch.
 
 ## Project Structure
 
 ```
 pyvr/
-├── torch_renderer/
-│   ├── camera.py
-│   ├── transfer_function.py
-│   ├── volume_data.py
-│   ├── volume_renderer.py
-│   └── requirements.txt
+├── __init__.py
+├── datasets/
+│   ├── __init__.py
+│   └── synthetic.py
 ├── moderngl_renderer/
+│   ├── __init__.py
 │   ├── camera_control.py
-│   ├── datasets.py
+│   ├── datasets.py (deprecated - use pyvr.datasets)
+│   ├── requirements.txt
 │   ├── transfer_functions.py
 │   ├── volume_renderer.py
-│   ├── requirements.txt
 │   └── shaders/
-├── README.md
+│       ├── volume.frag.glsl
+│       └── volume.vert.glsl
+├── torch_renderer/
+│   ├── __init__.py
+│   ├── camera.py
+│   ├── requirements.txt
+│   ├── transfer_functions.py
+│   ├── volume_data.py (deprecated - use pyvr.datasets)
+│   └── volume_renderer.py
+example/
+├── ModernglRender/
+│   └── multiview_example.py
+└── TorchRenderer/
+    └── simple_demo.py
+tests/
+pyproject.toml
+poetry.lock
+README.md
 ```
 
 ## Customization
 
 - **Transfer Functions**:  
-  Edit or extend [`torch_renderer/transfer_function.py`](torch_renderer/transfer_function.py) or [`moderngl_renderer/transfer_functions.py`](moderngl_renderer/transfer_functions.py) to create custom opacity/color mappings.
+  Edit [`pyvr/torch_renderer/transfer_functions.py`](pyvr/torch_renderer/transfer_functions.py) or [`pyvr/moderngl_renderer/transfer_functions.py`](pyvr/moderngl_renderer/transfer_functions.py) to create custom opacity/color mappings.
 
 - **Volume Data**:  
-  Add new synthetic or real datasets in [`torch_renderer/volume_data.py`](torch_renderer/volume_data.py) or [`moderngl_renderer/datasets.py`](moderngl_renderer/datasets.py).
+  The unified [`pyvr/datasets/synthetic.py`](pyvr/datasets/synthetic.py) module provides all volume generation functions. You can add new datasets there, or import the module as `from pyvr.datasets import create_test_volume, create_sample_volume`.
 
 - **Camera Controls**:  
-  Modify camera logic in [`torch_renderer/camera.py`](torch_renderer/camera.py) or [`moderngl_renderer/camera_control.py`](moderngl_renderer/camera_control.py).
+  Modify camera logic in [`pyvr/torch_renderer/camera.py`](pyvr/torch_renderer/camera.py) or [`pyvr/moderngl_renderer/camera_control.py`](pyvr/moderngl_renderer/camera_control.py).
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
 
 ## License
 
-No license; do whatever you want. 
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
----
+## Acknowledgments
 
-**Author:**  
-[GitHub Copilot - Claude Sonnet 4 (preview) and GPT-4.1] 
-
-I made minimal changes to fix some API signatures and added those two lines.
-
-**Acknowledgments:**  
-- [GitHub Copilot](https://github.com/features/copilot)
 - [ModernGL](https://github.com/moderngl/moderngl)
-- [PyTorch](https://pytorch.org/)  
+- [PyTorch](https://pytorch.org/)
 - [Matplotlib](https://matplotlib.org/)
 - [NumPy](https://numpy.org/)
 - [SciPy](https://scipy.org/)
