@@ -2,7 +2,9 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 
 
-def get_camera_pos(target, azimuth, elevation, roll, distance, init_pos=None, init_up=None):
+def get_camera_pos(
+    target, azimuth, elevation, roll, distance, init_pos=None, init_up=None
+):
     """
     Returns (position, up) for the camera using quaternion rotations.
     All angles in radians.
@@ -28,13 +30,15 @@ def get_camera_pos(target, azimuth, elevation, roll, distance, init_pos=None, in
     view_dir = -rel_init_pos / np.linalg.norm(rel_init_pos)
     elev_axis = np.cross(init_up, view_dir)
     elev_norm = np.linalg.norm(elev_axis)
-    
+
     if elev_norm < 1e-6:  # Handle gimbal lock
         # Use a fallback axis when init_up and view_dir are parallel
-        fallback_axis = np.array([1, 0, 0]) if abs(init_up[0]) < 0.9 else np.array([0, 0, 1])
+        fallback_axis = (
+            np.array([1, 0, 0]) if abs(init_up[0]) < 0.9 else np.array([0, 0, 1])
+        )
         elev_axis = np.cross(init_up, fallback_axis)
         elev_norm = np.linalg.norm(elev_axis)
-    
+
     elev_axis = elev_axis / elev_norm
     rot_elevation = R.from_rotvec(elevation * elev_axis)
 

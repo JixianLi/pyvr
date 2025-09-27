@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class OpacityTransferFunction:
     """
     Maps scalar values (e.g., density) to opacity (alpha) values for volume rendering.
@@ -29,8 +30,10 @@ class OpacityTransferFunction:
         Step function: low opacity up to 'step', then high opacity.
         Example: step=0.5, low=0.0, high=1.0 gives [(0.0, 0.0), (0.5, 0.0), (0.5, 1.0), (1.0, 1.0)]
         """
-        return cls([(0.0, low), (step, low), (step+1e-12, high), (1.0, high)], lut_size=lut_size)
-
+        return cls(
+            [(0.0, low), (step, low), (step + 1e-12, high), (1.0, high)],
+            lut_size=lut_size,
+        )
 
     @classmethod
     def peaks(cls, peaks, opacity=1.0, eps=0.02, lut_size=256, base=0.0):
@@ -61,8 +64,8 @@ class OpacityTransferFunction:
         return cls(control_points, lut_size=lut_size)
 
     def __call__(self, size=None):
-        """ alias for to_lut(size=None) """
-        self.to_lut(size)  
+        """alias for to_lut(size=None)"""
+        self.to_lut(size)
         return self.to_lut(size)
 
     def to_lut(self, size=None):
@@ -93,19 +96,22 @@ class OpacityTransferFunction:
         elif ctx is not None:
             # Legacy way: direct ModernGL context (for backward compatibility)
             import moderngl
+
             if ctx is None:
                 raise ValueError(
-                    "A moderngl context must be provided to create a texture.")
+                    "A moderngl context must be provided to create a texture."
+                )
             self.lut_size = size or self.lut_size
             lut = self.to_lut(self.lut_size)
             data = lut.reshape((self.lut_size, 1)).astype(np.float32)
-            tex = ctx.texture((self.lut_size, 1), 1, data.tobytes(), dtype='f4')
+            tex = ctx.texture((self.lut_size, 1), 1, data.tobytes(), dtype="f4")
             tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
             tex.repeat_x = False
             tex.repeat_y = False
             return tex
         else:
             raise ValueError("Either moderngl_manager or ctx must be provided.")
+
 
 class ColorTransferFunction:
     """
@@ -139,7 +145,9 @@ class ColorTransferFunction:
         # Use only RGB, ignore alpha if present
         if colors.shape[1] == 4:
             colors = colors[:, :3]
-        control_points = [(float(xi), tuple(map(float, rgb))) for xi, rgb in zip(x, colors)]
+        control_points = [
+            (float(xi), tuple(map(float, rgb))) for xi, rgb in zip(x, colors)
+        ]
         return cls(control_points, lut_size=lut_size)
 
     def to_lut(self, size=None):
@@ -173,12 +181,15 @@ class ColorTransferFunction:
         elif ctx is not None:
             # Legacy way: direct ModernGL context (for backward compatibility)
             import moderngl
+
             if ctx is None:
-                raise ValueError("A moderngl context must be provided to create a texture.")
+                raise ValueError(
+                    "A moderngl context must be provided to create a texture."
+                )
             self.lut_size = size or self.lut_size
             lut = self.to_lut(self.lut_size)
             data = lut.reshape((self.lut_size, 1, 3)).astype(np.float32)
-            tex = ctx.texture((self.lut_size, 1), 3, data.tobytes(), dtype='f4')
+            tex = ctx.texture((self.lut_size, 1), 3, data.tobytes(), dtype="f4")
             tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
             tex.repeat_x = False
             tex.repeat_y = False

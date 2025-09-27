@@ -1,4 +1,5 @@
 import os
+
 import moderngl
 import numpy as np
 
@@ -12,28 +13,28 @@ class ModernGLManager:
     def __init__(self, width=512, height=512):
         """
         Initialize the ModernGL manager with specified viewport dimensions.
-        
+
         Parameters:
             width (int): The width of the rendering viewport (default: 512).
             height (int): The height of the rendering viewport (default: 512).
         """
         self.width = width
         self.height = height
-        
+
         # Create OpenGL context
         self.ctx = moderngl.create_context(standalone=True)
-        
+
         # Create framebuffer for offscreen rendering
         self.color_texture = self.ctx.texture((width, height), 4)
         self.depth_texture = self.ctx.depth_texture((width, height))
         self.fbo = self.ctx.framebuffer([self.color_texture], self.depth_texture)
-        
+
         # Initialize shader program and geometry
         self.program = None
         self.vao = None
         self.vbo = None
         self.ibo = None
-        
+
         # Track texture units
         self._next_texture_unit = 0
         self._texture_bindings = {}
@@ -41,7 +42,7 @@ class ModernGLManager:
     def load_shaders(self, vertex_shader_path, fragment_shader_path):
         """
         Load and compile vertex and fragment shaders from files.
-        
+
         Parameters:
             vertex_shader_path (str): Path to the vertex shader file.
             fragment_shader_path (str): Path to the fragment shader file.
@@ -50,39 +51,35 @@ class ModernGLManager:
             vertex_shader = f.read()
         with open(fragment_shader_path, "r") as f:
             fragment_shader = f.read()
-            
+
         self.program = self.ctx.program(
-            vertex_shader=vertex_shader, 
-            fragment_shader=fragment_shader
+            vertex_shader=vertex_shader, fragment_shader=fragment_shader
         )
-        
+
         # Create fullscreen quad geometry
         self._create_fullscreen_quad()
 
     def _create_fullscreen_quad(self):
         """Create vertex array object for a fullscreen quad."""
-        vertices = np.array([
-            -1.0, -1.0,
-             1.0, -1.0,
-             1.0,  1.0,
-            -1.0,  1.0
-        ], dtype=np.float32)
+        vertices = np.array(
+            [-1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0], dtype=np.float32
+        )
 
         indices = np.array([0, 1, 2, 0, 2, 3], dtype=np.uint32)
 
         self.vbo = self.ctx.buffer(vertices.tobytes())
         self.ibo = self.ctx.buffer(indices.tobytes())
         self.vao = self.ctx.vertex_array(
-            self.program, [(self.vbo, '2f', 'position')], self.ibo
+            self.program, [(self.vbo, "2f", "position")], self.ibo
         )
 
     def create_volume_texture(self, volume_data):
         """
         Create a 3D texture from volume data.
-        
+
         Parameters:
             volume_data (np.ndarray): 3D volume data with shape (D, H, W).
-            
+
         Returns:
             int: The texture unit where the texture is bound.
         """
@@ -95,7 +92,7 @@ class ModernGLManager:
 
         # Create 3D texture
         texture = self.ctx.texture3d(
-            volume_data.shape, 1, volume_data.tobytes(), dtype='f4'
+            volume_data.shape, 1, volume_data.tobytes(), dtype="f4"
         )
         texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
         texture.repeat_x = False
@@ -105,45 +102,45 @@ class ModernGLManager:
         # Bind to next available texture unit
         texture_unit = self._get_next_texture_unit()
         texture.use(texture_unit)
-        self._texture_bindings['volume'] = (texture, texture_unit)
-        
+        self._texture_bindings["volume"] = (texture, texture_unit)
+
         return texture_unit
 
     def create_normal_texture(self, normal_data):
         """
         Create a 3D texture from normal data.
-        
+
         Parameters:
             normal_data (np.ndarray): 3D normal data with shape (D, H, W, 3).
-            
+
         Returns:
             int: The texture unit where the texture is bound.
         """
         if normal_data.shape[-1] != 3:
             raise ValueError("Normal volume must have 3 channels (last dimension).")
-            
+
         texture = self.ctx.texture3d(
-            normal_data.shape[:3], 3, normal_data.tobytes(), dtype='f4'
+            normal_data.shape[:3], 3, normal_data.tobytes(), dtype="f4"
         )
         texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
         texture.repeat_x = False
         texture.repeat_y = False
         texture.repeat_z = False
-        
+
         texture_unit = self._get_next_texture_unit()
         texture.use(texture_unit)
-        self._texture_bindings['normal'] = (texture, texture_unit)
-        
+        self._texture_bindings["normal"] = (texture, texture_unit)
+
         return texture_unit
 
     def create_lut_texture(self, lut_data, channels=1):
         """
         Create a 1D LUT texture from lookup table data.
-        
+
         Parameters:
             lut_data (np.ndarray): 1D or 2D lookup table data.
             channels (int): Number of channels (1 for opacity, 3 for color).
-            
+
         Returns:
             int: The texture unit where the texture is bound.
         """
@@ -153,24 +150,28 @@ class ModernGLManager:
                 data = lut_data.reshape((len(lut_data), 1)).astype(np.float32)
             else:
                 data = lut_data.astype(np.float32)
-            texture = self.ctx.texture((data.shape[0], 1), 1, data.tobytes(), dtype='f4')
+            texture = self.ctx.texture(
+                (data.shape[0], 1), 1, data.tobytes(), dtype="f4"
+            )
         elif channels == 3:
             # Color LUT - ensure proper shape
             if lut_data.ndim == 2 and lut_data.shape[1] == 3:
                 data = lut_data.reshape((lut_data.shape[0], 1, 3)).astype(np.float32)
             else:
                 raise ValueError("Color LUT must have shape (N, 3)")
-            texture = self.ctx.texture((data.shape[0], 1), 3, data.tobytes(), dtype='f4')
+            texture = self.ctx.texture(
+                (data.shape[0], 1), 3, data.tobytes(), dtype="f4"
+            )
         else:
             raise ValueError("Channels must be 1 or 3")
-            
+
         texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
         texture.repeat_x = False
         texture.repeat_y = False
-        
+
         texture_unit = self._get_next_texture_unit()
         texture.use(texture_unit)
-        
+
         return texture_unit
 
     def set_uniform_matrix(self, name, matrix):
@@ -233,11 +234,11 @@ class ModernGLManager:
             self.ibo.release()
         if self.program:
             self.program.release()
-        
+
         # Clean up textures
         for name, (texture, unit) in self._texture_bindings.items():
             texture.release()
-            
+
         self.fbo.release()
         self.color_texture.release()
         self.depth_texture.release()
