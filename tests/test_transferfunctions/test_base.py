@@ -104,5 +104,79 @@ def test_validate_control_points_format():
         validate_control_points_format([(0.0, (0.1, "a", 0.3))], 3)
 
 
+def test_abstract_method_coverage():
+    """Test that abstract methods are properly defined."""
+    from pyvr.transferfunctions.base import BaseTransferFunction
+    
+    # Verify abstract methods exist and are abstract
+    assert hasattr(BaseTransferFunction, '_get_default_control_points')
+    assert hasattr(BaseTransferFunction, '_validate_control_points') 
+    assert hasattr(BaseTransferFunction, 'to_lut')
+    
+    # Cannot instantiate abstract class
+    with pytest.raises(TypeError):
+        BaseTransferFunction()
+
+
+def test_control_point_validation_edge_cases():
+    """Test edge cases in control point validation."""
+    from pyvr.transferfunctions.color import ColorTransferFunction
+    
+    # Test empty control points (should use defaults)
+    ctf = ColorTransferFunction()
+    assert len(ctf.control_points) > 0
+    
+    # Test single control point (edge case)
+    single_point_ctf = ColorTransferFunction([(0.5, [0.5, 0.5, 0.5])])
+    assert len(single_point_ctf.control_points) == 1
+    
+    # Test control points out of order (should be sorted)
+    unordered_ctf = ColorTransferFunction([
+        (1.0, [1.0, 1.0, 1.0]),
+        (0.0, [0.0, 0.0, 0.0]),
+        (0.5, [0.5, 0.5, 0.5])
+    ])
+    # Should be sorted by first element (position)
+    positions = [point[0] for point in unordered_ctf.control_points]
+    assert positions == sorted(positions)
+
+
+def test_lut_size_parameter():
+    """Test LUT size parameter handling."""
+    from pyvr.transferfunctions.color import ColorTransferFunction
+    
+    ctf = ColorTransferFunction(lut_size=512)
+    assert ctf.lut_size == 512
+    
+    # Test default size
+    lut_default = ctf.to_lut()
+    assert lut_default.shape[0] == 512
+    
+    # Test custom size
+    lut_custom = ctf.to_lut(1024)
+    assert lut_custom.shape[0] == 1024
+    
+    # Test call method with size
+    lut_call = ctf(256)
+    assert lut_call.shape[0] == 256
+
+
+def test_call_method_alias():
+    """Test that __call__ is proper alias for to_lut."""
+    from pyvr.transferfunctions.color import ColorTransferFunction
+    
+    ctf = ColorTransferFunction()
+    
+    # Test without parameters
+    lut1 = ctf.to_lut()
+    lut2 = ctf()
+    assert np.array_equal(lut1, lut2)
+    
+    # Test with size parameter
+    lut3 = ctf.to_lut(128)
+    lut4 = ctf(128)
+    assert np.array_equal(lut3, lut4)
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

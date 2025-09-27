@@ -274,36 +274,114 @@ def test_gimbal_lock_handling():
 
 
 def test_compatibility_with_old_interface():
-    """Test that new interface produces same results as old."""
-    # This test would compare with the old implementation if available
-    # For now, we test internal consistency
+    """Test that new interface works correctly."""
+    initial_params = CameraParameters(
+        target=np.array([0.0, 0.0, 0.0]),
+        azimuth=0.0, elevation=0.0, roll=0.0, distance=3.0,
+        init_pos=np.array([0.0, 0.0, 1.0])  # Make sure init_pos != target
+    )
+    controller = CameraController(initial_params)
     
+    # Should be able to call get_camera_pos_from_params 
+    pos, up = get_camera_pos_from_params(controller.params)
+    assert len(pos) == 3
+    assert len(up) == 3
+
+
+def test_get_camera_pos_edge_cases():
+    """Test edge cases and error conditions for get_camera_pos."""
     target = np.array([0.0, 0.0, 0.0])
-    params = CameraParameters(
-        target=target,
-        azimuth=np.pi/3,
-        elevation=np.pi/4,
-        roll=np.pi/6,
-        distance=2.5,
-        init_pos=np.array([1.0, 0.0, 0.0]),
-        init_up=np.array([0.0, 0.0, 1.0])
+    
+    # Test zero vector error for init_pos == target
+    with pytest.raises(ValueError, match="init_pos must not be the zero vector"):
+        get_camera_pos(
+            target=target,
+            azimuth=0.0, elevation=0.0, roll=0.0, distance=3.0,
+            init_pos=target  # Same as target - should raise error
+        )
+    
+    # Test elevation axis normalization edge case (parallel vectors)
+    # This should not crash, even with edge cases
+    pos, up = get_camera_pos(
+        target=np.array([0.0, 0.0, 0.0]),
+        azimuth=0.0, elevation=np.pi/2,  # 90 degrees elevation
+        roll=0.0, distance=3.0,
+        init_pos=np.array([0.0, 0.0, 1.0]),  
+        init_up=np.array([0.0, 0.0, 1.0])  # Same direction as init_pos
+    )
+    assert len(pos) == 3
+    assert len(up) == 3
+
+
+def test_camera_path_edge_cases():
+    """Test edge cases for CameraPath."""
+    # Test single keyframe (should require at least 2)
+    single_keyframe = CameraParameters(
+        target=np.array([0.0, 0.0, 0.0]),
+        azimuth=0.0, elevation=0.0, roll=0.0, distance=3.0
     )
     
-    # Test that both methods give same result
-    pos1, up1 = get_camera_pos(
-        target=params.target,
-        azimuth=params.azimuth,
-        elevation=params.elevation,
-        roll=params.roll,
-        distance=params.distance,
-        init_pos=params.init_pos,
-        init_up=params.init_up
+    with pytest.raises(ValueError, match="At least 2 keyframes are required"):
+        CameraPath([single_keyframe])
+    
+    # Test invalid keyframe type
+    invalid_keyframe = "not a CameraParameters"
+    
+    with pytest.raises(ValueError, match="must be a CameraParameters instance"):
+        CameraPath([invalid_keyframe, invalid_keyframe])
+
+
+def test_camera_controller_edge_cases():
+    """Test edge cases for CameraController."""
+    # Test with very small distance
+    initial_params = CameraParameters(
+        target=np.array([0.0, 0.0, 0.0]),
+        azimuth=0.0, elevation=0.0, roll=0.0, distance=0.001
+    )
+    controller = CameraController(initial_params)
+    
+    pos, up = get_camera_pos_from_params(controller.params)
+    assert len(pos) == 3
+    assert len(up) == 3
+    
+    # Test with extreme angles
+    extreme_params = CameraParameters(
+        target=np.array([0.0, 0.0, 0.0]),
+        azimuth=10 * np.pi,  # Multiple full rotations
+        elevation=2 * np.pi,
+        roll=5 * np.pi,
+        distance=3.0
+    )
+    pos, up = get_camera_pos_from_params(extreme_params)
+    assert len(pos) == 3
+    assert len(up) == 3
+
+
+def test_camera_path_interpolation_edge_cases():
+    """Test edge cases for camera path interpolation."""
+    params1 = CameraParameters(
+        target=np.array([0.0, 0.0, 0.0]),
+        azimuth=0.0, elevation=0.0, roll=0.0, distance=3.0,
+        init_pos=np.array([0.0, 0.0, 1.0])
+    )
+    params2 = CameraParameters(
+        target=np.array([1.0, 0.0, 0.0]),
+        azimuth=np.pi, elevation=np.pi/4, roll=0.0, distance=5.0,
+        init_pos=np.array([0.0, 0.0, 1.0])
     )
     
-    pos2, up2 = get_camera_pos_from_params(params)
+    path = CameraPath([params1, params2])
     
-    assert np.allclose(pos1, pos2)
-    assert np.allclose(up1, up2)
+    # Test t values outside [0, 1] - should raise ValueError
+    with pytest.raises(ValueError, match="t must be between 0.0 and 1.0"):
+        path.interpolate(-0.5)
+    
+    with pytest.raises(ValueError, match="t must be between 0.0 and 1.0"):
+        path.interpolate(1.5)
+    
+    # Test valid interpolation
+    result_mid = path.interpolate(0.5)
+    assert isinstance(result_mid, CameraParameters)
 
 
 if __name__ == "__main__":

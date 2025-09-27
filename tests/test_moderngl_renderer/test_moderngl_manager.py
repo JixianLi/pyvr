@@ -360,3 +360,78 @@ class TestModernGLManagerErrorHandling:
         
         with pytest.raises(KeyError, match="Uniform not found"):
             manager.set_uniform_float("nonexistent_uniform", 1.0)
+    
+    def test_normal_volume_wrong_channels(self, mock_moderngl_context):
+        """Test error handling for normal volume with wrong channel count."""
+        manager = ModernGLManager()
+        
+        # Create volume with wrong number of channels
+        wrong_channels = np.random.random((10, 10, 10, 2)).astype(np.float32)  # 2 channels instead of 3
+        with pytest.raises(ValueError, match="Normal volume must have 3 channels"):
+            manager.create_normal_texture(wrong_channels)
+    
+    def test_rgba_texture_creation_edge_cases(self, mock_moderngl_context, mock_transfer_functions):
+        """Test edge cases in RGBA texture creation."""
+        manager = ModernGLManager()
+        color_func, opacity_func = mock_transfer_functions
+        
+        # Test with different sized functions (should use max size)
+        color_func.to_lut.return_value = np.random.random((256, 3)).astype(np.float32)
+        color_func.lut_size = 256
+        opacity_func.to_lut.return_value = np.random.random((128,)).astype(np.float32) 
+        opacity_func.lut_size = 128
+        
+        # Should succeed and use larger size for both
+        texture_unit = manager.create_rgba_transfer_function_texture(color_func, opacity_func)
+        assert isinstance(texture_unit, int)
+        
+        # Verify both functions called with max size (256)
+        color_func.to_lut.assert_called_with(256)
+        opacity_func.to_lut.assert_called_with(256)
+    
+    def test_texture_creation_edge_cases(self, mock_moderngl_context):
+        """Test edge cases in texture creation."""
+        manager = ModernGLManager()
+        
+        # Test very small volume
+        tiny_volume = np.random.random((1, 1, 1)).astype(np.float32)
+        texture_unit = manager.create_volume_texture(tiny_volume)
+        assert isinstance(texture_unit, int)
+        
+        # Test volume with different data type (should be converted)
+        int_volume = np.random.randint(0, 255, (10, 10, 10), dtype=np.uint8)
+        texture_unit = manager.create_volume_texture(int_volume)
+        assert isinstance(texture_unit, int)
+    
+    def test_multiple_texture_creation_and_binding(self, mock_moderngl_context):
+        """Test creating multiple textures and texture unit management."""
+        manager = ModernGLManager()
+        
+        # Create multiple volume textures
+        volume1 = np.random.random((10, 10, 10)).astype(np.float32)
+        volume2 = np.random.random((15, 15, 15)).astype(np.float32)
+        
+        unit1 = manager.create_volume_texture(volume1)
+        unit2 = manager.create_volume_texture(volume2)
+        
+        assert unit1 != unit2
+        assert isinstance(unit1, int)
+        assert isinstance(unit2, int)
+        
+        # Create normal texture
+        normal_volume = np.random.random((8, 8, 8, 3)).astype(np.float32)
+        normal_unit = manager.create_normal_texture(normal_volume)
+        assert isinstance(normal_unit, int)
+        assert normal_unit not in [unit1, unit2]
+    
+    def test_cleanup_with_active_textures(self, mock_moderngl_context):
+        """Test cleanup when textures are active."""
+        manager = ModernGLManager()
+        
+        # Create some textures
+        volume = np.random.random((5, 5, 5)).astype(np.float32)
+        manager.create_volume_texture(volume)
+        
+        # Should cleanup without errors
+        manager.cleanup()
+        manager.cleanup()  # Second call should be safe

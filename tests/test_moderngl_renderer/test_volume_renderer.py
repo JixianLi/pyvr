@@ -8,6 +8,7 @@ import numpy as np
 from unittest.mock import MagicMock, patch, Mock
 
 from pyvr.moderngl_renderer.renderer import VolumeRenderer
+from pyvr.camera.parameters import CameraParameters
 
 
 class TestVolumeRendererInitialization:
@@ -372,4 +373,90 @@ class TestVolumeRendererResourceManagement:
         
         # Should have delegated to manager
         renderer.gl_manager.create_rgba_transfer_function_texture.assert_called_once()
+    
+    def test_load_volume_edge_cases(self, mock_moderngl_context):
+        """Test edge cases for volume loading."""
+        renderer = VolumeRenderer()
+        
+        # Test loading very small volume
+        tiny_volume = np.random.random((1, 1, 1)).astype(np.float32)
+        renderer.gl_manager.create_volume_texture = MagicMock(return_value=0)
+        renderer.gl_manager.set_uniform_int = MagicMock()
+        
+        renderer.load_volume(tiny_volume)
+        renderer.gl_manager.create_volume_texture.assert_called_once()
+        
+        # Test invalid volume dimensions
+        invalid_volume = np.random.random((10, 10))  # 2D instead of 3D
+        with pytest.raises(ValueError, match="Volume data must be 3D"):
+            renderer.load_volume(invalid_volume)
+    
+    def test_load_normal_volume_edge_cases(self, mock_moderngl_context):
+        """Test edge cases for normal volume loading.""" 
+        renderer = VolumeRenderer()
+        
+        # Test valid normal volume
+        normal_volume = np.random.random((5, 5, 5, 3)).astype(np.float32)
+        renderer.gl_manager.create_normal_texture = MagicMock(return_value=1)
+        renderer.gl_manager.set_uniform_int = MagicMock()
+        
+        renderer.load_normal_volume(normal_volume)
+        renderer.gl_manager.create_normal_texture.assert_called_once()
+        
+        # Test invalid normal volume (wrong channel count)
+        invalid_normal = np.random.random((5, 5, 5, 2))  # 2 channels instead of 3
+        with pytest.raises(ValueError, match="Normal volume must have 3 channels"):
+            renderer.load_normal_volume(invalid_normal)
+    
+    def test_rendering_with_minimal_setup(self, mock_moderngl_context):
+        """Test rendering with minimal setup to cover edge cases."""
+        renderer = VolumeRenderer()
+        
+        # Mock all the GL operations
+        renderer.gl_manager.set_uniform_float = MagicMock()
+        renderer.gl_manager.set_uniform_int = MagicMock()
+        renderer.gl_manager.set_uniform_matrix = MagicMock()
+        renderer.gl_manager.clear_framebuffer = MagicMock()
+        renderer.gl_manager.setup_blending = MagicMock()
+        renderer.gl_manager.render_quad = MagicMock()
+        renderer.gl_manager.read_pixels = MagicMock(return_value=np.zeros((100, 100, 4), dtype=np.uint8))
+        
+        # Set camera using position, target, up vectors
+        renderer.set_camera(position=[0, 0, 3], target=[0, 0, 0], up=[0, 1, 0])
+        
+        # Should not crash
+        pixels = renderer.render()
+        assert pixels is not None
+        
+    def test_parameter_validation_comprehensive(self, mock_moderngl_context):
+        """Test comprehensive parameter validation."""
+        renderer = VolumeRenderer()
+        
+        # Mock the GL operations to avoid actual OpenGL calls
+        renderer.gl_manager.set_uniform_float = MagicMock()
+        renderer.gl_manager.set_uniform_int = MagicMock()
+        renderer.gl_manager.set_uniform_vector = MagicMock()
+        
+        # Test setting various parameters
+        renderer.set_step_size(0.001)
+        assert renderer.step_size == 0.001
+        
+        renderer.set_max_steps(2000)
+        assert renderer.max_steps == 2000
+        
+        renderer.set_ambient_light(0.3)
+        assert renderer.ambient_light == 0.3
+        
+        renderer.set_diffuse_light(0.8)
+        assert renderer.diffuse_light == 0.8
+        
+        renderer.set_light_position(np.array([2.0, 2.0, 2.0]))
+        assert np.allclose(renderer.light_position, [2.0, 2.0, 2.0])
+        
+        renderer.set_light_target(np.array([1.0, 1.0, 1.0]))
+        assert np.allclose(renderer.light_target, [1.0, 1.0, 1.0])
+        
+        # Test volume bounds (doesn't store as attributes but should call GL manager)
+        renderer.set_volume_bounds(np.array([0.0, 0.0, 0.0]), np.array([2.0, 2.0, 2.0]))
+        renderer.gl_manager.set_uniform_vector.assert_called()
         renderer.gl_manager.set_uniform_int.assert_called_once()
