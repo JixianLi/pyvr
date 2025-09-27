@@ -88,3 +88,11 @@ def create_sample_volume(size=64, shape='sphere'):
         raise ValueError(
             f"Unknown shape: {shape}. Available shapes: sphere, torus, double_sphere, cube, helix, random_blob")
     return volume
+
+def compute_normal_volume(volume):
+    """Compute normalized gradient (normal) for a 3D volume, shape: (D, H, W) -> (D, H, W, 3)"""
+    gx, gy, gz = np.gradient(volume)
+    normals = np.stack((gx, gy, gz), axis=-1)
+    norm = np.linalg.norm(normals, axis=-1, keepdims=True) + 1e-8
+    normals = normals / norm
+    return normals.astype(np.float32)

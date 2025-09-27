@@ -1,0 +1,29 @@
+[project]
+name = "pyvr"
+version = "0.1.0"
+description = "Volume Renderers in Python"
+authors = [
+    {name = "Jixian Li",email = "jixianli@sci.utah.edu"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+]
+
+[tool.poetry]
+
+[tool.poetry.dependencies]
+
+[tool.poetry.group.dev.dependencies]
+torch = ">= 2.0"
+torchvision = ">= 0.2"
+numpy = ">=2.3"
+matplotlib = ">=3.10"
+pillow = ">=11.0"
+scipy = ">=1.16"
+moderngl = ">=5.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
