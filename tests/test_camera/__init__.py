@@ -1,2 +1,2 @@
-# Placeholder for camera tests
-# Will be implemented in Phase 3
+# Tests for PyVR camera module
+# Implemented in Phase 3 of the refactor

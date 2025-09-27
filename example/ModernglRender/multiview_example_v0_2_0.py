@@ -15,8 +15,8 @@ from pyvr.moderngl_renderer.volume_renderer import VolumeRenderer
 from pyvr.datasets import compute_normal_volume, create_sample_volume
 # NEW v0.2.0: Import transfer functions from the new modular location
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
-# Camera control still in old location until Phase 3
-from pyvr.moderngl_renderer.camera_control import get_camera_pos
+# NEW v0.2.0: Import camera functions from the new modular location
+from pyvr.camera import get_camera_pos
 
 STEP_SIZE = 1e-3
 MAX_STEPS = int(1e3)

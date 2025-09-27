@@ -2,14 +2,80 @@
 PyVR Camera Module
 
 This module provides camera control and positioning utilities for volume rendering.
-It handles camera positioning, orientation, and parameter management.
+It handles camera positioning, orientation, parameter management, and animations.
 
-Functions:
+Core Functions:
     get_camera_pos: Calculate camera position from spherical coordinates
+    get_camera_pos_from_params: Calculate position from CameraParameters object
 
 Classes:
-    CameraParameters: Camera parameter validation and management (future)
+    CameraParameters: Camera parameter validation and management
+    CameraPath: Camera path animation utility
+    CameraController: High-level camera controller for interactive manipulation
+
+Exceptions:
+    CameraParameterError: Raised when camera parameters are invalid
+
+Utility Functions:
+    validate_camera_angles: Validate camera angle parameters
+    degrees_to_radians: Convert angles from degrees to radians
+    radians_to_degrees: Convert angles from radians to degrees
+
+Examples:
+    # Basic camera positioning (legacy interface)
+    pos, up = get_camera_pos(
+        target=np.array([0, 0, 0]),
+        azimuth=np.pi/4, elevation=np.pi/6, roll=0,
+        distance=5.0
+    )
+    
+    # Using camera parameters (new interface)
+    params = CameraParameters.isometric_view(distance=3.0)
+    pos, up = get_camera_pos_from_params(params)
+    
+    # Camera animation
+    path = CameraPath([start_params, end_params])
+    frames = path.generate_frames(30)
+    
+    # Interactive camera control
+    controller = CameraController()
+    controller.orbit(np.pi/8, np.pi/12)  # Orbit camera
+    controller.zoom(0.8)  # Zoom in
+    pos, up = controller.get_position_and_up()
 """
 
-# This module will be populated in Phase 3 of the refactor
 __version__ = "0.2.0"
+
+from .control import (
+    get_camera_pos,
+    get_camera_pos_from_params,
+    CameraPath,
+    CameraController
+)
+
+from .parameters import (
+    CameraParameters,
+    CameraParameterError,
+    validate_camera_angles,
+    degrees_to_radians,
+    radians_to_degrees
+)
+
+__all__ = [
+    # Core functions
+    'get_camera_pos',
+    'get_camera_pos_from_params',
+    
+    # Classes
+    'CameraParameters',
+    'CameraPath', 
+    'CameraController',
+    
+    # Exceptions
+    'CameraParameterError',
+    
+    # Utilities
+    'validate_camera_angles',
+    'degrees_to_radians',
+    'radians_to_degrees',
+]
