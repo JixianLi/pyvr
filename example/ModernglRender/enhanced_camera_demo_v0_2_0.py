@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import matplotlib 
 import time
 
-from pyvr.moderngl_renderer.volume_renderer import VolumeRenderer
+from pyvr.moderngl_renderer import VolumeRenderer
 from pyvr.datasets import compute_normal_volume, create_sample_volume
 
 # NEW v0.2.0: Enhanced modular imports

@@ -3,8 +3,9 @@ import os
 import numpy as np
 from PIL import Image
 
-from .moderngl_manager import ModernGLManager
-from .transfer_functions import ColorTransferFunction, OpacityTransferFunction
+from ..transferfunctions.color import ColorTransferFunction
+from ..transferfunctions.opacity import OpacityTransferFunction
+from .manager import ModernGLManager
 
 
 class VolumeRenderer:
