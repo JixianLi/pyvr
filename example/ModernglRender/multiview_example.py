@@ -6,10 +6,8 @@ import matplotlib.pyplot as plt
 import matplotlib 
 import time
 
-from pyvr.moderngl_renderer.volume_renderer import VolumeRenderer
+from pyvr.moderngl_renderer import VolumeRenderer, ColorTransferFunction, OpacityTransferFunction, get_camera_pos
 from pyvr.datasets import compute_normal_volume, create_sample_volume
-from pyvr.moderngl_renderer.transfer_functions import ColorTransferFunction, OpacityTransferFunction
-from pyvr.moderngl_renderer.camera_control import get_camera_pos
 
 STEP_SIZE = 1e-3
 MAX_STEPS = int(1e3)
@@ -28,7 +26,7 @@ renderer.load_volume(volume)
 renderer.load_normal_volume(normals)
 renderer.set_volume_bounds((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0))
 
-# Use viridis colormap
+# Use plasma colormap (legacy v0.1.0 API through moderngl_renderer)
 ctf = ColorTransferFunction.from_matplotlib_colormap(
     matplotlib.colormaps.get_cmap('plasma'))
 
