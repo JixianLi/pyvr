@@ -1,5 +1,4 @@
 import numpy as np
-import moderngl
 
 class OpacityTransferFunction:
     """
@@ -78,24 +77,35 @@ class OpacityTransferFunction:
         lut = np.interp(x, xp, fp).astype(np.float32)
         return lut
 
-    def to_texture(self, ctx, size=None):
+    def to_texture(self, ctx=None, size=None, moderngl_manager=None):
         """
         Generate a 2D moderngl texture (height=1) from the LUT.
         The texture has a single channel (R) for opacity.
-        ctx: moderngl context (required)
-        Returns: moderngl.Texture
+        ctx: moderngl context (for backward compatibility)
+        moderngl_manager: ModernGLManager instance (preferred)
+        Returns: moderngl.Texture or texture unit (int)
         """
-        if ctx is None:
-            raise ValueError(
-                "A moderngl context must be provided to create a texture.")
-        self.lut_size = size or self.lut_size
-        lut = self.to_lut(self.lut_size)
-        data = lut.reshape((self.lut_size, 1)).astype(np.float32)
-        tex = ctx.texture((self.lut_size, 1), 1, data.tobytes(), dtype='f4')
-        tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
-        tex.repeat_x = False
-        tex.repeat_y = False
-        return tex
+        if moderngl_manager is not None:
+            # New way: use ModernGLManager
+            self.lut_size = size or self.lut_size
+            lut = self.to_lut(self.lut_size)
+            return moderngl_manager.create_lut_texture(lut, channels=1)
+        elif ctx is not None:
+            # Legacy way: direct ModernGL context (for backward compatibility)
+            import moderngl
+            if ctx is None:
+                raise ValueError(
+                    "A moderngl context must be provided to create a texture.")
+            self.lut_size = size or self.lut_size
+            lut = self.to_lut(self.lut_size)
+            data = lut.reshape((self.lut_size, 1)).astype(np.float32)
+            tex = ctx.texture((self.lut_size, 1), 1, data.tobytes(), dtype='f4')
+            tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+            tex.repeat_x = False
+            tex.repeat_y = False
+            return tex
+        else:
+            raise ValueError("Either moderngl_manager or ctx must be provided.")
 
 class ColorTransferFunction:
     """
@@ -147,20 +157,31 @@ class ColorTransferFunction:
             lut[:, c] = np.interp(x, xp, fp[:, c])
         return lut
 
-    def to_texture(self, ctx, size=None):
+    def to_texture(self, ctx=None, size=None, moderngl_manager=None):
         """
         Generate a 2D moderngl texture (height=1) from the LUT.
         The texture has 3 channels (RGB).
-        ctx: moderngl context (required)
-        Returns: moderngl.Texture
+        ctx: moderngl context (for backward compatibility)
+        moderngl_manager: ModernGLManager instance (preferred)
+        Returns: moderngl.Texture or texture unit (int)
         """
-        if ctx is None:
-            raise ValueError("A moderngl context must be provided to create a texture.")
-        self.lut_size = size or self.lut_size
-        lut = self.to_lut(self.lut_size)
-        data = lut.reshape((self.lut_size, 1, 3)).astype(np.float32)
-        tex = ctx.texture((self.lut_size, 1), 3, data.tobytes(), dtype='f4')
-        tex.filter = (ctx.LINEAR, ctx.LINEAR)
-        tex.repeat_x = False
-        tex.repeat_y = False
-        return tex
+        if moderngl_manager is not None:
+            # New way: use ModernGLManager
+            self.lut_size = size or self.lut_size
+            lut = self.to_lut(self.lut_size)
+            return moderngl_manager.create_lut_texture(lut, channels=3)
+        elif ctx is not None:
+            # Legacy way: direct ModernGL context (for backward compatibility)
+            import moderngl
+            if ctx is None:
+                raise ValueError("A moderngl context must be provided to create a texture.")
+            self.lut_size = size or self.lut_size
+            lut = self.to_lut(self.lut_size)
+            data = lut.reshape((self.lut_size, 1, 3)).astype(np.float32)
+            tex = ctx.texture((self.lut_size, 1), 3, data.tobytes(), dtype='f4')
+            tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+            tex.repeat_x = False
+            tex.repeat_y = False
+            return tex
+        else:
+            raise ValueError("Either moderngl_manager or ctx must be provided.")

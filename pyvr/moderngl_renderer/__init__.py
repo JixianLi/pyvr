@@ -6,6 +6,7 @@ Provides interactive visualization with camera controls and transfer functions.
 
 from .transfer_functions import ColorTransferFunction, OpacityTransferFunction
 from .volume_renderer import VolumeRenderer
+from .moderngl_manager import ModernGLManager
 from .camera_control import get_camera_pos
 
 # For backward compatibility, re-export common dataset functions
@@ -15,6 +16,7 @@ __all__ = [
     'ColorTransferFunction',
     'OpacityTransferFunction', 
     'VolumeRenderer',
+    'ModernGLManager',
     'get_camera_pos',
     'create_sample_volume',
     'compute_normal_volume'
