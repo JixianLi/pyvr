@@ -4,27 +4,27 @@ PyVR is a Python-based toolkit for interactive and high-quality 3D volume render
 
 ## Features
 
-- **Multiple Rendering Backends**:
-  - `moderngl_renderer`: GPU-accelerated, real-time OpenGL rendering using ModernGL.
-  - `torch_renderer`: Fully vectorized, differentiable volume rendering in PyTorch.
+- **🔥 Multiple Rendering Backends**:
+  - `moderngl_renderer`: GPU-accelerated, real-time OpenGL rendering using ModernGL
+  - `torch_renderer`: Fully vectorized, differentiable volume rendering in PyTorch
 
-- **Flexible Transfer Functions**:
-  - Piecewise linear opacity and color transfer functions.
-  - Matplotlib colormap support.
+- **🎨 Flexible Transfer Functions**:
+  - Piecewise linear opacity and color transfer functions
+  - Matplotlib colormap support
 
-- **Camera Controls**:
-  - Quaternion-based camera orbit and roll (ModernGL).
-  - Fully programmable camera in PyTorch.
+- **📷 Camera Controls**:
+  - Quaternion-based camera orbit and roll (ModernGL)
+  - Fully programmable camera in PyTorch
 
-- **Lighting and Shading**:
-  - Ambient and diffuse lighting.
-  - Gradient-based normal computation.
+- **💡 Lighting and Shading**:
+  - Ambient and diffuse lighting
+  - Gradient-based normal computation
 
-- **Sample Volumes**:
-  - Built-in synthetic datasets (sphere, torus, helix, medical phantom, etc.).
+- **🧪 Sample Volumes**:
+  - Built-in synthetic datasets (sphere, torus, helix, medical phantom, etc.)
 
-- **Visualization Utilities**:
-  - Matplotlib integration for rendered images and transfer function plots.
+- **📊 Visualization Utilities**:
+  - Matplotlib integration for rendered images and transfer function plots
 
 ## Installation
 
@@ -85,25 +85,25 @@ The `example/` directory contains ready-to-run demos:
 ```
 pyvr/
 ├── __init__.py
-├── datasets/
+├── datasets/                              # 🆕 Unified dataset generation
 │   ├── __init__.py
-│   └── synthetic.py
-├── moderngl_renderer/
+│   └── synthetic.py                       # All volume generation functions
+├── moderngl_renderer/                     # 🔥 Real-time OpenGL rendering
 │   ├── __init__.py
+│   ├── README.md                          # 🆕 ModernGL renderer documentation
 │   ├── camera_control.py
-│   ├── datasets.py (deprecated - use pyvr.datasets)
 │   ├── requirements.txt
 │   ├── transfer_functions.py
 │   ├── volume_renderer.py
 │   └── shaders/
 │       ├── volume.frag.glsl
 │       └── volume.vert.glsl
-├── torch_renderer/
+├── torch_renderer/                        # 🧠 Differentiable PyTorch rendering
 │   ├── __init__.py
+│   ├── README.md                          # 🆕 PyTorch renderer documentation
 │   ├── camera.py
 │   ├── requirements.txt
 │   ├── transfer_functions.py
-│   ├── volume_data.py (deprecated - use pyvr.datasets)
 │   └── volume_renderer.py
 example/
 ├── ModernglRender/
@@ -116,15 +116,22 @@ poetry.lock
 README.md
 ```
 
+## Renderer Documentation
+
+Each renderer has detailed documentation:
+
+- **[📖 ModernGL Renderer](pyvr/moderngl_renderer/README.md)**: Real-time OpenGL rendering with interactive controls
+- **[📖 PyTorch Renderer](pyvr/torch_renderer/README.md)**: Differentiable rendering for research and ML applications
+
 ## Customization
 
-- **Transfer Functions**:  
+- **🎨 Transfer Functions**:  
   Edit [`pyvr/torch_renderer/transfer_functions.py`](pyvr/torch_renderer/transfer_functions.py) or [`pyvr/moderngl_renderer/transfer_functions.py`](pyvr/moderngl_renderer/transfer_functions.py) to create custom opacity/color mappings.
 
-- **Volume Data**:  
-  The unified [`pyvr/datasets/synthetic.py`](pyvr/datasets/synthetic.py) module provides all volume generation functions. You can add new datasets there, or import the module as `from pyvr.datasets import create_test_volume, create_sample_volume`.
+- **🧪 Volume Data**:  
+  The unified [`pyvr/datasets/synthetic.py`](pyvr/datasets/synthetic.py) module provides all volume generation functions. Import with `from pyvr.datasets import create_test_volume, create_sample_volume`.
 
-- **Camera Controls**:  
+- **📷 Camera Controls**:  
   Modify camera logic in [`pyvr/torch_renderer/camera.py`](pyvr/torch_renderer/camera.py) or [`pyvr/moderngl_renderer/camera_control.py`](pyvr/moderngl_renderer/camera_control.py).
 
 ## Contributing
@@ -133,7 +140,7 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the WTFPL (Do What The F*ck You Want To Public License). See the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 

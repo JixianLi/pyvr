@@ -5,7 +5,7 @@ description = "Volume Renderers in Python"
 authors = [
     {name = "Jixian Li",email = "jixianli@sci.utah.edu"}
 ]
-license = {text = "MIT"}
+license = {text = "WTFPL"}
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
