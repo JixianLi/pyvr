@@ -6,6 +6,7 @@ import pytest
 import numpy as np
 import sys
 import os
+from unittest.mock import patch, Mock
 
 # Add the project root to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -208,6 +209,58 @@ def test_repr():
     assert "ColorTransferFunction" in repr_str
     assert "3 control points" in repr_str
     assert "lut_size=512" in repr_str
+
+
+def test_colormap_integration_success():
+    """Test successful matplotlib colormap integration.""" 
+    # Test with matplotlib available
+    with patch('matplotlib.colormaps') as mock_colormaps:
+        # Mock a colormap
+        mock_cmap = Mock()
+        mock_cmap.return_value = np.array([[1.0, 0.0, 0.0, 1.0], 
+                                          [0.0, 1.0, 0.0, 1.0],
+                                          [0.0, 0.0, 1.0, 1.0]])
+        mock_colormaps.get_cmap.return_value = mock_cmap
+        
+        ctf = ColorTransferFunction.from_colormap('viridis', lut_size=3)
+        
+        assert len(ctf.control_points) == 3
+        mock_colormaps.get_cmap.assert_called_with('viridis')
+
+
+def test_colormap_integration_import_error():
+    """Test matplotlib import error handling."""
+    # Test ImportError when matplotlib is not available
+    import builtins
+    original_import = builtins.__import__
+    
+    def mock_import(name, *args, **kwargs):
+        if name == 'matplotlib':
+            raise ImportError("No module named 'matplotlib'")
+        return original_import(name, *args, **kwargs)
+    
+    with patch('builtins.__import__', side_effect=mock_import):
+        with pytest.raises(ImportError, match="matplotlib is required"):
+            ColorTransferFunction.from_colormap('viridis')
+
+
+def test_colormap_integration_invalid_name():
+    """Test invalid colormap name error handling."""
+    # Test ValueError for unknown colormap
+    with patch('matplotlib.colormaps') as mock_colormaps:
+        mock_colormaps.get_cmap.side_effect = ValueError("Unknown colormap")
+        
+        with pytest.raises(ValueError, match="Unknown colormap name"):
+            ColorTransferFunction.from_colormap('nonexistent_colormap')
+
+
+def test_colormap_integration_other_errors():
+    """Test other matplotlib errors."""
+    with patch('matplotlib.colormaps') as mock_colormaps:
+        mock_colormaps.get_cmap.side_effect = Exception("Some other error")
+        
+        with pytest.raises(ValueError, match="Unknown colormap name"):
+            ColorTransferFunction.from_colormap('viridis')
 
 
 if __name__ == "__main__":

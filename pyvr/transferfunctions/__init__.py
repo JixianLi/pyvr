@@ -25,14 +25,13 @@ Examples:
     otf = OpacityTransferFunction.linear(0.0, 0.8)
     
     # Create opacity peaks at specific densities
-    otf = OpacityTransferFunction.with_peaks([0.3, 0.7], opacities=[0.9, 0.9])
+    otf = OpacityTransferFunction.peaks([0.3, 0.7], opacity=0.9)
     
-    # Use with ModernGLManager for texture operations
-    opacity_tex_unit = renderer.gl_manager.create_opacity_transfer_function_texture(otf)
-    color_tex_unit = renderer.gl_manager.create_color_transfer_function_texture(ctf)
+    # Use with VolumeRenderer (v0.2.2+ RGBA texture API)
+    renderer.set_transfer_functions(ctf, otf)
 """
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 from .base import BaseTransferFunction, TransferFunctionError, InvalidControlPointError
 from .color import ColorTransferFunction

@@ -252,5 +252,93 @@ def test_repr():
     assert "distance=2.50" in repr_str
 
 
+def test_camera_parameters_validation_edge_cases():
+    """Test edge cases for camera parameter validation."""
+    # Test extreme angle warnings (should not raise, but may print warnings)
+    params = CameraParameters(
+        target=np.array([0.0, 0.0, 0.0]),
+        azimuth=10 * np.pi,  # More than 2 full rotations
+        elevation=8 * np.pi,
+        roll=6 * np.pi,
+        distance=3.0
+    )
+    # Should not raise exception, just create the object
+    assert params.azimuth == 10 * np.pi
+    
+    # Test invalid initial vectors  
+    with pytest.raises(ValueError, match="init_pos must be a 3D numpy array"):
+        CameraParameters(
+            target=np.array([0.0, 0.0, 0.0]),
+            azimuth=0.0, elevation=0.0, roll=0.0, distance=3.0,
+            init_pos=np.array([1.0, 2.0])  # 2D instead of 3D
+        )
+    
+    with pytest.raises(ValueError, match="init_up must be a 3D numpy array"):
+        CameraParameters(
+            target=np.array([0.0, 0.0, 0.0]),
+            azimuth=0.0, elevation=0.0, roll=0.0, distance=3.0,
+            init_up=[1.0, 2.0, 3.0, 4.0]  # 4D instead of 3D
+        )
+    
+    # Test validation method directly
+    params = CameraParameters(
+        target=np.array([0.0, 0.0, 0.0]),
+        azimuth=0.0, elevation=0.0, roll=0.0, distance=3.0
+    )
+    # Should not raise
+    params.validate()
+
+
+def test_camera_parameters_copy_edge_cases():
+    """Test edge cases for camera parameter copying."""
+    params = CameraParameters(
+        target=np.array([1.0, 2.0, 3.0]),
+        azimuth=0.5, elevation=1.0, roll=0.0,
+        distance=5.0,
+        init_pos=np.array([0.0, 0.0, 1.0]),
+        init_up=np.array([0.0, 1.0, 0.0])
+    )
+    
+    # Test basic copy (no parameters allowed)
+    copied = params.copy()
+    
+    assert np.allclose(copied.target, params.target)
+    assert copied.azimuth == params.azimuth
+    assert copied.elevation == params.elevation
+    assert copied.roll == params.roll
+    assert copied.distance == params.distance
+    assert np.allclose(copied.init_pos, params.init_pos)
+    assert np.allclose(copied.init_up, params.init_up)
+
+
+def test_camera_parameters_serialization_edge_cases():
+    """Test edge cases for camera parameter serialization."""
+    params = CameraParameters(
+        target=np.array([1.0, 2.0, 3.0]),
+        azimuth=np.pi/4, elevation=np.pi/3, roll=np.pi/6,
+        distance=5.0,
+        init_pos=np.array([0.0, 0.0, 1.0]),
+        init_up=np.array([0.0, 1.0, 0.0])
+    )
+    
+    # Test to_dict with custom parameters
+    data = params.to_dict()
+    assert 'target' in data
+    assert 'init_pos' in data
+    assert 'init_up' in data
+    
+    # Verify numpy arrays are converted to lists for JSON serialization
+    assert isinstance(data['target'], list)
+    assert isinstance(data['init_pos'], list)
+    assert isinstance(data['init_up'], list)
+    
+    # Test from_dict reconstruction
+    reconstructed = CameraParameters.from_dict(data)
+    assert np.allclose(reconstructed.target, params.target)
+    assert np.allclose(reconstructed.init_pos, params.init_pos)
+    assert np.allclose(reconstructed.init_up, params.init_up)
+    assert reconstructed.azimuth == params.azimuth
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

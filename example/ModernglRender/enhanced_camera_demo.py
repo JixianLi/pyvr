@@ -1,17 +1,18 @@
 """
-Enhanced Multi-view volume rendering example - PyVR v0.2.0 with Advanced Camera System
+Enhanced Multi-view volume rendering example - PyVR with Advanced Camera System
 
-This example demonstrates the new enhanced camera system introduced in v0.2.0:
+This example demonstrates the enhanced camera system:
 - Camera parameter management with validation and presets
 - Camera animation and path interpolation
 - Interactive camera controller
-- Both legacy and new camera interfaces
+- RGBA transfer function textures for improved performance
 
-Key improvements from v0.1.0:
-1. Transfer functions: pyvr.transferfunctions (instead of pyvr.moderngl_renderer.transfer_functions)
-2. Camera system: pyvr.camera with enhanced functionality
+Key features:
+1. Modular transfer functions: pyvr.transferfunctions
+2. Enhanced camera system: pyvr.camera with advanced functionality
 3. Parameter validation and preset views
 4. Camera animation capabilities
+5. Single RGBA texture lookup for better performance
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,12 +21,9 @@ import time
 from pyvr.moderngl_renderer import VolumeRenderer
 from pyvr.datasets import compute_normal_volume, create_sample_volume
 
-# NEW v0.2.0: Enhanced modular imports
+# Enhanced modular imports
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
 from pyvr.camera import CameraParameters, CameraController, CameraPath, get_camera_pos_from_params
-
-# For comparison, the old interface is still available:
-# from pyvr.moderngl_renderer.camera_control import get_camera_pos
 
 STEP_SIZE = 1e-3
 MAX_STEPS = int(1e3)
@@ -43,7 +41,7 @@ renderer.load_volume(volume)
 renderer.load_normal_volume(normals)
 renderer.set_volume_bounds((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0))
 
-# NEW v0.2.1: Enhanced transfer functions with updated API
+# Enhanced transfer functions
 # Create color transfer function from colormap
 ctf = ColorTransferFunction.from_colormap('plasma')
 
@@ -62,8 +60,8 @@ otf = OpacityTransferFunction.peaks(
 renderer.set_diffuse_light(1.0)
 renderer.set_ambient_light(0.0)
 
-# NEW v0.2.0: Demonstrate enhanced camera system
-print("=== PyVR v0.2.0 Enhanced Camera System Demo ===")
+# Demonstrate enhanced camera system
+print("=== PyVR Enhanced Camera System Demo ===")
 
 # Method 1: Using camera presets (new in v0.2.0)
 camera_presets = [
@@ -127,15 +125,12 @@ ax_tf = fig.add_subplot(gs[2, :])
 for i, (params, view_name) in enumerate(zip(all_camera_params, view_names)):
     print(f"Rendering {view_name}...")
     
-    # NEW v0.2.0: Use enhanced camera parameter system
+    # Use enhanced camera parameter system
     position, up = get_camera_pos_from_params(params)
     renderer.set_camera(position=position, target=params.target, up=up)
     
-    # Upload transfer functions - ModernGLManager handles all texture operations
-    opacity_tex_unit = renderer.gl_manager.create_opacity_transfer_function_texture(otf)
-    color_tex_unit = renderer.gl_manager.create_color_transfer_function_texture(ctf)
-    renderer.gl_manager.set_uniform_int('opacity_lut', opacity_tex_unit)
-    renderer.gl_manager.set_uniform_int('color_lut', color_tex_unit)
+    # Set transfer functions using RGBA texture API
+    renderer.set_transfer_functions(ctf, otf)
     
     # Render
     start_ns = time.perf_counter_ns()
@@ -180,7 +175,7 @@ ax_tf.set_xlim(0, 1)
 ax_tf.set_ylim(0, 1)
 ax_tf.set_xlabel("Scalar Value", fontsize=12)
 ax_tf.set_ylabel("Opacity / Color", fontsize=12)
-ax_tf.set_title("Enhanced Transfer Functions - PyVR v0.2.0\\n"
+ax_tf.set_title("Enhanced Transfer Functions\\n"
                "Plasma Colormap + Opacity Peaks at 0.3 and 0.7", fontsize=12)
 ax_tf.grid(True, alpha=0.3)
 
@@ -189,17 +184,17 @@ ax_tf.text(0.02, 0.85, 'Opacity Peaks', transform=ax_tf.transAxes,
           fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
 
 # Show camera system information
-info_text = "Camera System Features (v0.2.0):\\n"
+info_text = "Camera System Features:\\n"
 info_text += "• Preset views (Front, Side, Top, Isometric)\\n"
 info_text += "• Interactive controller with orbit/zoom/pan\\n"
 info_text += "• Camera path animation and interpolation\\n"
 info_text += "• Parameter validation and serialization\\n"
-info_text += "• Enhanced transfer functions with peaks"
+info_text += "• RGBA transfer function textures"
 
 fig.text(0.02, 0.02, info_text, fontsize=9, 
          bbox=dict(boxstyle="round,pad=0.5", facecolor="lightblue", alpha=0.8))
 
-plt.suptitle("PyVR v0.2.0 - Enhanced Camera System & Transfer Functions", 
+plt.suptitle("PyVR - Enhanced Camera System & RGBA Transfer Functions", 
              fontsize=14, fontweight='bold')
 
 # Adjust layout and show
@@ -208,8 +203,8 @@ plt.subplots_adjust(top=0.92, bottom=0.12)
 plt.show()
 
 print("\\n=== Camera System Demo Complete ===")
-print("Key improvements in v0.2.0:")
-print("- Modular transfer functions with enhanced features")
+print("Key PyVR features demonstrated:")
+print("- Modular transfer functions with RGBA textures")
 print("- Advanced camera parameter management")
 print("- Camera animation and interpolation")
 print("- Preset views and interactive controller")

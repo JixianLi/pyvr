@@ -134,38 +134,46 @@ class ModernGLManager:
 
         return texture_unit
 
-    def create_lut_texture(self, lut_data, channels=1):
+    def create_rgba_transfer_function_texture(self, 
+                                            color_transfer_function, 
+                                            opacity_transfer_function, 
+                                            size: Optional[int] = None) -> int:
         """
-        Create a 1D LUT texture from lookup table data.
-
-        Parameters:
-            lut_data (np.ndarray): 1D or 2D lookup table data.
-            channels (int): Number of channels (1 for opacity, 3 for color).
-
+        Create a combined RGBA texture from color and opacity transfer functions.
+        
+        This method combines RGB data from a ColorTransferFunction with alpha data
+        from an OpacityTransferFunction into a single RGBA texture, enabling more
+        efficient single-texture-lookup volume rendering.
+        
+        Args:
+            color_transfer_function: ColorTransferFunction instance for RGB channels
+            opacity_transfer_function: OpacityTransferFunction instance for A channel
+            size: Optional LUT size override (uses maximum of both TF sizes if None)
+            
         Returns:
-            int: The texture unit where the texture is bound.
+            Texture unit (int) for use in shaders
+            
+        Example:
+            rgba_tex_unit = manager.create_rgba_transfer_function_texture(ctf, otf)
+            program['transfer_function_lut'] = rgba_tex_unit
         """
-        if channels == 1:
-            # Opacity LUT - ensure proper shape
-            if lut_data.ndim == 1:
-                data = lut_data.reshape((len(lut_data), 1)).astype(np.float32)
-            else:
-                data = lut_data.astype(np.float32)
-            texture = self.ctx.texture(
-                (data.shape[0], 1), 1, data.tobytes(), dtype="f4"
-            )
-        elif channels == 3:
-            # Color LUT - ensure proper shape
-            if lut_data.ndim == 2 and lut_data.shape[1] == 3:
-                data = lut_data.reshape((lut_data.shape[0], 1, 3)).astype(np.float32)
-            else:
-                raise ValueError("Color LUT must have shape (N, 3)")
-            texture = self.ctx.texture(
-                (data.shape[0], 1), 3, data.tobytes(), dtype="f4"
-            )
-        else:
-            raise ValueError("Channels must be 1 or 3")
-
+        # Determine effective size - use provided size or max of both transfer functions
+        if size is None:
+            size = max(color_transfer_function.lut_size, opacity_transfer_function.lut_size)
+        
+        # Generate LUTs from both transfer functions
+        color_lut = color_transfer_function.to_lut(size)  # Shape: (size, 3)
+        opacity_lut = opacity_transfer_function.to_lut(size)  # Shape: (size,)
+        
+        # Combine into RGBA array
+        rgba_lut = np.empty((size, 4), dtype=np.float32)
+        rgba_lut[:, :3] = color_lut  # RGB channels
+        rgba_lut[:, 3] = opacity_lut  # Alpha channel
+        
+        # Create 4-channel texture
+        texture = self.ctx.texture(
+            (size, 1), 4, rgba_lut.tobytes(), dtype="f4"
+        )
         texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
         texture.repeat_x = False
         texture.repeat_y = False
@@ -174,36 +182,6 @@ class ModernGLManager:
         texture.use(texture_unit)
 
         return texture_unit
-
-    def create_color_transfer_function_texture(self, color_transfer_function, size: Optional[int] = None) -> int:
-        """
-        Create a texture from a ColorTransferFunction.
-        
-        Args:
-            color_transfer_function: ColorTransferFunction instance
-            size: Optional LUT size override
-            
-        Returns:
-            Texture unit (int) for use in shaders
-        """
-        effective_size = size or color_transfer_function.lut_size
-        lut = color_transfer_function.to_lut(effective_size)
-        return self.create_lut_texture(lut, channels=3)
-    
-    def create_opacity_transfer_function_texture(self, opacity_transfer_function, size: Optional[int] = None) -> int:
-        """
-        Create a texture from an OpacityTransferFunction.
-        
-        Args:
-            opacity_transfer_function: OpacityTransferFunction instance
-            size: Optional LUT size override
-            
-        Returns:
-            Texture unit (int) for use in shaders
-        """
-        effective_size = size or opacity_transfer_function.lut_size
-        lut = opacity_transfer_function.to_lut(effective_size)
-        return self.create_lut_texture(lut, channels=1)
 
     def set_uniform_matrix(self, name, matrix):
         """Set a matrix uniform in the shader program."""
