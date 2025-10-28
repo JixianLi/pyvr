@@ -473,35 +473,40 @@ renderer = VolumeRenderer(256, 256, step_size=0.02, max_steps=100)
 PyVR has comprehensive test coverage for reliability:
 
 ```bash
-# Run all tests (179 tests)
+# Run all tests (204 tests)
 pytest tests/
 
 # Run with coverage report
 pytest --cov=pyvr --cov-report=term-missing tests/
 
 # Run specific test modules
-pytest tests/test_volume/              # Volume class tests (12 tests)
-pytest tests/test_renderer/            # Abstract renderer tests (9 tests)
-pytest tests/test_camera/              # Camera system tests (30 tests)
+pytest tests/test_camera/              # Camera system tests (42 tests)
+pytest tests/test_config.py            # RenderConfig tests (33 tests)
 pytest tests/test_lighting/            # Lighting tests (22 tests)
-pytest tests/test_moderngl_renderer/   # ModernGL renderer tests (38 tests)
-pytest tests/test_transferfunctions/   # Transfer function tests (22 tests)
+pytest tests/test_moderngl_renderer/   # ModernGL renderer tests (71 tests)
+pytest tests/test_transferfunctions/   # Transfer function tests (36 tests)
 ```
 
 **Test Coverage Breakdown:**
 ```
 Module                        Tests    Coverage
 ----------------------------------------------
-📦 Volume System              12       93%
-🔄 Abstract Renderer          9        95%
-📷 Camera System              30       95%
-💡 Lighting System            22       95%
-🎨 Transfer Functions         22       94-100%
-🖥️  ModernGL Renderer         38       93-100%
-📊 Datasets & Utilities       46       Various
+📷 Camera System              42       95-97%
+⚙️  RenderConfig              33       100%
+💡 Lighting System            22       100%
+🎨 Transfer Functions         36       88-100%
+🖥️  ModernGL Renderer         71       93-98%
+📊 Volume & Datasets          -        56-93%
 ----------------------------------------------
-📈 Total                     179       ~93%
+📈 Total                     204       ~86%
 ```
+
+**Key Testing Features:**
+- Zero abstract base tests (removed in v0.2.7)
+- Comprehensive RenderConfig preset testing
+- Full integration test coverage
+- Type checking and validation tests
+- Edge case and error handling tests
 
 ## 🛠️ API Reference
 
@@ -509,6 +514,7 @@ Module                        Tests    Coverage
 
 ```python
 from pyvr.moderngl_renderer import VolumeRenderer
+from pyvr.config import RenderConfig
 from pyvr.volume import Volume
 from pyvr.camera import Camera
 from pyvr.lighting import Light
@@ -516,7 +522,10 @@ from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunctio
 from pyvr.datasets import create_sample_volume, compute_normal_volume
 import numpy as np
 
-# Create volume with Volume class
+# 1. Create RenderConfig (v0.2.6)
+config = RenderConfig.high_quality()  # Or: fast(), balanced(), preview()
+
+# 2. Create Volume (v0.2.5)
 volume_data = create_sample_volume(256, 'double_sphere')
 normals = compute_normal_volume(volume_data)
 volume = Volume(
@@ -526,7 +535,7 @@ volume = Volume(
     max_bounds=np.array([1.0, 1.0, 1.0], dtype=np.float32)
 )
 
-# Create camera
+# 3. Create Camera (v0.2.3)
 camera = Camera.from_spherical(
     target=np.array([0, 0, 0]),
     distance=5.0,
@@ -535,34 +544,39 @@ camera = Camera.from_spherical(
     roll=0.0
 )
 
-# Create light
+# 4. Create Light (v0.2.4)
 light = Light.directional(direction=[1, -1, 0], ambient=0.2, diffuse=0.8)
 
-# Create renderer
-renderer = VolumeRenderer(width=512, height=512, light=light)
+# 5. Create Renderer (v0.2.7 - no abstract base)
+renderer = VolumeRenderer(width=512, height=512, config=config, light=light)
 renderer.set_camera(camera)
-
-# Load volume (single call with Volume instance)
 renderer.load_volume(volume)
 
-# Configure transfer functions
+# 6. Configure Transfer Functions
 ctf = ColorTransferFunction.from_colormap('viridis')
 otf = OpacityTransferFunction.linear(0.0, 0.1)
 renderer.set_transfer_functions(ctf, otf)
 
-# Render
+# 7. Render
 data = renderer.render()
 
-# Volume operations
+# RenderConfig operations (v0.2.6)
+renderer.set_config(RenderConfig.fast())  # Change quality at runtime
+current_config = renderer.get_config()
+samples = config.estimate_samples_per_ray()  # ~346 samples
+
+# Volume operations (v0.2.5)
 print(f"Volume shape: {volume.shape}")
 print(f"Volume dimensions: {volume.dimensions}")
 normalized_vol = volume.normalize(method="minmax")
+current_volume = renderer.get_volume()
 
-# Camera operations
+# Camera operations (v0.2.3)
 view_matrix = camera.get_view_matrix()
 projection_matrix = camera.get_projection_matrix(aspect_ratio=16/9)
+current_camera = renderer.get_camera()
 
-# Camera animation
+# Camera animation (v0.2.3)
 from pyvr.camera import CameraController, CameraPath
 controller = CameraController(camera)
 controller.orbit(delta_azimuth=0.1, delta_elevation=0.05)
