@@ -2,26 +2,28 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg)](http://www.wtfpl.net/about/)
-![Version](https://img.shields.io/badge/version-0.2.2-blue.svg)
-[![Tests](https://img.shields.io/badge/tests-124%20passing-brightgreen.svg)](#-testing)
-[![Coverage](https://img.shields.io/badge/coverage-88%25-brightgreen.svg)](#-quality-assurance)
+![Version](https://img.shields.io/badge/version-0.2.3-blue.svg)
+[![Tests](https://img.shields.io/badge/tests-139%20passing-brightgreen.svg)](#-testing)
+[![Coverage](https://img.shields.io/badge/coverage-95%25%20camera-brightgreen.svg)](#-testing)
 
 PyVR is a GPU-accelerated 3D volume rendering toolkit focused on real-time interactive visualization using OpenGL. Built with ModernGL, it provides high-performance volume rendering with a modern, modular architecture designed for flexibility and maintainability.
 
-> **� New in v0.2.2**: Revolutionary RGBA transfer function textures for significantly improved performance, plus comprehensive test coverage with 124 tests at 88% coverage!
+> ⚠️ **Pre-1.0 Development**: PyVR is under active development. Breaking changes are expected in v0.x releases. API stability comes at v1.0.0.
+
+> **🎉 New in v0.2.3**: Camera system refactored for proper pipeline alignment! `CameraParameters` → `Camera` with matrix generation methods. **This is a breaking change.**
 
 ## 🎯 Key Features
 
 - **🚀 High-Performance RGBA Textures**: Revolutionary single-texture transfer function lookups (v0.2.2)
 - **⚡ GPU-Accelerated Rendering**: Real-time OpenGL volume rendering via ModernGL at 64+ FPS
 - **🎮 Interactive Visualization**: Advanced camera controls with quaternion rotations and animation paths
-- **🧩 Modular Architecture**: Clean separation of concerns with dedicated modules for transfer functions, camera, and rendering
+- **🧩 Pipeline-Aligned Architecture**: Proper Geometry Stage separation with Camera owning matrix generation (v0.2.3)
 - **🎨 Flexible Transfer Functions**: Sophisticated color and opacity mappings with matplotlib integration and peak detection
-- **📹 Advanced Camera System**: Spherical coordinates, camera paths, presets, and smooth animations
+- **📹 Enhanced Camera System**: Matrix creation methods, spherical coordinates, camera paths, presets (v0.2.3)
 - **📊 Synthetic Datasets**: Built-in generators for testing and development
 - **🔧 Modern OpenGL**: Efficient shader-based ray marching with optimized resource management
-- **🔗 Easy Integration**: Simple, clean API for embedding in visualization applications
-- **✅ Enterprise-Grade Testing**: 124 comprehensive tests with 88% coverage for production reliability
+- **🔗 Clean API**: Feature-first development with breaking changes for continuous improvement (pre-1.0)
+- **✅ Comprehensive Testing**: 139 tests with 95% camera coverage for reliability
 
 ## 🚀 Quick Start
 
@@ -46,33 +48,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pyvr.moderngl_renderer import VolumeRenderer
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
-from pyvr.camera import CameraParameters
+from pyvr.camera import Camera
 from pyvr.datasets import create_sample_volume
 
-# Create renderer and volume
-renderer = VolumeRenderer(width=512, height=512, step_size=0.01, max_steps=500)
-volume = create_sample_volume(256, 'double_sphere')
-renderer.load_volume(volume)
-
-# Set up advanced transfer functions with NEW v0.2.2 RGBA API
-ctf = ColorTransferFunction.from_colormap('viridis', value_range=(0.2, 0.8))
-otf = OpacityTransferFunction.with_peaks([0.3, 0.7], widths=[0.1, 0.1], opacities=[0.5, 0.8])
-
-# 🚀 NEW v0.2.2: Single method call for RGBA texture setup
-renderer.set_transfer_functions(ctf, otf)  # Replaces complex manual texture setup!
-
-# Configure camera with spherical coordinates
-camera_params = CameraParameters.from_spherical(
+# Create camera (NEW v0.2.3)
+camera = Camera.from_spherical(
     target=np.array([0.0, 0.0, 0.0]),
     distance=3.0,
-    azimuth=np.pi/4,      # 45 degrees 
+    azimuth=np.pi/4,      # 45 degrees
     elevation=np.pi/6,    # 30 degrees
     roll=0.0
 )
-position, up = camera_params.get_camera_vectors()
-renderer.set_camera(position=position, target=camera_params.target, up=up)
 
-# Render with high performance RGBA texture lookups
+# Create renderer with camera
+renderer = VolumeRenderer(width=512, height=512, camera=camera)
+volume = create_sample_volume(256, 'double_sphere')
+renderer.load_volume(volume)
+
+# Set up transfer functions (v0.2.2 RGBA API)
+ctf = ColorTransferFunction.from_colormap('viridis', value_range=(0.2, 0.8))
+otf = OpacityTransferFunction.with_peaks([0.3, 0.7], widths=[0.1, 0.1], opacities=[0.5, 0.8])
+renderer.set_transfer_functions(ctf, otf)
+
+# Render with high performance
 data = renderer.render()
 image = np.frombuffer(data, dtype=np.uint8).reshape((512, 512, 4))
 plt.imshow(image, origin='lower')
@@ -81,32 +79,36 @@ plt.show()
 
 ## 🏗️ Architecture
 
-PyVR v0.2.2 features a high-performance modular architecture with revolutionary RGBA texture optimization:
+PyVR v0.2.3 features a pipeline-aligned architecture following traditional rendering pipeline stages:
 
 ```
 pyvr/
-├── transferfunctions/     # Color and opacity mapping with RGBA texture support
-│   ├── base.py           # Abstract base class with common functionality  
+├── camera/               # Geometry Stage - Camera owns transformations (v0.2.3)
+│   ├── parameters.py     # Camera class with matrix generation methods
+│   └── control.py        # Camera controllers and animation paths
+├── transferfunctions/    # Application Stage - Material properties (v0.2.0)
+│   ├── base.py           # Abstract base class with common functionality
 │   ├── color.py          # Color transfer functions with matplotlib integration
 │   └── opacity.py        # Opacity transfer functions with peak detection
-├── camera/               # Advanced camera system  
-│   ├── parameters.py     # Camera parameter management with presets
-│   └── control.py        # Camera controllers and animation paths
-├── shaders/              # Optimized OpenGL shaders
+├── shaders/              # Fragment Stage - Shading operations
 │   ├── volume.vert.glsl  # Vertex shader for volume rendering
 │   └── volume.frag.glsl  # Fragment shader with RGBA texture lookups
-├── datasets/             # Synthetic volume generators
+├── datasets/             # Application Stage - Volume data generators
 │   └── synthetic.py      # Various 3D shapes and patterns
-└── moderngl_renderer/    # High-performance OpenGL rendering backend
-    ├── renderer.py       # High-level volume renderer with RGBA API
+└── moderngl_renderer/    # Rendering orchestration
+    ├── renderer.py       # High-level volume renderer
     └── manager.py        # Low-level OpenGL resource management
 ```
 
-**🚀 v0.2.2 Key Improvements:**
-- **RGBA Transfer Function Textures**: Single texture lookup instead of dual RGB+Alpha operations
-- **Simplified API**: `renderer.set_transfer_functions(ctf, otf)` replaces complex manual setup
-- **Performance Optimization**: 64+ FPS with efficient texture cache locality  
-- **Clean Architecture**: Removed legacy code cruft for better maintainability
+**🚀 v0.2.3 Key Improvements:**
+- **Camera Refactoring**: `Camera` class now owns view/projection matrix creation (Geometry Stage)
+- **Pipeline Alignment**: Proper separation following traditional rendering pipeline architecture
+- **Matrix Methods**: `get_view_matrix()`, `get_projection_matrix()` added to Camera
+- **Breaking Changes**: `CameraParameters` → `Camera`, `set_camera()` requires Camera instance
+
+**Previous versions:**
+- **v0.2.2**: RGBA transfer function textures for performance (single texture lookup)
+- **v0.2.0**: Transfer functions separated into dedicated module
 
 ## 📊 Datasets
 
@@ -185,75 +187,85 @@ otf = OpacityTransferFunction(control_points=[
 ])
 ```
 
-## � Advanced Camera System
+## 📹 Advanced Camera System
 
-PyVR v0.2.0 introduces a sophisticated camera system with spherical coordinates and animation support:
+PyVR v0.2.3 features a pipeline-aligned camera system with matrix generation capabilities:
 
-### Camera Parameters
+### Camera Creation and Matrix Generation (NEW v0.2.3)
 ```python
-from pyvr.camera import CameraParameters
+from pyvr.camera import Camera
 import numpy as np
 
 # Create camera with spherical coordinates
-camera = CameraParameters.from_spherical(
+camera = Camera.from_spherical(
     target=np.array([0.0, 0.0, 0.0]),
     distance=5.0,
     azimuth=np.pi/4,      # 45° rotation around target
-    elevation=np.pi/6,    # 30° elevation angle  
+    elevation=np.pi/6,    # 30° elevation angle
     roll=0.0              # No roll rotation
 )
 
 # Use camera presets
-camera = CameraParameters.preset_front_view(target=np.array([0, 0, 0]), distance=3.0)
-camera = CameraParameters.preset_diagonal_view(target=np.array([0, 0, 0]), distance=4.0)
+camera = Camera.front_view(distance=3.0)
+camera = Camera.isometric_view(distance=4.0)
 
-# Get camera vectors for renderer
-position, up = camera.get_camera_vectors()
-renderer.set_camera(position=position, target=camera.target, up=up)
+# NEW: Camera owns matrix generation (Geometry Stage)
+view_matrix = camera.get_view_matrix()           # World → Camera space
+projection_matrix = camera.get_projection_matrix(aspect_ratio=16/9)  # Camera → Clip space
+position, up = camera.get_camera_vectors()       # Get vectors for renderer
+
+# Set camera in renderer (requires Camera instance)
+renderer.set_camera(camera)
+
+# Access current camera
+current_camera = renderer.get_camera()
 ```
 
 ### Camera Animation and Paths
 ```python
 from pyvr.camera import CameraController, CameraPath
 
-# Create smooth camera paths
-path = CameraPath()
-path.add_keyframe(0.0, CameraParameters.preset_front_view(target, distance=3.0))
-path.add_keyframe(1.0, CameraParameters.preset_diagonal_view(target, distance=3.0))
-path.add_keyframe(2.0, CameraParameters.preset_side_view(target, distance=3.0))
+# Create smooth camera paths with Camera instances
+cameras = [
+    Camera.front_view(distance=3.0),
+    Camera.isometric_view(distance=3.0),
+    Camera.side_view(distance=3.0)
+]
+path = CameraPath(keyframes=cameras)
 
 # Interpolate camera positions
-t = 0.5  # Halfway between first and second keyframe  
+t = 0.5  # Halfway between first and second keyframe
 interpolated_camera = path.interpolate(t)
-position, up = interpolated_camera.get_camera_vectors()
 
 # Advanced camera controller
 controller = CameraController(initial_params=camera)
 controller.orbit(delta_azimuth=0.1, delta_elevation=0.05)  # Smooth orbiting
 controller.zoom(factor=1.1)  # Zoom in/out
-controller.move_target(delta=np.array([0.1, 0, 0]))  # Pan target
+controller.pan(delta=np.array([0.1, 0, 0]))  # Pan target
 ```
 
-## �📸 Examples
+## 📸 Examples
 
 Check out the `example/` directory for complete working examples:
 
-- **`ModernglRender/multiview_example_v0_2_0.py`**: Multi-view rendering with new v0.2.0 API
-- **`ModernglRender/enhanced_camera_demo_v0_2_0.py`**: Advanced camera system demonstration
-- **`ModernglRender/multiview_example.py`**: Legacy example (v0.1.0 compatibility)
+- **`ModernglRender/rgba_demo.py`**: RGBA transfer function demonstration
+- **`ModernglRender/enhanced_camera_demo.py`**: Advanced camera system demonstration
+- **`ModernglRender/multiview_example.py`**: Multi-view rendering example
 
-### Multi-view Rendering (v0.2.0)
-The new example demonstrates the modular architecture:
+> ⚠️ **Note**: Examples are being updated to v0.2.3 API. They currently use `CameraParameters` and will be migrated to the new `Camera` class with matrix generation methods.
+
+### RGBA Transfer Function Demo
+High-performance rendering with RGBA textures:
 
 ```bash
-python example/ModernglRender/multiview_example_v0_2_0.py
+python example/ModernglRender/rgba_demo.py
 ```
 
 ### Camera Animation Demo
 See the advanced camera system in action:
 
 ```bash
-python example/ModernglRender/enhanced_camera_demo_v0_2_0.py
+python example/ModernglRender/enhanced_camera_demo.py
 ```
 
 ## ⚡ Performance
@@ -274,49 +286,89 @@ python example/ModernglRender/enhanced_camera_demo_v0_2_0.py
 
 ## 🛠️ API Reference
 
-### V0.2.2 High-Performance RGBA API
+### V0.2.3 Pipeline-Aligned API
 
 ```python
-# High-performance volume rendering with RGBA textures
+# Pipeline-aligned volume rendering (v0.2.3)
 from pyvr.moderngl_renderer import VolumeRenderer
-renderer = VolumeRenderer(width, height, step_size, max_steps)
-renderer.load_volume(volume_data)
-renderer.set_camera(position, target, up) 
-
-# 🚀 NEW v0.2.2: Revolutionary RGBA transfer function API
+from pyvr.camera import Camera
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
+from pyvr.datasets import create_sample_volume, compute_normal_volume
+
+# Create Camera (Geometry Stage)
+camera = Camera.from_spherical(
+    target=np.array([0, 0, 0]),
+    distance=5.0,
+    azimuth=np.pi/4,
+    elevation=np.pi/6,
+    roll=0.0
+)
+
+# Create renderer with camera
+renderer = VolumeRenderer(width=512, height=512, camera=camera)
+
+# Load volume data
+volume = create_sample_volume(256, 'double_sphere')
+renderer.load_volume(volume)
+
+# Transfer functions (v0.2.2 RGBA API)
 ctf = ColorTransferFunction.from_colormap('viridis', value_range=(0.2, 0.8))
 otf = OpacityTransferFunction.with_peaks([0.3, 0.7], widths=[0.1, 0.1])
+renderer.set_transfer_functions(ctf, otf)
 
-# Single method call replaces complex manual texture setup
-renderer.set_transfer_functions(ctf, otf)  # RGBA texture magic!
+# Render
+data = renderer.render()
 
-# High-performance rendering
-data = renderer.render()  # 64+ FPS with RGBA optimization
+# Camera operations (NEW v0.2.3)
+view_matrix = camera.get_view_matrix()
+projection_matrix = camera.get_projection_matrix(aspect_ratio=16/9)
 
-# Advanced camera system (unchanged from v0.2.0)
-from pyvr.camera import CameraParameters, CameraController, CameraPath
-camera = CameraParameters.from_spherical(target, distance, azimuth, elevation, roll)
+# Camera animation
+from pyvr.camera import CameraController, CameraPath
 controller = CameraController(camera)
-path = CameraPath()
-
-# Datasets (unchanged)
-from pyvr.datasets import create_sample_volume, compute_normal_volume
-volume = create_sample_volume(256, 'double_sphere')
-normals = compute_normal_volume(volume)
-```
-
-### Legacy API (backward compatibility)
-
-```python
-# Manual texture creation still available for advanced use cases
-color_unit = ctf.to_texture(moderngl_manager=renderer.gl_manager)
-opacity_unit = otf.to_texture(moderngl_manager=renderer.gl_manager) 
-renderer.gl_manager.set_uniform_int('color_lut', color_unit)
-renderer.gl_manager.set_uniform_int('opacity_lut', opacity_unit)
+path = CameraPath(keyframes=[camera1, camera2, camera3])
 ```
 
 ## 🔄 Migration Guide
+
+### From v0.2.2 to v0.2.3 (Breaking Changes - Camera Refactoring)
+
+**⚠️ BREAKING CHANGE - Camera System Refactored:**
+
+```python
+# OLD v0.2.2 (CameraParameters) ❌
+from pyvr.camera import CameraParameters
+camera = CameraParameters.from_spherical(target, distance, azimuth, elevation, roll)
+position, up = get_camera_pos_from_params(camera)
+
+# NEW v0.2.3 (Camera with matrix generation) ✅
+from pyvr.camera import Camera
+camera = Camera.from_spherical(
+    target=np.array([0.0, 0.0, 0.0]),
+    distance=3.0,
+    azimuth=np.pi/4,
+    elevation=np.pi/6,
+    roll=0.0
+)
+renderer.set_camera(camera)  # Pass Camera instance directly
+
+# NEW: Camera owns matrix generation (Geometry Stage)
+view_matrix = camera.get_view_matrix()
+projection_matrix = camera.get_projection_matrix(aspect_ratio=16/9)
+```
+
+**Key Changes:**
+- ✅ `CameraParameters` renamed to `Camera`
+- ✅ Camera now generates view/projection matrices (pipeline alignment)
+- ✅ `renderer.set_camera()` requires `Camera` instance (no raw position/target vectors)
+- ✅ New methods: `get_view_matrix()`, `get_projection_matrix()`, `get_camera_vectors()`
+
+**Benefits of v0.2.3:**
+- 🎯 **Pipeline alignment** (Camera owns transformations - Geometry Stage)
+- 🧪 **Better testability** (matrix creation testable without OpenGL)
+- 🔧 **Foundation for future features** (orthographic cameras, multiple camera types)
+
+---
 
 ### From v0.2.0 to v0.2.2 (Recommended)
 
@@ -367,10 +419,16 @@ renderer.set_transfer_functions(ctf, otf)  # High-performance RGBA API
 from pyvr.moderngl_renderer import get_camera_pos
 position, up = get_camera_pos(target, azimuth, elevation, roll, distance)
 
-# NEW v0.2.2 ✅ (Preferred)
-from pyvr.camera import CameraParameters  
-camera = CameraParameters.from_spherical(target, distance, azimuth, elevation, roll)
-position, up = get_camera_pos_from_params(camera)
+# NEW v0.2.3 ✅ (Current)
+from pyvr.camera import Camera
+camera = Camera.from_spherical(
+    target=np.array([0.0, 0.0, 0.0]),
+    distance=3.0,
+    azimuth=np.pi/4,
+    elevation=np.pi/6,
+    roll=0.0
+)
+renderer.set_camera(camera)  # Camera instance with matrix generation
 ```
 
 ## 🔧 Configuration
@@ -394,18 +452,18 @@ renderer = VolumeRenderer(512, 512, step_size=0.01, max_steps=500)
 
 ## 🧪 Testing
 
-### Comprehensive Test Coverage (v0.2.2)
+### Comprehensive Test Coverage (v0.2.3)
 
 **Enterprise-Grade Testing Framework:**
-- **✅ 124 comprehensive tests** (+24 new tests in v0.2.2)
-- **✅ 88% overall coverage** with 3 modules at perfect 100%
+- **✅ 139 comprehensive tests** (+15 new camera matrix tests in v0.2.3)
+- **✅ 95% camera coverage** with pipeline-aligned matrix generation tests
 - **✅ CI/CD compatible** with zero OpenGL dependencies
 - **✅ Advanced edge case validation** for production reliability
 
 Run the test suite:
 
 ```bash
-# Run all tests (124 tests)
+# Run all tests (139 tests)
 pytest tests/
 
 # Run with coverage report
@@ -413,7 +471,7 @@ pytest --cov=pyvr --cov-report=term-missing tests/
 
 # Run specific test modules
 pytest tests/test_moderngl_renderer/  # OpenGL rendering tests
-pytest tests/test_camera/            # Camera system tests  
+pytest tests/test_camera/            # Camera system tests (30 tests)
 pytest tests/test_transferfunctions/ # Transfer function tests
 ```
 
@@ -421,12 +479,12 @@ pytest tests/test_transferfunctions/ # Transfer function tests
 ```
 Module                        Tests    Coverage
 ----------------------------------------------
-📷 Camera System             18       95% 
+📷 Camera System             30       95% (NEW: matrix generation)
 🎨 Transfer Functions         22       94-100%
 🖥️  ModernGL Renderer         39       93-100%
-📊 Datasets & Utilities       45       Various
+📊 Datasets & Utilities       48       Various
 ----------------------------------------------
-📈 Total                     124       88%
+📈 Total                     139       ~90%
 ```
 
 ### Quality Assurance Features
