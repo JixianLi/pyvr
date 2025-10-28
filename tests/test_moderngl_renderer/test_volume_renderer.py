@@ -17,21 +17,24 @@ class TestVolumeRendererInitialization:
     def test_init_default_parameters(self, mock_moderngl_context):
         """Test initialization with default parameters."""
         renderer = VolumeRenderer()
-        
+
         assert renderer.width == 512
         assert renderer.height == 512
-        assert renderer.step_size == 0.01
-        assert renderer.max_steps == 200
+        assert renderer.config.step_size == 0.01
+        assert renderer.config.max_steps == 500  # balanced preset default
         assert renderer.gl_manager is not None
         
     def test_init_custom_parameters(self, mock_moderngl_context):
         """Test initialization with custom parameters."""
-        renderer = VolumeRenderer(width=1024, height=768, step_size=0.005, max_steps=500)
-        
+        from pyvr.config import RenderConfig
+
+        config = RenderConfig(step_size=0.005, max_steps=500)
+        renderer = VolumeRenderer(width=1024, height=768, config=config)
+
         assert renderer.width == 1024
         assert renderer.height == 768
-        assert renderer.step_size == 0.005
-        assert renderer.max_steps == 500
+        assert renderer.config.step_size == 0.005
+        assert renderer.config.max_steps == 500
 
 
 
@@ -91,24 +94,6 @@ class TestVolumeRendererCameraManagement:
         assert True
 
 
-class TestVolumeRendererRenderingParameters:
-    """Test rendering parameter management."""
-    
-    def test_set_step_size(self, mock_moderngl_context):
-        """Test setting ray marching step size."""
-        renderer = VolumeRenderer()
-        
-        renderer.set_step_size(0.005)
-        
-        assert renderer.step_size == 0.005
-        
-    def test_set_max_steps(self, mock_moderngl_context):
-        """Test setting maximum ray marching steps."""
-        renderer = VolumeRenderer()
-
-        renderer.set_max_steps(2000)
-
-        assert renderer.max_steps == 2000
 
 
 class TestVolumeRendererRenderingProcess:
@@ -212,14 +197,18 @@ class TestVolumeRendererIntegration:
         volume = Volume(data=sample_volume_data)
         renderer.load_volume(volume)
         renderer.set_transfer_functions(color_tf, opacity_tf)
-        
-        # Render with different parameters
-        renderer.set_step_size(0.01)
+
+        # Render with different configurations
+        from pyvr.config import RenderConfig
+
+        config1 = RenderConfig.balanced()
+        renderer.set_config(config1)
         image1 = renderer.render()
-        
-        renderer.set_step_size(0.005)
+
+        config2 = RenderConfig.high_quality()
+        renderer.set_config(config2)
         image2 = renderer.render()
-        
+
         assert image1 is not None
         assert image2 is not None
         
@@ -267,15 +256,20 @@ class TestVolumeRendererErrorHandling:
     """Test error handling and edge cases."""
     
     def test_parameter_validation(self, mock_moderngl_context):
-        """Test parameter validation where it exists."""
+        """Test config parameter validation."""
+        from pyvr.config import RenderConfig
+
         renderer = VolumeRenderer()
-        
-        # Test that setting parameters works without validation errors
-        renderer.set_step_size(0.005)
-        assert renderer.step_size == 0.005
-        
-        renderer.set_max_steps(1000)
-        assert renderer.max_steps == 1000
+
+        # Mock uniform setters
+        renderer.gl_manager.set_uniform_float = MagicMock()
+        renderer.gl_manager.set_uniform_int = MagicMock()
+
+        # Test that setting valid config works
+        config = RenderConfig(step_size=0.005, max_steps=1000)
+        renderer.set_config(config)
+        assert renderer.config.step_size == 0.005
+        assert renderer.config.max_steps == 1000
         
     def test_render_without_setup(self, mock_moderngl_context):
         """Test that rendering without proper setup fails gracefully."""
@@ -369,18 +363,19 @@ class TestVolumeRendererResourceManagement:
         
     def test_parameter_validation_comprehensive(self, mock_moderngl_context):
         """Test comprehensive parameter validation."""
+        from pyvr.config import RenderConfig
+
         renderer = VolumeRenderer()
 
         # Mock the GL operations to avoid actual OpenGL calls
         renderer.gl_manager.set_uniform_float = MagicMock()
         renderer.gl_manager.set_uniform_int = MagicMock()
 
-        # Test setting various parameters
-        renderer.set_step_size(0.001)
-        assert renderer.step_size == 0.001
-
-        renderer.set_max_steps(2000)
-        assert renderer.max_steps == 2000
+        # Test setting various parameters through config
+        ultra_config = RenderConfig.ultra_quality()
+        renderer.set_config(ultra_config)
+        assert renderer.config.step_size == 0.001
+        assert renderer.config.max_steps == 2000
 
 
 class TestVolumeRendererLightIntegration:
@@ -610,3 +605,143 @@ class TestVolumeRendererVolumeClass:
 
         # Should have called create_volume_texture twice
         assert renderer.gl_manager.create_volume_texture.call_count == 2
+
+
+class TestVolumeRendererRenderConfig:
+    """Test VolumeRenderer integration with RenderConfig."""
+
+    def test_default_config(self, mock_moderngl_context):
+        """VolumeRenderer should have default balanced config."""
+        from pyvr.config import RenderConfig
+
+        renderer = VolumeRenderer()
+
+        assert hasattr(renderer, "config")
+        assert isinstance(renderer.config, RenderConfig)
+        assert renderer.config.step_size == 0.01
+        assert renderer.config.max_steps == 500
+
+    def test_custom_config_initialization(self, mock_moderngl_context):
+        """VolumeRenderer should accept custom config in constructor."""
+        from pyvr.config import RenderConfig
+
+        custom_config = RenderConfig.high_quality()
+        renderer = VolumeRenderer(width=512, height=512, config=custom_config)
+
+        assert renderer.config is custom_config
+        assert renderer.config.step_size == 0.005
+        assert renderer.config.max_steps == 1000
+
+    def test_config_presets(self, mock_moderngl_context):
+        """All config presets should work with VolumeRenderer."""
+        from pyvr.config import RenderConfig
+
+        presets = [
+            RenderConfig.preview(),
+            RenderConfig.fast(),
+            RenderConfig.balanced(),
+            RenderConfig.high_quality(),
+            RenderConfig.ultra_quality(),
+        ]
+
+        for preset in presets:
+            renderer = VolumeRenderer(config=preset)
+            assert renderer.config is preset
+
+    def test_set_config(self, mock_moderngl_context):
+        """set_config should update renderer configuration."""
+        from pyvr.config import RenderConfig
+
+        renderer = VolumeRenderer()
+        new_config = RenderConfig.fast()
+
+        # Mock the uniform setters
+        renderer.gl_manager.set_uniform_float = MagicMock()
+        renderer.gl_manager.set_uniform_int = MagicMock()
+
+        renderer.set_config(new_config)
+
+        assert renderer.config is new_config
+        # Should have updated GL uniforms
+        renderer.gl_manager.set_uniform_float.assert_called_with(
+            "step_size", new_config.step_size
+        )
+        renderer.gl_manager.set_uniform_int.assert_called_with(
+            "max_steps", new_config.max_steps
+        )
+
+    def test_get_config(self, mock_moderngl_context):
+        """get_config should return current config."""
+        from pyvr.config import RenderConfig
+
+        config = RenderConfig.high_quality()
+        renderer = VolumeRenderer(config=config)
+
+        retrieved_config = renderer.get_config()
+        assert retrieved_config is config
+
+    def test_set_config_type_checking(self, mock_moderngl_context):
+        """set_config should reject non-RenderConfig objects."""
+        renderer = VolumeRenderer()
+
+        with pytest.raises(TypeError, match="Expected RenderConfig instance"):
+            renderer.set_config("not a config")
+
+        with pytest.raises(TypeError, match="Expected RenderConfig instance"):
+            renderer.set_config({"step_size": 0.01})
+
+    def test_config_updates_gl_uniforms_on_init(self, mock_moderngl_context):
+        """Config should set GL uniforms during initialization."""
+        from pyvr.config import RenderConfig
+
+        # Create a custom config
+        config = RenderConfig(step_size=0.015, max_steps=300)
+
+        # Create renderer (this will call _update_render_config during __init__)
+        renderer = VolumeRenderer(config=config)
+
+        # Check that uniforms were set
+        # Note: These are set during __init__, so we can't easily mock them
+        # but we can verify the config is stored correctly
+        assert renderer.config.step_size == 0.015
+        assert renderer.config.max_steps == 300
+
+    def test_config_parameter_validation(self, mock_moderngl_context):
+        """Invalid config should be rejected in constructor."""
+        with pytest.raises(TypeError, match="Expected RenderConfig instance"):
+            VolumeRenderer(config="invalid")
+
+    def test_config_with_modified_preset(self, mock_moderngl_context):
+        """Modified presets should work correctly."""
+        from pyvr.config import RenderConfig
+
+        # Start with balanced and modify
+        config = RenderConfig.balanced().with_step_size(0.008)
+
+        renderer = VolumeRenderer(config=config)
+        assert renderer.config.step_size == 0.008
+        assert renderer.config.max_steps == 500  # Unchanged from balanced
+
+    def test_multiple_config_changes(self, mock_moderngl_context):
+        """Should be able to change config multiple times."""
+        from pyvr.config import RenderConfig
+
+        renderer = VolumeRenderer()
+
+        # Mock uniform setters
+        renderer.gl_manager.set_uniform_float = MagicMock()
+        renderer.gl_manager.set_uniform_int = MagicMock()
+
+        # Change to fast
+        fast = RenderConfig.fast()
+        renderer.set_config(fast)
+        assert renderer.config is fast
+
+        # Change to high quality
+        hq = RenderConfig.high_quality()
+        renderer.set_config(hq)
+        assert renderer.config is hq
+
+        # Should have called uniform setters for each change
+        assert renderer.gl_manager.set_uniform_float.call_count >= 2
+        assert renderer.gl_manager.set_uniform_int.call_count >= 2

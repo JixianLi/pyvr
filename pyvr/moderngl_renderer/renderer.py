@@ -1,8 +1,7 @@
 """
 ModernGL-based volume renderer implementation.
 
-This module provides the OpenGL/ModernGL backend implementation
-of the abstract VolumeRenderer interface.
+This module provides GPU-accelerated volume rendering using OpenGL/ModernGL.
 """
 
 import os
@@ -10,7 +9,6 @@ from typing import Optional
 
 from PIL import Image
 
-from ..renderer.base import VolumeRenderer as VolumeRendererBase
 from ..camera import Camera
 from ..lighting import Light
 from ..transferfunctions import ColorTransferFunction, OpacityTransferFunction
@@ -18,20 +16,26 @@ from ..volume import Volume
 from .manager import ModernGLManager
 
 
-class ModernGLVolumeRenderer(VolumeRendererBase):
+class ModernGLVolumeRenderer:
     """
-    ModernGL/OpenGL implementation of VolumeRenderer.
+    GPU-accelerated volume renderer using ModernGL/OpenGL.
 
-    This is the concrete implementation using ModernGL for GPU-accelerated
-    volume rendering. It implements all abstract methods from VolumeRendererBase.
+    This renderer provides real-time volume rendering with ray marching,
+    transfer functions, and advanced lighting.
+
+    Example:
+        >>> from pyvr.moderngl_renderer import VolumeRenderer
+        >>> from pyvr.config import RenderConfig
+        >>>
+        >>> config = RenderConfig.balanced()
+        >>> renderer = VolumeRenderer(width=512, height=512, config=config)
     """
 
     def __init__(
         self,
         width=512,
         height=512,
-        step_size=0.01,
-        max_steps=200,
+        config=None,
         light=None,
     ):
         """
@@ -40,14 +44,39 @@ class ModernGLVolumeRenderer(VolumeRendererBase):
         Args:
             width: Viewport width
             height: Viewport height
-            step_size: Ray marching step size
-            max_steps: Maximum ray marching steps
+            config: RenderConfig instance (uses balanced preset if None)
             light: Light instance (creates default if None)
-        """
-        super().__init__(width, height)
 
-        self.step_size = step_size
-        self.max_steps = max_steps
+        Example:
+            >>> from pyvr.config import RenderConfig
+            >>> from pyvr.moderngl_renderer import VolumeRenderer
+            >>>
+            >>> # Use preset
+            >>> config = RenderConfig.high_quality()
+            >>> renderer = VolumeRenderer(width=1024, height=1024, config=config)
+            >>>
+            >>> # Use defaults (balanced preset)
+            >>> renderer = VolumeRenderer(width=512, height=512)
+        """
+        # Initialize dimensions
+        self.width = width
+        self.height = height
+
+        # Initialize optional attributes (set by respective methods)
+        self.volume: Optional[Volume] = None
+        self.camera: Optional[Camera] = None
+
+        # Initialize render config
+        if config is None:
+            from ..config import RenderConfig
+
+            self.config = RenderConfig.balanced()
+        else:
+            from ..config import RenderConfig
+
+            if not isinstance(config, RenderConfig):
+                raise TypeError(f"Expected RenderConfig instance, got {type(config)}")
+            self.config = config
 
         # Initialize light
         if light is None:
@@ -68,8 +97,7 @@ class ModernGLVolumeRenderer(VolumeRendererBase):
         self.gl_manager.load_shaders(vertex_shader_path, fragment_shader_path)
 
         # Set default uniforms
-        self.gl_manager.set_uniform_float("step_size", self.step_size)
-        self.gl_manager.set_uniform_int("max_steps", self.max_steps)
+        self._update_render_config()
         self.gl_manager.set_uniform_vector("volume_min_bounds", (-0.5, -0.5, -0.5))
         self.gl_manager.set_uniform_vector("volume_max_bounds", (0.5, 0.5, 0.5))
 
@@ -198,15 +226,42 @@ class ModernGLVolumeRenderer(VolumeRendererBase):
         image = Image.frombytes("RGBA", (self.width, self.height), data)
         return image.transpose(Image.FLIP_TOP_BOTTOM)
 
-    def set_step_size(self, step_size):
-        """Set ray marching step size."""
-        self.step_size = step_size
-        self.gl_manager.set_uniform_float("step_size", step_size)
+    def set_config(self, config):
+        """
+        Set rendering configuration.
 
-    def set_max_steps(self, max_steps):
-        """Set maximum ray marching steps."""
-        self.max_steps = max_steps
-        self.gl_manager.set_uniform_int("max_steps", max_steps)
+        Args:
+            config: RenderConfig instance with rendering parameters
+
+        Raises:
+            TypeError: If config is not a RenderConfig instance
+
+        Example:
+            >>> from pyvr.config import RenderConfig
+            >>> config = RenderConfig.high_quality()
+            >>> renderer.set_config(config)
+        """
+        from ..config import RenderConfig
+
+        if not isinstance(config, RenderConfig):
+            raise TypeError(f"Expected RenderConfig instance, got {type(config)}")
+
+        self.config = config
+        self._update_render_config()
+
+    def get_config(self):
+        """
+        Get current rendering configuration.
+
+        Returns:
+            RenderConfig: Current configuration
+
+        Example:
+            >>> renderer = VolumeRenderer()
+            >>> config = renderer.get_config()
+            >>> print(config)
+        """
+        return self.config
 
     def get_light(self):
         """
@@ -216,6 +271,39 @@ class ModernGLVolumeRenderer(VolumeRendererBase):
             Light: Current light instance
         """
         return self.light
+
+    def get_volume(self) -> Optional[Volume]:
+        """
+        Get current volume.
+
+        Returns:
+            Current Volume instance or None if not loaded
+
+        Example:
+            >>> volume = renderer.get_volume()
+            >>> if volume:
+            ...     print(f"Volume shape: {volume.shape}")
+        """
+        return self.volume
+
+    def get_camera(self) -> Optional[Camera]:
+        """
+        Get current camera.
+
+        Returns:
+            Current Camera instance or None if not set
+
+        Example:
+            >>> camera = renderer.get_camera()
+            >>> if camera:
+            ...     print(f"Camera position: {camera.get_camera_vectors()[0]}")
+        """
+        return self.camera
+
+    def _update_render_config(self):
+        """Update OpenGL uniforms from current render configuration."""
+        self.gl_manager.set_uniform_float("step_size", self.config.step_size)
+        self.gl_manager.set_uniform_int("max_steps", self.config.max_steps)
 
     def _update_light(self):
         """Update OpenGL uniforms from light configuration."""

@@ -2,53 +2,99 @@
 """
 PyVR Performance Benchmark
 
-This script benchmarks the PyVR volume rendering performanc      print("\n=== Benchmark Complete ===")
-    print("PyVR with RGBA transfer function textures provides")
-    print("efficient single-lookup volume rendering with excellent performance.")rint("\n=== Benchmark Complete ===")
-    print("PyVR with RGBA transfer function textures provides")
-    print("efficient single-lookup volume rendering with excellent performance.")ith current features.
+This script benchmarks PyVR volume rendering performance across different
+quality presets introduced in v0.2.6.
+
+Updated for PyVR v0.2.6:
+- Compares RenderConfig presets (preview, fast, balanced, high_quality)
+- Uses new Volume class (v0.2.5)
+- Uses new Camera class (v0.2.3)
+- Uses new Light class (v0.2.4)
 """
 
 import time
 
 import numpy as np
 
-from pyvr.camera import CameraParameters, get_camera_pos_from_params
+from pyvr.camera import Camera
+from pyvr.config import RenderConfig
 from pyvr.datasets import compute_normal_volume, create_sample_volume
+from pyvr.lighting import Light
 from pyvr.moderngl_renderer import VolumeRenderer
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
+from pyvr.volume import Volume
+
+
+def benchmark_config_preset(config_name, config, volume, camera, light, ctf, otf, n_runs=10):
+    """Benchmark a specific RenderConfig preset."""
+    IMAGE_RES = 512
+
+    # Create renderer with config
+    renderer = VolumeRenderer(IMAGE_RES, IMAGE_RES, config=config, light=light)
+
+    # Load volume and set rendering parameters
+    renderer.load_volume(volume)
+    renderer.set_camera(camera)
+    renderer.set_transfer_functions(ctf, otf)
+
+    # Warm up
+    _ = renderer.render()
+
+    # Benchmark
+    times = []
+    for _ in range(n_runs):
+        start_time = time.perf_counter()
+        data = renderer.render()
+        end_time = time.perf_counter()
+        times.append((end_time - start_time) * 1000)  # Convert to milliseconds
+
+    # Statistics
+    mean_time = np.mean(times)
+    std_time = np.std(times)
+    min_time = np.min(times)
+    max_time = np.max(times)
+    fps = 1000 / mean_time
+
+    # Validate output
+    data_array = np.frombuffer(data, dtype=np.uint8).reshape((IMAGE_RES, IMAGE_RES, 4))
+    non_zero_pixels = np.count_nonzero(data_array.max(axis=2))
+    coverage = non_zero_pixels / (IMAGE_RES * IMAGE_RES) * 100
+
+    return {
+        "name": config_name,
+        "mean_time": mean_time,
+        "std_time": std_time,
+        "min_time": min_time,
+        "max_time": max_time,
+        "fps": fps,
+        "coverage": coverage,
+        "config": config,
+    }
 
 
 def benchmark_render_performance():
-    print("=== PyVR Performance Benchmark ===")
+    print("=" * 60)
+    print("PyVR v0.2.6 Performance Benchmark")
+    print("Comparing RenderConfig Quality Presets")
+    print("=" * 60)
 
     # Test parameters
     VOLUME_SIZE = 256
-    IMAGE_RES = 512
-    STEP_SIZE = 1e-3
-    MAX_STEPS = 1000
     N_RUNS = 10
 
-    # Create renderer
-    renderer = VolumeRenderer(
-        IMAGE_RES, IMAGE_RES, step_size=STEP_SIZE, max_steps=MAX_STEPS
+    # Create volume (v0.2.5)
+    print(f"\nLoading {VOLUME_SIZE}³ volume...")
+    volume_data = create_sample_volume(VOLUME_SIZE, "double_sphere")
+    normals = compute_normal_volume(volume_data)
+    volume = Volume(
+        data=volume_data,
+        normals=normals,
+        min_bounds=np.array([-1.0, -1.0, -1.0], dtype=np.float32),
+        max_bounds=np.array([1.0, 1.0, 1.0], dtype=np.float32),
     )
 
-    # Load volume
-    print(f"Loading {VOLUME_SIZE}³ volume...")
-    volume = create_sample_volume(VOLUME_SIZE, "double_sphere")
-    normals = compute_normal_volume(volume)
-
-    renderer.load_volume(volume)
-    renderer.load_normal_volume(normals)
-    renderer.set_volume_bounds((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0))
-
-    # Create transfer functions
-    ctf = ColorTransferFunction.from_colormap("plasma")
-    otf = OpacityTransferFunction.linear(0.0, 0.1)
-
-    # Set camera
-    camera = CameraParameters.from_spherical(
+    # Create camera (v0.2.3)
+    camera = Camera.from_spherical(
         target=np.array([0, 0, 0], dtype=np.float32),
         distance=3.0,
         azimuth=np.pi / 4,
@@ -56,72 +102,83 @@ def benchmark_render_performance():
         roll=0.0,
         init_up=np.array([0, 0, 1], dtype=np.float32),
     )
-    position, up = get_camera_pos_from_params(camera)
-    renderer.set_camera(position=position, target=(0, 0, 0), up=up)
 
-    # Set transfer functions
-    renderer.set_transfer_functions(ctf, otf)
+    # Create light (v0.2.4)
+    light = Light.default()
 
-    print(f"\\nBenchmarking {N_RUNS} renders at {IMAGE_RES}×{IMAGE_RES}...")
+    # Create transfer functions
+    ctf = ColorTransferFunction.from_colormap("plasma")
+    otf = OpacityTransferFunction.linear(0.0, 0.1)
 
-    # Warm up
-    _ = renderer.render()
+    # Define configs to benchmark
+    configs = [
+        ("Preview", RenderConfig.preview()),
+        ("Fast", RenderConfig.fast()),
+        ("Balanced", RenderConfig.balanced()),
+        ("High Quality", RenderConfig.high_quality()),
+    ]
 
-    # Benchmark
-    times = []
-    for i in range(N_RUNS):
-        start_time = time.perf_counter()
-        data = renderer.render()
-        end_time = time.perf_counter()
-        times.append((end_time - start_time) * 1000)  # Convert to milliseconds
+    print(f"\nBenchmarking {len(configs)} quality presets ({N_RUNS} runs each)...")
+    print(f"Resolution: 512x512 pixels\n")
 
-        if (i + 1) % 5 == 0:
-            print(f"  Completed {i + 1}/{N_RUNS} runs...")
+    results = []
+    for config_name, config in configs:
+        print(f"Testing {config_name}... ", end="", flush=True)
+        result = benchmark_config_preset(
+            config_name, config, volume, camera, light, ctf, otf, n_runs=N_RUNS
+        )
+        results.append(result)
+        print(f"✓ {result['mean_time']:.2f} ms ({result['fps']:.1f} FPS)")
 
-    # Statistics
-    mean_time = np.mean(times)
-    std_time = np.std(times)
-    min_time = np.min(times)
-    max_time = np.max(times)
+    # Print detailed results
+    print("\n" + "=" * 60)
+    print("Detailed Results")
+    print("=" * 60)
+    print(
+        f"{'Preset':<15} {'Mean (ms)':<12} {'Std (ms)':<10} {'FPS':<8} {'Speedup':<10}"
+    )
+    print("-" * 60)
 
-    print(f"\\n=== Results ===")
-    print(f"Mean render time: {mean_time:.2f} ± {std_time:.2f} ms")
-    print(f"Min render time:  {min_time:.2f} ms")
-    print(f"Max render time:  {max_time:.2f} ms")
-    print(f"Throughput:       {1000/mean_time:.1f} FPS")
+    baseline_time = results[2]["mean_time"]  # Balanced as baseline
 
-    # Calculate pixel throughput
-    pixels_per_frame = IMAGE_RES * IMAGE_RES
-    pixels_per_second = pixels_per_frame * (1000 / mean_time)
-    megapixels_per_second = pixels_per_second / 1e6
+    for result in results:
+        speedup = baseline_time / result["mean_time"]
+        print(
+            f"{result['name']:<15} "
+            f"{result['mean_time']:>6.2f} ± {result['std_time']:<4.2f}  "
+            f"{result['fps']:>6.1f}   "
+            f"{speedup:>4.2f}x"
+        )
 
-    print(f"Pixel throughput: {megapixels_per_second:.1f} MPix/s")
+    # Print configuration details
+    print("\n" + "=" * 60)
+    print("Configuration Details")
+    print("=" * 60)
+    print(f"{'Preset':<15} {'Step Size':<12} {'Max Steps':<12} {'Samples/Ray':<12}")
+    print("-" * 60)
 
-    # Validate output
-    data_array = np.frombuffer(data, dtype=np.uint8).reshape((IMAGE_RES, IMAGE_RES, 4))
-    non_zero_pixels = np.count_nonzero(data_array.max(axis=2))
-    coverage = non_zero_pixels / (IMAGE_RES * IMAGE_RES) * 100
+    for result in results:
+        config = result["config"]
+        samples = config.estimate_samples_per_ray()
+        print(
+            f"{result['name']:<15} "
+            f"{config.step_size:<12.4f} "
+            f"{config.max_steps:<12} "
+            f"{samples:<12}"
+        )
 
-    print(f"\\n=== Quality Check ===")
-    print(f"Non-black pixels: {non_zero_pixels:,} ({coverage:.1f}% coverage)")
-    print(f"Data range: [{data_array.min()}, {data_array.max()}]")
+    # Performance recommendations
+    print("\n" + "=" * 60)
+    print("Recommendations")
+    print("=" * 60)
+    print("✓ Preview:      Use for rapid iteration and testing")
+    print("✓ Fast:         Use for interactive exploration")
+    print("✓ Balanced:     Use for general visualization (default)")
+    print("✓ High Quality: Use for final renders and screenshots")
 
-    # Performance classification
-    if mean_time < 5:
-        performance = "EXCELLENT (Real-time)"
-    elif mean_time < 15:
-        performance = "GOOD (Interactive)"
-    elif mean_time < 50:
-        performance = "ACCEPTABLE (Responsive)"
-    else:
-        performance = "SLOW (Needs optimization)"
-
-    print(f"\\n=== Performance Rating ===")
-    print(f"Classification: {performance}")
-
-    print("\\n=== Benchmark Complete ===")
-    print("PyVR v0.2.2 with RGBA transfer function textures provides")
-    print("efficient single-lookup volume rendering with excellent performance.")
+    print("\n" + "=" * 60)
+    print("Benchmark Complete")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@
 Enhanced Multi-view volume rendering example - PyVR with Advanced Camera and Light System
 
 This example demonstrates the enhanced camera and lighting system:
+- RenderConfig for quality presets (v0.2.6)
 - Camera parameter management with validation and presets (v0.2.3)
 - Camera animation and path interpolation
 - Interactive camera controller
@@ -9,14 +10,15 @@ This example demonstrates the enhanced camera and lighting system:
 - Volume data management with Volume class (v0.2.5)
 - RGBA transfer function textures for improved performance
 
-Key features (updated for v0.2.5):
-1. Modular transfer functions: pyvr.transferfunctions
-2. Enhanced camera system: pyvr.camera with Camera class (v0.2.3)
-3. Enhanced lighting system: pyvr.lighting with Light class (v0.2.4)
-4. Volume data management: pyvr.volume with Volume class (v0.2.5)
-5. Parameter validation and preset views
-6. Camera animation capabilities
-7. Single RGBA texture lookup for better performance
+Key features (updated for v0.2.6):
+1. Rendering configuration with quality presets: pyvr.config (v0.2.6)
+2. Modular transfer functions: pyvr.transferfunctions
+3. Enhanced camera system: pyvr.camera with Camera class (v0.2.3)
+4. Enhanced lighting system: pyvr.lighting with Light class (v0.2.4)
+5. Volume data management: pyvr.volume with Volume class (v0.2.5)
+6. Parameter validation and preset views
+7. Camera animation capabilities
+8. Single RGBA texture lookup for better performance
 """
 
 import time
@@ -25,24 +27,22 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from pyvr.camera import Camera, CameraController, CameraPath
+from pyvr.config import RenderConfig
 from pyvr.datasets import compute_normal_volume, create_sample_volume
 from pyvr.lighting import Light
 from pyvr.moderngl_renderer import VolumeRenderer
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
 from pyvr.volume import Volume
 
-STEP_SIZE = 1e-3
-MAX_STEPS = int(1e3)
 VOLUME_SIZE = 256
 IMAGE_RES = 224
 
 # Configure lighting (v0.2.4)
 light = Light.directional(direction=[1, -1, 0], ambient=0.0, diffuse=1.0)
 
-# Create renderer with light
-renderer = VolumeRenderer(
-    IMAGE_RES, IMAGE_RES, step_size=1 / VOLUME_SIZE, max_steps=MAX_STEPS, light=light
-)
+# Create renderer with high quality config and light (v0.2.6)
+config = RenderConfig.high_quality()
+renderer = VolumeRenderer(IMAGE_RES, IMAGE_RES, config=config, light=light)
 
 # Create Volume with data, normals, and bounds (v0.2.5)
 volume_data = create_sample_volume(VOLUME_SIZE, "double_sphere")

@@ -2,8 +2,8 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg)](http://www.wtfpl.net/about/)
-![Version](https://img.shields.io/badge/version-0.2.5-blue.svg)
-[![Tests](https://img.shields.io/badge/tests-179%20passing-brightgreen.svg)](#-testing)
+![Version](https://img.shields.io/badge/version-0.2.7-blue.svg)
+[![Tests](https://img.shields.io/badge/tests-204%20passing-brightgreen.svg)](#-testing)
 
 PyVR is a GPU-accelerated 3D volume rendering toolkit for real-time interactive visualization using OpenGL. Built with ModernGL, it provides high-performance volume rendering with a modern, modular architecture.
 
@@ -13,13 +13,14 @@ PyVR is a GPU-accelerated 3D volume rendering toolkit for real-time interactive 
 
 - **⚡ GPU-Accelerated Rendering**: Real-time OpenGL volume rendering via ModernGL at 64+ FPS
 - **🚀 High-Performance RGBA Textures**: Single-texture transfer function lookups for optimal performance
+- **⚙️ Quality Presets**: Easy performance/quality tradeoff with RenderConfig presets (fast, balanced, high_quality)
 - **🧩 Pipeline-Aligned Architecture**: Clean separation of Application, Geometry, and Fragment stages
 - **📦 Backend-Agnostic Volume Data**: Unified Volume class for data, normals, and bounds management
 - **📹 Advanced Camera System**: Matrix generation, spherical coordinates, animation paths, and presets
 - **💡 Flexible Lighting System**: Directional, point, and ambient light presets with easy configuration
 - **🎨 Sophisticated Transfer Functions**: Color and opacity mappings with matplotlib integration
 - **📊 Synthetic Datasets**: Built-in generators for testing and development
-- **✅ Comprehensive Testing**: 179 tests with 93%+ coverage
+- **✅ Comprehensive Testing**: 204 tests with 86%+ coverage
 
 ## 🚀 Quick Start
 
@@ -43,6 +44,7 @@ pip install moderngl numpy matplotlib pillow scipy
 import numpy as np
 import matplotlib.pyplot as plt
 from pyvr.moderngl_renderer import VolumeRenderer
+from pyvr.config import RenderConfig
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
 from pyvr.camera import Camera
 from pyvr.lighting import Light
@@ -71,8 +73,9 @@ camera = Camera.from_spherical(
 # Create light
 light = Light.directional(direction=[1, -1, 0], ambient=0.2, diffuse=0.8)
 
-# Create renderer
-renderer = VolumeRenderer(width=512, height=512, light=light)
+# Create renderer with high quality preset
+config = RenderConfig.high_quality()  # Or: fast(), balanced(), preview()
+renderer = VolumeRenderer(width=512, height=512, config=config, light=light)
 renderer.load_volume(volume)
 renderer.set_camera(camera)
 
@@ -102,13 +105,12 @@ pyvr/
 │   └── control.py        # Camera controllers and animation
 ├── lighting/             # Application Stage - Light configuration
 │   └── light.py          # Light class with presets
+├── config.py             # Rasterization Stage - Rendering configuration
 ├── transferfunctions/    # Application Stage - Material properties
 │   ├── color.py          # Color transfer functions
 │   └── opacity.py        # Opacity transfer functions
-├── renderer/             # Abstract renderer interface
-│   └── base.py           # Abstract VolumeRenderer base class
-├── moderngl_renderer/    # Rendering orchestration (OpenGL backend)
-│   ├── renderer.py       # ModernGL volume renderer implementation
+├── moderngl_renderer/    # OpenGL Volume Renderer
+│   ├── renderer.py       # ModernGLVolumeRenderer (main renderer)
 │   └── manager.py        # Low-level OpenGL resource management
 ├── shaders/              # Fragment Stage - Shading operations
 │   ├── volume.vert.glsl  # Vertex shader
@@ -197,6 +199,72 @@ blob = create_sample_volume(256, 'random_blob')
 
 # Compute normal vectors for lighting
 normals = compute_normal_volume(sphere)
+```
+
+## ⚙️ Rendering Configuration
+
+PyVR provides quality presets for easy performance/quality tradeoffs via the `RenderConfig` class:
+
+### Quality Presets
+
+```python
+from pyvr.config import RenderConfig
+from pyvr.moderngl_renderer import VolumeRenderer
+
+# Use a preset
+renderer = VolumeRenderer(config=RenderConfig.fast())          # Fast, interactive
+renderer = VolumeRenderer(config=RenderConfig.balanced())      # Default, good balance
+renderer = VolumeRenderer(config=RenderConfig.high_quality())  # High quality, slower
+renderer = VolumeRenderer(config=RenderConfig.preview())       # Very fast, low quality
+renderer = VolumeRenderer(config=RenderConfig.ultra_quality()) # Maximum quality, very slow
+```
+
+### Preset Comparison
+
+| Preset | Step Size | Max Steps | Est. Speed | Use Case |
+|--------|-----------|-----------|------------|----------|
+| **preview** | 0.05 | 50 | ~15x faster | Quick iteration |
+| **fast** | 0.02 | 100 | ~5x faster | Interactive exploration |
+| **balanced** | 0.01 | 500 | **1x (baseline)** | **General use (default)** |
+| **high_quality** | 0.005 | 1000 | ~5x slower | Final renders |
+| **ultra_quality** | 0.001 | 2000 | ~20x slower | Publication quality |
+
+### Custom Configuration
+
+```python
+# Create custom config
+config = RenderConfig(
+    step_size=0.015,
+    max_steps=300,
+    early_ray_termination=True,
+    opacity_threshold=0.95
+)
+renderer = VolumeRenderer(config=config)
+
+# Or modify a preset
+config = RenderConfig.balanced().with_step_size(0.008)
+config = RenderConfig.fast().with_max_steps(200)
+```
+
+### Runtime Configuration Changes
+
+```python
+# Change quality on the fly
+renderer.set_config(RenderConfig.fast())       # Switch to fast rendering
+renderer.set_config(RenderConfig.high_quality()) # Switch to high quality
+
+# Get current config
+current_config = renderer.get_config()
+print(current_config)  # Shows current settings
+```
+
+### Performance Estimation
+
+```python
+# Estimate rendering performance
+config = RenderConfig.high_quality()
+samples = config.estimate_samples_per_ray()      # ~346 samples
+relative_time = config.estimate_render_time_relative()  # ~5.0x slower than balanced
 ```
 
 ## 🎨 Transfer Functions
