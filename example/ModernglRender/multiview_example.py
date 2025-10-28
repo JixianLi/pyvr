@@ -4,6 +4,7 @@ Multi-view volume rendering example using PyVR RGBA transfer function textures
 Updated for PyVR v0.2.4:
 - Uses new Camera class (v0.2.3)
 - Uses new Light class (v0.2.4)
+- Light follows camera and always points at the data
 """
 
 import time
@@ -22,12 +23,9 @@ MAX_STEPS = int(1e3)
 VOLUME_SIZE = 256
 IMAGE_RES = 224
 
-# Configure lighting (v0.2.4)
-light = Light.directional(direction=[1, -1, 0], ambient=0.0, diffuse=1.0)
-
-# Create renderer with light
+# Create renderer (light will be set per view)
 renderer = VolumeRenderer(
-    IMAGE_RES, IMAGE_RES, step_size=1 / VOLUME_SIZE, max_steps=MAX_STEPS, light=light
+    IMAGE_RES, IMAGE_RES, step_size=1 / VOLUME_SIZE, max_steps=MAX_STEPS
 )
 
 # Load helix volume and normals
@@ -90,8 +88,9 @@ ax_tf = fig.add_subplot(gs[2, :])
 # Rendered images
 for i, params in enumerate(camera_params):
     # Create camera using Camera class (v0.2.3)
+    target = np.array([0, 0, 0], dtype=np.float32)
     camera = Camera.from_spherical(
-        target=np.array([0, 0, 0], dtype=np.float32),
+        target=target,
         distance=params["distance"],
         azimuth=params["azimuth"],
         elevation=params["elevation"],
@@ -99,6 +98,18 @@ for i, params in enumerate(camera_params):
         init_up=np.array([0, 0, 1], dtype=np.float32),
     )
     renderer.set_camera(camera)
+
+    # Create light that follows camera and points at target
+    # Get camera position
+    camera_position, _ = camera.get_camera_vectors()
+
+    # Calculate direction from camera to target
+    direction = target - camera_position
+    direction = direction / np.linalg.norm(direction)  # Normalize
+
+    # Create directional light pointing from camera toward data
+    light = Light.directional(direction=direction, ambient=0.0, diffuse=1.0)
+    renderer.set_light(light)
 
     # Set transfer functions using RGBA texture API
     renderer.set_transfer_functions(ctf, otf)
@@ -132,7 +143,7 @@ ax_tf.set_ylim(0, 1)
 ax_tf.set_xlabel("Scalar Value")
 ax_tf.set_yticks([0, 0.05, 0.1, 0.5, 1.0])
 ax_tf.set_ylabel("Opacity / Color")
-ax_tf.set_title("Transfer Functions (used for all 4 views)")
+ax_tf.set_title("Transfer Functions (Light follows camera in each view)")
 
 # Show the figure
 plt.subplots_adjust(hspace=0.3, wspace=0.2)
