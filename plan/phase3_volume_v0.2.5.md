@@ -1,51 +1,101 @@
-# Phase 3: Volume Refactoring (v0.2.5)
+# Phase 3: Volume & Renderer Architecture Refactoring (v0.2.5)
 
-> ⚠️ **BREAKING CHANGES**: This phase removes backward compatibility.
-> Pre-1.0 development prioritizes clean implementation over API stability.
-> See [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) for migration guide.
+> ⚠️ **MAJOR BREAKING CHANGES**: This phase restructures the rendering architecture.
+> Pre-1.0 development prioritizes clean architecture over API stability.
 
 ## Overview
-Extract volume data handling from `VolumeRenderer` into a dedicated `Volume` class. This encapsulates volume data, normals, bounds, and metadata into a single cohesive unit, improving the Application Stage organization.
+
+Phase 3 addresses two critical architectural issues:
+
+1. **Volume Data Encapsulation**: Extract volume handling into a dedicated `Volume` class
+2. **Renderer Backend Independence**: Separate VolumeRenderer from OpenGL-specific implementation
+
+Currently, `VolumeRenderer` lives in `moderngl_renderer/` and is tightly coupled to ModernGL/OpenGL. This violates separation of concerns - a volume renderer should be backend-agnostic, with specific backends (OpenGL, Vulkan, CPU) as implementations.
 
 **Breaking Changes**:
-- Remove `load_normal_volume()` method
-- Remove `set_volume_bounds()` method
-- `load_volume()` requires `Volume` instance (no raw numpy arrays)
-- Volume data, normals, and bounds must be in `Volume` object
+- `VolumeRenderer` moves from `pyvr.moderngl_renderer` to `pyvr.renderer`
+- `VolumeRenderer` becomes abstract base class
+- `ModernGLVolumeRenderer` is the OpenGL implementation
+- `load_volume()` requires `Volume` instance
+- Removed methods: `load_normal_volume()`, `set_volume_bounds()` (deprecated in favor of Volume)
 
 ## Goals
+
+### Volume Class (Application Stage)
 - ✅ Create `Volume` class to encapsulate volume data and metadata
 - ✅ Support volume data, normals, and bounds as a single unit
 - ✅ Add volume validation and property methods
-- ✅ Simplify VolumeRenderer volume loading interface
-- ✅ Maintain backward compatibility with existing volume API
+- ✅ Simplify volume loading interface
+
+### Renderer Architecture (Backend Independence)
+- ✅ Create abstract `VolumeRenderer` base class
+- ✅ Move `VolumeRenderer` from `moderngl_renderer/` to `renderer/`
+- ✅ Separate OpenGL-specific code into `ModernGLVolumeRenderer`
+- ✅ Define clean renderer interface independent of backend
+- ✅ Enable future backend implementations (Vulkan, CPU, etc.)
+
+## Architecture Changes
+
+### Before (v0.2.4)
+```
+pyvr/
+└── moderngl_renderer/
+    ├── renderer.py        # VolumeRenderer (OpenGL-coupled)
+    └── manager.py         # ModernGLManager
+```
+
+**Problems**:
+- VolumeRenderer tightly coupled to ModernGL
+- Cannot add non-OpenGL backends without major refactoring
+- Volume data scattered across multiple method calls
+- Backend-specific code mixed with rendering logic
+
+### After (v0.2.5)
+```
+pyvr/
+├── volume/                # NEW: Volume data management
+│   └── data.py            # Volume class (backend-agnostic)
+├── renderer/              # NEW: Abstract rendering interface
+│   ├── base.py            # VolumeRenderer base class (abstract)
+│   └── config.py          # RenderConfig (for Phase 4)
+└── moderngl_renderer/     # OpenGL-specific implementation
+    ├── renderer.py        # ModernGLVolumeRenderer (concrete)
+    └── manager.py         # ModernGLManager (unchanged)
+```
+
+**Benefits**:
+- `Volume` is backend-agnostic (CPU, GPU, any backend)
+- `VolumeRenderer` defines clean abstract interface
+- `ModernGLVolumeRenderer` implements OpenGL backend
+- Easy to add Vulkan, CPU, or other backends
+- Clear separation of concerns
 
 ## Files to Create
 
-### New Module
-- `pyvr/volume/__init__.py` - Module initialization and exports
+### New Modules
+
+#### Volume Module
+- `pyvr/volume/__init__.py` - Volume module exports
 - `pyvr/volume/data.py` - Volume class implementation
+
+#### Renderer Module (Abstract)
+- `pyvr/renderer/__init__.py` - Renderer module exports
+- `pyvr/renderer/base.py` - Abstract VolumeRenderer base class
 
 ### Files to Modify
 
-### Core Implementation
-- `pyvr/moderngl_renderer/renderer.py` - Refactor volume loading
-- `pyvr/__init__.py` - Add volume module to exports
-- `pyvr/datasets/synthetic.py` - Update to return Volume instances (optional)
+#### Core Implementation
+- `pyvr/moderngl_renderer/renderer.py` - Rename to ModernGLVolumeRenderer, inherit from base
+- `pyvr/moderngl_renderer/__init__.py` - Update exports
+- `pyvr/__init__.py` - Add volume and renderer modules
 
-### Tests
-- Create `tests/test_volume/__init__.py`
-- Create `tests/test_volume/test_volume.py` - Unit tests for Volume class
-- `tests/test_moderngl_renderer/test_volume_renderer.py` - Integration tests
+#### Tests
+- Create `tests/test_volume/test_volume.py` - Volume class tests (+12 tests)
+- Create `tests/test_renderer/test_base.py` - Abstract renderer tests (+5 tests)
+- Update `tests/test_moderngl_renderer/test_volume_renderer.py` - Update for new API
 
-### Examples
-- `example/ModernglRender/enhanced_camera_demo.py`
-- `example/ModernglRender/multiview_example.py`
-- `example/ModernglRender/rgba_demo.py`
-
-### Documentation
-- `README.md` - Add Volume class examples
-- `CLAUDE.md` - Update architecture section
+#### Examples
+- `example/ModernglRender/*.py` - Update to use Volume and new imports
 
 ## Detailed Implementation Steps
 
@@ -58,7 +108,8 @@ Extract volume data handling from `VolumeRenderer` into a dedicated `Volume` cla
 Volume data management for PyVR.
 
 This module provides the Volume class for encapsulating 3D volume data,
-normal volumes, and spatial metadata.
+normal volumes, and spatial metadata. Volume is backend-agnostic and can
+be used with any renderer implementation.
 """
 
 from dataclasses import dataclass, field
@@ -72,15 +123,15 @@ class Volume:
     """
     Encapsulates 3D volume data and associated metadata.
 
-    This class manages volume data, optional normal vectors, spatial bounds,
-    and provides utilities for volume manipulation and validation.
+    Volume is backend-agnostic - it stores data that can be rendered
+    by any backend (OpenGL, Vulkan, CPU, etc.).
 
     Attributes:
-        data: 3D numpy array with shape (D, H, W) containing volume data
-        normals: Optional 3D normal vectors with shape (D, H, W, 3)
-        min_bounds: Minimum corner of volume bounding box in world space
-        max_bounds: Maximum corner of volume bounding box in world space
-        name: Optional descriptive name for the volume
+        data: 3D numpy array (D, H, W) containing volume data
+        normals: Optional 3D normal vectors (D, H, W, 3)
+        min_bounds: Minimum corner of bounding box in world space
+        max_bounds: Maximum corner of bounding box in world space
+        name: Optional descriptive name
     """
 
     data: np.ndarray
@@ -99,21 +150,17 @@ class Volume:
 
     def validate(self) -> None:
         """
-        Validate volume data and metadata.
+        Validate all volume data and metadata.
 
         Raises:
             ValueError: If volume data or parameters are invalid
         """
-        # Validate data shape
         if not isinstance(self.data, np.ndarray):
             raise ValueError("Volume data must be a numpy array")
 
         if len(self.data.shape) != 3:
-            raise ValueError(
-                f"Volume data must be 3D, got shape {self.data.shape}"
-            )
+            raise ValueError(f"Volume data must be 3D, got shape {self.data.shape}")
 
-        # Validate normals if present
         if self.normals is not None:
             if not isinstance(self.normals, np.ndarray):
                 raise ValueError("Normal volume must be a numpy array")
@@ -125,7 +172,6 @@ class Volume:
                     f"got {self.normals.shape}"
                 )
 
-        # Validate bounds
         if not isinstance(self.min_bounds, np.ndarray) or self.min_bounds.shape != (3,):
             raise ValueError("min_bounds must be a 3D numpy array")
 
@@ -133,93 +179,31 @@ class Volume:
             raise ValueError("max_bounds must be a 3D numpy array")
 
         if np.any(self.max_bounds <= self.min_bounds):
-            raise ValueError("max_bounds must be greater than min_bounds in all dimensions")
+            raise ValueError("max_bounds must be greater than min_bounds")
 
     @property
     def shape(self) -> Tuple[int, int, int]:
-        """
-        Get volume dimensions.
-
-        Returns:
-            Tuple of (depth, height, width) as integers
-
-        Example:
-            >>> volume = Volume(data=np.zeros((64, 64, 64)))
-            >>> volume.shape
-            (64, 64, 64)
-        """
+        """Get volume dimensions (D, H, W)."""
         return self.data.shape
 
     @property
     def dimensions(self) -> np.ndarray:
-        """
-        Get physical dimensions of volume bounding box.
-
-        Returns:
-            3D array of (width, height, depth) in world space units
-
-        Example:
-            >>> volume = Volume(
-            ...     data=np.zeros((64, 64, 64)),
-            ...     min_bounds=np.array([0, 0, 0]),
-            ...     max_bounds=np.array([2, 2, 2])
-            ... )
-            >>> volume.dimensions
-            array([2., 2., 2.])
-        """
+        """Get physical dimensions of bounding box."""
         return self.max_bounds - self.min_bounds
 
     @property
     def center(self) -> np.ndarray:
-        """
-        Get center point of volume bounding box.
-
-        Returns:
-            3D array of center coordinates in world space
-
-        Example:
-            >>> volume = Volume(
-            ...     data=np.zeros((64, 64, 64)),
-            ...     min_bounds=np.array([-1, -1, -1]),
-            ...     max_bounds=np.array([1, 1, 1])
-            ... )
-            >>> volume.center
-            array([0., 0., 0.])
-        """
+        """Get center point of bounding box."""
         return (self.min_bounds + self.max_bounds) / 2.0
 
     @property
     def has_normals(self) -> bool:
-        """
-        Check if volume has normal data.
-
-        Returns:
-            True if normals are present, False otherwise
-
-        Example:
-            >>> volume = Volume(data=np.zeros((64, 64, 64)))
-            >>> volume.has_normals
-            False
-        """
+        """Check if volume has normal data."""
         return self.normals is not None
 
     @property
     def voxel_spacing(self) -> np.ndarray:
-        """
-        Get spacing between voxels in world space.
-
-        Returns:
-            3D array of voxel spacing (dx, dy, dz)
-
-        Example:
-            >>> volume = Volume(
-            ...     data=np.zeros((100, 100, 100)),
-            ...     min_bounds=np.array([0, 0, 0]),
-            ...     max_bounds=np.array([1, 1, 1])
-            ... )
-            >>> volume.voxel_spacing
-            array([0.01, 0.01, 0.01])
-        """
+        """Get spacing between voxels in world space."""
         return self.dimensions / np.array(self.shape, dtype=np.float32)
 
     def compute_normals(self, method: str = "gradient") -> None:
@@ -227,96 +211,40 @@ class Volume:
         Compute normal vectors from volume data.
 
         Args:
-            method: Method to use for normal computation (default: "gradient")
-                   Currently only "gradient" is supported.
-
-        Raises:
-            ValueError: If method is not supported
-
-        Example:
-            >>> volume = Volume(data=create_sample_volume(64, 'sphere'))
-            >>> volume.compute_normals()
-            >>> volume.has_normals
-            True
+            method: Computation method (default: "gradient")
         """
         if method != "gradient":
-            raise ValueError(f"Unsupported normal computation method: {method}")
+            raise ValueError(f"Unsupported method: {method}")
 
         from ..datasets.synthetic import compute_normal_volume
 
         self.normals = compute_normal_volume(self.data)
 
-    def set_bounds(
-        self,
-        min_bounds: Tuple[float, float, float],
-        max_bounds: Tuple[float, float, float],
-    ) -> None:
-        """
-        Set volume bounding box.
-
-        Args:
-            min_bounds: Minimum corner (x_min, y_min, z_min)
-            max_bounds: Maximum corner (x_max, y_max, z_max)
-
-        Raises:
-            ValueError: If bounds are invalid
-
-        Example:
-            >>> volume = Volume(data=np.zeros((64, 64, 64)))
-            >>> volume.set_bounds((-1, -1, -1), (1, 1, 1))
-        """
-        self.min_bounds = np.array(min_bounds, dtype=np.float32)
-        self.max_bounds = np.array(max_bounds, dtype=np.float32)
-        self.validate()
-
-    def set_bounds_centered(self, size: float) -> None:
-        """
-        Set bounds as a cube centered at origin.
-
-        Args:
-            size: Side length of the cube
-
-        Example:
-            >>> volume = Volume(data=np.zeros((64, 64, 64)))
-            >>> volume.set_bounds_centered(2.0)  # [-1, -1, -1] to [1, 1, 1]
-        """
-        half_size = size / 2.0
-        self.min_bounds = np.array([-half_size] * 3, dtype=np.float32)
-        self.max_bounds = np.array([half_size] * 3, dtype=np.float32)
-
     def normalize(self, method: str = "minmax") -> "Volume":
         """
-        Create a new volume with normalized data.
+        Create normalized volume.
 
         Args:
             method: Normalization method ("minmax" or "zscore")
 
         Returns:
-            New Volume instance with normalized data
-
-        Example:
-            >>> volume = Volume(data=np.random.rand(64, 64, 64) * 100)
-            >>> normalized = volume.normalize()
-            >>> normalized.data.min(), normalized.data.max()
-            (0.0, 1.0)
+            New Volume with normalized data
         """
         if method == "minmax":
-            data_min = self.data.min()
-            data_max = self.data.max()
+            data_min, data_max = self.data.min(), self.data.max()
             if data_max - data_min < 1e-9:
                 normalized_data = np.zeros_like(self.data)
             else:
                 normalized_data = (self.data - data_min) / (data_max - data_min)
 
         elif method == "zscore":
-            mean = self.data.mean()
-            std = self.data.std()
+            mean, std = self.data.mean(), self.data.std()
             if std < 1e-9:
                 normalized_data = np.zeros_like(self.data)
             else:
                 normalized_data = (self.data - mean) / std
         else:
-            raise ValueError(f"Unsupported normalization method: {method}")
+            raise ValueError(f"Unsupported method: {method}")
 
         return Volume(
             data=normalized_data.astype(np.float32),
@@ -327,17 +255,7 @@ class Volume:
         )
 
     def copy(self) -> "Volume":
-        """
-        Create a deep copy of this volume.
-
-        Returns:
-            New Volume instance with copied data
-
-        Example:
-            >>> original = Volume(data=np.zeros((64, 64, 64)))
-            >>> copy = original.copy()
-            >>> copy.data[0, 0, 0] = 1.0  # Doesn't affect original
-        """
+        """Create deep copy of volume."""
         return Volume(
             data=self.data.copy(),
             normals=self.normals.copy() if self.normals is not None else None,
@@ -347,71 +265,273 @@ class Volume:
         )
 
     def __repr__(self) -> str:
-        """String representation of volume."""
+        """String representation."""
         name_str = f"'{self.name}'" if self.name else "unnamed"
         normals_str = "with normals" if self.has_normals else "no normals"
         return (
-            f"Volume({name_str}, "
-            f"shape={self.shape}, "
-            f"bounds=[{self.min_bounds}, {self.max_bounds}], "
-            f"{normals_str})"
+            f"Volume({name_str}, shape={self.shape}, "
+            f"bounds=[{self.min_bounds}, {self.max_bounds}], {normals_str})"
         )
 
 
 class VolumeError(Exception):
     """Exception raised for volume data errors."""
-
     pass
 ```
 
 #### 1.2 Create `pyvr/volume/__init__.py`
 
 ```python
-"""
-Volume data management for PyVR.
-
-Provides the Volume class for encapsulating 3D volume data and metadata.
-"""
+"""Volume data management for PyVR."""
 
 from .data import Volume, VolumeError
 
-__all__ = [
-    "Volume",
-    "VolumeError",
-]
+__all__ = ["Volume", "VolumeError"]
 ```
 
-### Step 2: Update VolumeRenderer
+### Step 2: Create Abstract Renderer Interface
 
-#### 2.1 Refactor `load_volume()` and related methods
-
-In `pyvr/moderngl_renderer/renderer.py`:
+#### 2.1 Create `pyvr/renderer/base.py`
 
 ```python
-def load_volume(self, volume):
+"""
+Abstract volume renderer interface for PyVR.
+
+This module defines the VolumeRenderer base class that all backend
+implementations must inherit from. This allows PyVR to support multiple
+rendering backends (OpenGL, Vulkan, CPU, etc.) with a consistent API.
+"""
+
+from abc import ABC, abstractmethod
+from typing import Optional
+
+from ..camera import Camera
+from ..lighting import Light
+from ..transferfunctions import ColorTransferFunction, OpacityTransferFunction
+from ..volume import Volume
+
+
+class VolumeRenderer(ABC):
     """
-    Load volume data into the renderer.
+    Abstract base class for volume renderers.
 
-    Supports two interfaces:
-    1. New interface: Pass a Volume instance
-    2. Legacy interface: Pass raw numpy array
+    All backend implementations (OpenGL, Vulkan, CPU, etc.) must inherit
+    from this class and implement the abstract methods.
 
-    Args:
-        volume: Volume instance or 3D numpy array (legacy)
-
-    Example:
-        # New interface (recommended)
-        >>> from pyvr.volume import Volume
-        >>> volume = Volume(data=volume_data, normals=normal_data)
-        >>> renderer.load_volume(volume)
-
-        # Legacy interface (backward compatibility)
-        >>> renderer.load_volume(volume_data)  # 3D numpy array
+    This design enables:
+    - Multiple rendering backends with consistent API
+    - Backend-agnostic application code
+    - Easy testing with mock renderers
+    - Future extensibility
     """
-    from ..volume import Volume
 
-    if isinstance(volume, Volume):
-        # New interface: Volume instance
+    def __init__(self, width: int = 512, height: int = 512):
+        """
+        Initialize base renderer.
+
+        Args:
+            width: Rendering viewport width
+            height: Rendering viewport height
+        """
+        self.width = width
+        self.height = height
+        self.volume: Optional[Volume] = None
+        self.camera: Optional[Camera] = None
+        self.light: Optional[Light] = None
+
+    @abstractmethod
+    def load_volume(self, volume: Volume) -> None:
+        """
+        Load volume data into the renderer.
+
+        Args:
+            volume: Volume instance with data and metadata
+
+        Raises:
+            TypeError: If volume is not a Volume instance
+        """
+        pass
+
+    @abstractmethod
+    def set_camera(self, camera: Camera) -> None:
+        """
+        Set camera configuration.
+
+        Args:
+            camera: Camera instance with position and projection parameters
+
+        Raises:
+            TypeError: If camera is not a Camera instance
+        """
+        pass
+
+    @abstractmethod
+    def set_light(self, light: Light) -> None:
+        """
+        Set lighting configuration.
+
+        Args:
+            light: Light instance with lighting parameters
+
+        Raises:
+            TypeError: If light is not a Light instance
+        """
+        pass
+
+    @abstractmethod
+    def set_transfer_functions(
+        self,
+        color_transfer_function: ColorTransferFunction,
+        opacity_transfer_function: OpacityTransferFunction,
+    ) -> None:
+        """
+        Set transfer functions for volume rendering.
+
+        Args:
+            color_transfer_function: Color transfer function
+            opacity_transfer_function: Opacity transfer function
+        """
+        pass
+
+    @abstractmethod
+    def render(self) -> bytes:
+        """
+        Render the volume and return raw pixel data.
+
+        Returns:
+            Raw RGBA pixel data as bytes
+
+        Raises:
+            RuntimeError: If renderer is not properly configured
+        """
+        pass
+
+    def get_volume(self) -> Optional[Volume]:
+        """Get current volume."""
+        return self.volume
+
+    def get_camera(self) -> Optional[Camera]:
+        """Get current camera."""
+        return self.camera
+
+    def get_light(self) -> Optional[Light]:
+        """Get current light."""
+        return self.light
+
+
+class RendererError(Exception):
+    """Exception raised for renderer errors."""
+    pass
+```
+
+#### 2.2 Create `pyvr/renderer/__init__.py`
+
+```python
+"""Abstract volume renderer interface for PyVR."""
+
+from .base import RendererError, VolumeRenderer
+
+__all__ = ["VolumeRenderer", "RendererError"]
+```
+
+### Step 3: Refactor ModernGLVolumeRenderer
+
+#### 3.1 Update `pyvr/moderngl_renderer/renderer.py`
+
+Rename class and inherit from abstract base:
+
+```python
+"""
+ModernGL-based volume renderer implementation.
+
+This module provides the OpenGL/ModernGL backend implementation
+of the abstract VolumeRenderer interface.
+"""
+
+import os
+
+from PIL import Image
+
+from ..renderer.base import VolumeRenderer as VolumeRendererBase
+from ..camera import Camera
+from ..lighting import Light
+from ..transferfunctions import ColorTransferFunction, OpacityTransferFunction
+from ..volume import Volume
+from .manager import ModernGLManager
+
+
+class ModernGLVolumeRenderer(VolumeRendererBase):
+    """
+    ModernGL/OpenGL implementation of VolumeRenderer.
+
+    This is the concrete implementation using ModernGL for GPU-accelerated
+    volume rendering. It implements all abstract methods from VolumeRendererBase.
+    """
+
+    def __init__(
+        self,
+        width=512,
+        height=512,
+        step_size=0.01,
+        max_steps=200,
+        light=None,
+    ):
+        """
+        Initialize ModernGL volume renderer.
+
+        Args:
+            width: Viewport width
+            height: Viewport height
+            step_size: Ray marching step size
+            max_steps: Maximum ray marching steps
+            light: Light instance (creates default if None)
+        """
+        super().__init__(width, height)
+
+        self.step_size = step_size
+        self.max_steps = max_steps
+
+        # Initialize light
+        if light is None:
+            from ..lighting import Light
+            self.light = Light.default()
+        else:
+            if not isinstance(light, Light):
+                raise TypeError(f"Expected Light instance, got {type(light)}")
+            self.light = light
+
+        # Create ModernGL manager
+        self.gl_manager = ModernGLManager(width, height)
+
+        # Load shaders
+        pyvr_dir = os.path.dirname(os.path.dirname(__file__))
+        shader_dir = os.path.join(pyvr_dir, "shaders")
+        vertex_shader_path = os.path.join(shader_dir, "volume.vert.glsl")
+        fragment_shader_path = os.path.join(shader_dir, "volume.frag.glsl")
+        self.gl_manager.load_shaders(vertex_shader_path, fragment_shader_path)
+
+        # Set default uniforms
+        self.gl_manager.set_uniform_float("step_size", self.step_size)
+        self.gl_manager.set_uniform_int("max_steps", self.max_steps)
+        self.gl_manager.set_uniform_vector("volume_min_bounds", (-0.5, -0.5, -0.5))
+        self.gl_manager.set_uniform_vector("volume_max_bounds", (0.5, 0.5, 0.5))
+
+        # Set light uniforms
+        self._update_light()
+
+    def load_volume(self, volume: Volume) -> None:
+        """
+        Load volume data into renderer.
+
+        Args:
+            volume: Volume instance with data and metadata
+
+        Raises:
+            TypeError: If volume is not a Volume instance
+        """
+        if not isinstance(volume, Volume):
+            raise TypeError(f"Expected Volume instance, got {type(volume)}")
+
         self.volume = volume
 
         # Load volume data texture
@@ -427,182 +547,133 @@ def load_volume(self, volume):
             normal_unit = self.gl_manager.create_normal_texture(volume.normals)
             self.gl_manager.set_uniform_int("normal_volume", normal_unit)
 
-    else:
-        # Legacy interface: raw numpy array
-        import warnings
-        warnings.warn(
-            "Passing raw numpy array to load_volume() is deprecated. "
-            "Use Volume instance instead.",
-            DeprecationWarning,
-            stacklevel=2
+    def set_camera(self, camera: Camera) -> None:
+        """
+        Set camera configuration.
+
+        Args:
+            camera: Camera instance
+
+        Raises:
+            TypeError: If camera is not a Camera instance
+        """
+        if not isinstance(camera, Camera):
+            raise TypeError(f"Expected Camera instance, got {type(camera)}")
+
+        self.camera = camera
+
+        # Get matrices from camera
+        aspect = self.width / self.height
+        view_matrix = camera.get_view_matrix()
+        projection_matrix = camera.get_projection_matrix(aspect)
+        position, _ = camera.get_camera_vectors()
+
+        # Set uniforms
+        self.gl_manager.set_uniform_matrix("view_matrix", view_matrix)
+        self.gl_manager.set_uniform_matrix("projection_matrix", projection_matrix)
+        self.gl_manager.set_uniform_vector("camera_pos", tuple(position))
+
+    def set_light(self, light: Light) -> None:
+        """
+        Set lighting configuration.
+
+        Args:
+            light: Light instance
+
+        Raises:
+            TypeError: If light is not a Light instance
+        """
+        if not isinstance(light, Light):
+            raise TypeError(f"Expected Light instance, got {type(light)}")
+
+        self.light = light
+        self._update_light()
+
+    def set_transfer_functions(
+        self,
+        color_transfer_function: ColorTransferFunction,
+        opacity_transfer_function: OpacityTransferFunction,
+        size=None,
+    ) -> None:
+        """
+        Set transfer functions.
+
+        Args:
+            color_transfer_function: Color transfer function
+            opacity_transfer_function: Opacity transfer function
+            size: Optional LUT size override
+        """
+        rgba_tex_unit = self.gl_manager.create_rgba_transfer_function_texture(
+            color_transfer_function, opacity_transfer_function, size
         )
+        self.gl_manager.set_uniform_int("transfer_function_lut", rgba_tex_unit)
 
-        # Validate data
-        if len(volume.shape) != 3:
-            raise ValueError("Volume data must be 3D")
+    def render(self) -> bytes:
+        """
+        Render volume and return raw pixel data.
 
-        # Create temporary Volume instance
-        self.volume = Volume(data=volume)
+        Returns:
+            Raw RGBA pixel data as bytes
+        """
+        self.gl_manager.clear_framebuffer(0.0, 0.0, 0.0, 0.0)
+        self.gl_manager.setup_blending()
+        self.gl_manager.render_quad()
+        return self.gl_manager.read_pixels()
 
-        # Load texture
-        texture_unit = self.gl_manager.create_volume_texture(volume)
-        self.gl_manager.set_uniform_int("volume_texture", texture_unit)
+    def render_to_pil(self, data=None):
+        """Render and return as PIL Image."""
+        if data is None:
+            data = self.render()
+
+        image = Image.frombytes("RGBA", (self.width, self.height), data)
+        return image.transpose(Image.FLIP_TOP_BOTTOM)
+
+    def set_step_size(self, step_size):
+        """Set ray marching step size."""
+        self.step_size = step_size
+        self.gl_manager.set_uniform_float("step_size", step_size)
+
+    def set_max_steps(self, max_steps):
+        """Set maximum ray marching steps."""
+        self.max_steps = max_steps
+        self.gl_manager.set_uniform_int("max_steps", max_steps)
+
+    def _update_light(self):
+        """Update OpenGL uniforms from light configuration."""
+        self.gl_manager.set_uniform_float("ambient_light", self.light.ambient_intensity)
+        self.gl_manager.set_uniform_float("diffuse_light", self.light.diffuse_intensity)
+        self.gl_manager.set_uniform_vector("light_position", tuple(self.light.position))
+        self.gl_manager.set_uniform_vector("light_target", tuple(self.light.target))
+
+
+# For backward compatibility
+VolumeRenderer = ModernGLVolumeRenderer
 ```
 
-#### 2.2 Update `load_normal_volume()` (keep for compatibility)
+#### 3.2 Update `pyvr/moderngl_renderer/__init__.py`
 
 ```python
-def load_normal_volume(self, normal_volume):
-    """
-    Load 3D normal data into a texture.
+"""ModernGL-based volume renderer implementation."""
 
-    .. deprecated:: 0.2.5
-        Include normals in Volume instance instead.
+from ..camera.control import CameraController
+from ..camera.parameters import Camera
+from ..datasets import compute_normal_volume, create_sample_volume
+from ..transferfunctions.color import ColorTransferFunction
+from ..transferfunctions.opacity import OpacityTransferFunction
+from .manager import ModernGLManager
+from .renderer import ModernGLVolumeRenderer, VolumeRenderer  # VolumeRenderer is alias
 
-    Args:
-        normal_volume: 4D array with shape (D, H, W, 3)
-
-    Example:
-        >>> # Old way (deprecated)
-        >>> renderer.load_normal_volume(normals)
-        >>>
-        >>> # New way (recommended)
-        >>> volume = Volume(data=volume_data, normals=normals)
-        >>> renderer.load_volume(volume)
-    """
-    import warnings
-    warnings.warn(
-        "load_normal_volume() is deprecated. Include normals in Volume instance.",
-        DeprecationWarning,
-        stacklevel=2
-    )
-
-    if normal_volume.shape[-1] != 3:
-        raise ValueError("Normal volume must have 3 channels (last dimension).")
-
-    # Create normal texture
-    texture_unit = self.gl_manager.create_normal_texture(normal_volume)
-    self.gl_manager.set_uniform_int("normal_volume", texture_unit)
-
-    # Update volume's normals if volume exists
-    if hasattr(self, 'volume') and self.volume is not None:
-        self.volume.normals = normal_volume
-```
-
-#### 2.3 Update `set_volume_bounds()` (keep for compatibility)
-
-```python
-def set_volume_bounds(
-    self, min_bounds=(-0.5, -0.5, -0.5), max_bounds=(0.5, 0.5, 0.5)
-):
-    """
-    Set the world space bounding box for the volume.
-
-    .. deprecated:: 0.2.5
-        Set bounds on Volume instance instead.
-
-    Args:
-        min_bounds: Minimum corner of bounding box
-        max_bounds: Maximum corner of bounding box
-
-    Example:
-        >>> # Old way (deprecated)
-        >>> renderer.set_volume_bounds((-1, -1, -1), (1, 1, 1))
-        >>>
-        >>> # New way (recommended)
-        >>> volume = Volume(data=volume_data)
-        >>> volume.set_bounds((-1, -1, -1), (1, 1, 1))
-        >>> renderer.load_volume(volume)
-    """
-    import warnings
-    warnings.warn(
-        "set_volume_bounds() is deprecated. Set bounds on Volume instance.",
-        DeprecationWarning,
-        stacklevel=2
-    )
-
-    self.gl_manager.set_uniform_vector("volume_min_bounds", tuple(min_bounds))
-    self.gl_manager.set_uniform_vector("volume_max_bounds", tuple(max_bounds))
-
-    # Update volume bounds if volume exists
-    if hasattr(self, 'volume') and self.volume is not None:
-        self.volume.min_bounds = np.array(min_bounds, dtype=np.float32)
-        self.volume.max_bounds = np.array(max_bounds, dtype=np.float32)
-```
-
-#### 2.4 Add `get_volume()` helper method
-
-```python
-def get_volume(self):
-    """
-    Get current volume instance.
-
-    Returns:
-        Volume: Current volume or None if not loaded
-
-    Example:
-        >>> renderer = VolumeRenderer()
-        >>> volume = renderer.get_volume()
-    """
-    if hasattr(self, 'volume'):
-        return self.volume
-    return None
-```
-
-### Step 3: Update Dataset Utilities (Optional)
-
-#### 3.1 Add Volume wrapper functions to `pyvr/datasets/synthetic.py`
-
-```python
-def create_sample_volume_object(
-    size: int = 256,
-    volume_type: str = "sphere",
-    with_normals: bool = False,
-    bounds: Optional[Tuple[Tuple[float, float, float], Tuple[float, float, float]]] = None,
-) -> "Volume":
-    """
-    Create a sample volume as a Volume object (recommended interface).
-
-    Args:
-        size: Volume dimensions (cube)
-        volume_type: Type of volume to generate
-        with_normals: Whether to compute normal vectors
-        bounds: Optional (min_bounds, max_bounds) tuple
-
-    Returns:
-        Volume instance with sample data
-
-    Example:
-        >>> from pyvr.datasets import create_sample_volume_object
-        >>> volume = create_sample_volume_object(128, 'sphere', with_normals=True)
-        >>> print(volume)
-    """
-    from ..volume import Volume
-
-    # Generate volume data using existing function
-    data = create_sample_volume(size, volume_type)
-
-    # Set bounds
-    if bounds is None:
-        min_bounds = np.array([-0.5, -0.5, -0.5], dtype=np.float32)
-        max_bounds = np.array([0.5, 0.5, 0.5], dtype=np.float32)
-    else:
-        min_bounds = np.array(bounds[0], dtype=np.float32)
-        max_bounds = np.array(bounds[1], dtype=np.float32)
-
-    # Create volume
-    volume = Volume(
-        data=data,
-        min_bounds=min_bounds,
-        max_bounds=max_bounds,
-        name=f"{volume_type}_{size}",
-    )
-
-    # Compute normals if requested
-    if with_normals:
-        volume.compute_normals()
-
-    return volume
+__all__ = [
+    "ModernGLVolumeRenderer",
+    "VolumeRenderer",  # For backward compatibility
+    "ModernGLManager",
+    "CameraController",
+    "Camera",
+    "ColorTransferFunction",
+    "OpacityTransferFunction",
+    "create_sample_volume",
+    "compute_normal_volume",
+]
 ```
 
 ### Step 4: Update Package Exports
@@ -612,11 +683,10 @@ def create_sample_volume_object(
 ```python
 """PyVR: Python Volume Rendering Toolkit
 
-PyVR provides GPU-accelerated 3D volume rendering using OpenGL/ModernGL
-for real-time interactive visualization.
+GPU-accelerated 3D volume rendering with backend-agnostic architecture.
 """
 
-from . import camera, datasets, lighting, moderngl_renderer, transferfunctions, volume
+from . import camera, datasets, lighting, moderngl_renderer, renderer, transferfunctions, volume
 
 __version__ = "0.2.5"
 __all__ = [
@@ -624,6 +694,7 @@ __all__ = [
     "datasets",
     "lighting",
     "moderngl_renderer",
+    "renderer",
     "transferfunctions",
     "volume",
 ]
@@ -631,336 +702,114 @@ __all__ = [
 
 ## Testing Requirements
 
-### Unit Tests for Volume Class
-
-Create `tests/test_volume/test_volume.py`:
-
-```python
-"""Tests for Volume class."""
-import numpy as np
-import pytest
-
-from pyvr.volume import Volume, VolumeError
-
-
-class TestVolumeCreation:
-    """Test Volume class instantiation."""
-
-    def test_basic_volume(self):
-        """Volume should accept 3D data."""
-        data = np.zeros((64, 64, 64), dtype=np.float32)
-        volume = Volume(data=data)
-
-        assert volume.shape == (64, 64, 64)
-        assert volume.has_normals is False
-
-    def test_volume_with_normals(self):
-        """Volume should accept normals."""
-        data = np.zeros((64, 64, 64), dtype=np.float32)
-        normals = np.zeros((64, 64, 64, 3), dtype=np.float32)
-        volume = Volume(data=data, normals=normals)
-
-        assert volume.has_normals is True
-
-    def test_volume_with_custom_bounds(self):
-        """Volume should accept custom bounds."""
-        data = np.zeros((64, 64, 64))
-        volume = Volume(
-            data=data,
-            min_bounds=np.array([-1, -1, -1]),
-            max_bounds=np.array([1, 1, 1]),
-        )
-
-        assert np.allclose(volume.min_bounds, [-1, -1, -1])
-        assert np.allclose(volume.max_bounds, [1, 1, 1])
-
-    def test_volume_with_name(self):
-        """Volume should accept optional name."""
-        data = np.zeros((64, 64, 64))
-        volume = Volume(data=data, name="test_volume")
-
-        assert volume.name == "test_volume"
-
-
-class TestVolumeValidation:
-    """Test Volume validation."""
-
-    def test_invalid_data_shape(self):
-        """Non-3D data should raise error."""
-        with pytest.raises(ValueError, match="3D"):
-            Volume(data=np.zeros((64, 64)))  # 2D
-
-    def test_invalid_normal_shape(self):
-        """Invalid normal shape should raise error."""
-        data = np.zeros((64, 64, 64))
-        normals = np.zeros((64, 64, 64))  # Missing channel dimension
-
-        with pytest.raises(ValueError, match="shape"):
-            Volume(data=data, normals=normals)
-
-    def test_invalid_bounds(self):
-        """Invalid bounds should raise error."""
-        data = np.zeros((64, 64, 64))
-
-        with pytest.raises(ValueError):
-            Volume(
-                data=data,
-                min_bounds=np.array([1, 1, 1]),
-                max_bounds=np.array([-1, -1, -1]),  # max < min
-            )
-
-
-class TestVolumeProperties:
-    """Test Volume property methods."""
-
-    def test_shape_property(self):
-        """shape should return data dimensions."""
-        data = np.zeros((100, 50, 75))
-        volume = Volume(data=data)
-
-        assert volume.shape == (100, 50, 75)
-
-    def test_dimensions_property(self):
-        """dimensions should return physical size."""
-        data = np.zeros((64, 64, 64))
-        volume = Volume(
-            data=data,
-            min_bounds=np.array([0, 0, 0]),
-            max_bounds=np.array([2, 3, 4]),
-        )
-
-        expected = np.array([2, 3, 4])
-        assert np.allclose(volume.dimensions, expected)
-
-    def test_center_property(self):
-        """center should return bounding box center."""
-        data = np.zeros((64, 64, 64))
-        volume = Volume(
-            data=data,
-            min_bounds=np.array([-1, -2, -3]),
-            max_bounds=np.array([1, 2, 3]),
-        )
-
-        expected = np.array([0, 0, 0])
-        assert np.allclose(volume.center, expected)
-
-    def test_voxel_spacing(self):
-        """voxel_spacing should calculate spacing correctly."""
-        data = np.zeros((100, 100, 100))
-        volume = Volume(
-            data=data,
-            min_bounds=np.array([0, 0, 0]),
-            max_bounds=np.array([1, 1, 1]),
-        )
-
-        expected = np.array([0.01, 0.01, 0.01])
-        assert np.allclose(volume.voxel_spacing, expected)
-
-
-class TestVolumeMethods:
-    """Test Volume methods."""
-
-    def test_set_bounds(self):
-        """set_bounds should update bounds."""
-        data = np.zeros((64, 64, 64))
-        volume = Volume(data=data)
-
-        volume.set_bounds((-2, -2, -2), (2, 2, 2))
-
-        assert np.allclose(volume.min_bounds, [-2, -2, -2])
-        assert np.allclose(volume.max_bounds, [2, 2, 2])
-
-    def test_set_bounds_centered(self):
-        """set_bounds_centered should create centered cube."""
-        data = np.zeros((64, 64, 64))
-        volume = Volume(data=data)
-
-        volume.set_bounds_centered(4.0)
-
-        assert np.allclose(volume.min_bounds, [-2, -2, -2])
-        assert np.allclose(volume.max_bounds, [2, 2, 2])
-
-    def test_compute_normals(self):
-        """compute_normals should generate normal data."""
-        data = np.random.rand(32, 32, 32).astype(np.float32)
-        volume = Volume(data=data)
-
-        assert not volume.has_normals
-
-        volume.compute_normals()
-
-        assert volume.has_normals
-        assert volume.normals.shape == (32, 32, 32, 3)
-
-    def test_normalize_minmax(self):
-        """normalize with minmax should scale to [0, 1]."""
-        data = np.random.rand(32, 32, 32) * 100
-        volume = Volume(data=data)
-
-        normalized = volume.normalize(method="minmax")
-
-        assert normalized.data.min() >= 0.0
-        assert normalized.data.max() <= 1.0
-
-    def test_copy(self):
-        """copy should create independent instance."""
-        data = np.zeros((32, 32, 32))
-        original = Volume(data=data, name="original")
-        copy = original.copy()
-
-        # Modify copy
-        copy.data[0, 0, 0] = 1.0
-        copy.name = "copy"
-
-        # Original should be unchanged
-        assert original.data[0, 0, 0] == 0.0
-        assert original.name == "original"
-
-    def test_repr(self):
-        """__repr__ should return informative string."""
-        data = np.zeros((64, 64, 64))
-        volume = Volume(data=data, name="test")
-
-        repr_str = repr(volume)
-
-        assert "Volume" in repr_str
-        assert "test" in repr_str
-        assert "64" in repr_str
-```
-
-### Integration Tests
-
-Add to `tests/test_moderngl_renderer/test_volume_renderer.py`:
-
-```python
-def test_load_volume_with_volume_object(mock_moderngl_context):
-    """load_volume should accept Volume instance."""
-    from pyvr.volume import Volume
-    from pyvr.moderngl_renderer import VolumeRenderer
-
-    data = np.random.rand(32, 32, 32).astype(np.float32)
-    volume = Volume(data=data)
-
-    renderer = VolumeRenderer(width=256, height=256)
-    renderer.load_volume(volume)
-
-    assert renderer.get_volume() is volume
-
-
-def test_load_volume_legacy_array(mock_moderngl_context):
-    """load_volume should accept raw array with deprecation warning."""
-    from pyvr.moderngl_renderer import VolumeRenderer
-
-    data = np.random.rand(32, 32, 32).astype(np.float32)
-
-    renderer = VolumeRenderer(width=256, height=256)
-
-    with pytest.warns(DeprecationWarning):
-        renderer.load_volume(data)
-
-
-def test_load_volume_with_normals(mock_moderngl_context):
-    """load_volume should handle normals in Volume."""
-    from pyvr.volume import Volume
-    from pyvr.moderngl_renderer import VolumeRenderer
-
-    data = np.random.rand(32, 32, 32).astype(np.float32)
-    normals = np.random.rand(32, 32, 32, 3).astype(np.float32)
-    volume = Volume(data=data, normals=normals)
-
-    renderer = VolumeRenderer(width=256, height=256)
-    renderer.load_volume(volume)
-
-    assert renderer.get_volume().has_normals
-```
-
-## Validation Steps
-
-### Pre-merge Checklist
-
-- [ ] All existing tests pass (151 tests from Phase 2)
-- [ ] New volume unit tests pass (+10 tests)
-- [ ] Integration tests pass
-- [ ] Deprecation warnings work correctly
-- [ ] Examples updated and run successfully
-- [ ] Documentation updated
-- [ ] No performance regression
-
-### Manual Validation
-
-```bash
-# Run full test suite
-pytest tests/ -v
-
-# Run only volume tests
-pytest tests/test_volume/ -v
-
-# Run with coverage
-pytest --cov=pyvr.volume --cov-report=term-missing tests/test_volume/
-
-# Test examples
-python example/ModernglRender/multiview_example.py
-```
+### New Tests
+
+#### Volume Tests (+12 tests)
+- `tests/test_volume/test_volume.py`
+  - Volume creation and validation
+  - Property methods (shape, dimensions, center, etc.)
+  - Normal computation
+  - Normalization methods
+  - Copy functionality
+
+#### Abstract Renderer Tests (+5 tests)
+- `tests/test_renderer/test_base.py`
+  - Abstract method enforcement
+  - Base class interface validation
+  - Error handling
+
+### Updated Tests
+
+#### ModernGL Renderer Tests
+- Update imports to use Volume
+- Update to use ModernGLVolumeRenderer class name
+- Ensure backward compatibility alias works
+
+### Total Test Count
+- **Before Phase 3**: 162 tests
+- **After Phase 3**: ~179 tests (+17)
 
 ## Migration Guide
 
-### Recommended Usage (New API)
+### Import Changes
 
+**Before (v0.2.4)**:
 ```python
-from pyvr.volume import Volume
-from pyvr.datasets import create_sample_volume
 from pyvr.moderngl_renderer import VolumeRenderer
-
-# Create volume object
-data = create_sample_volume(128, 'sphere')
-volume = Volume(data=data, name='sphere')
-
-# Optionally add normals
-volume.compute_normals()
-
-# Set custom bounds
-volume.set_bounds((-1, -1, -1), (1, 1, 1))
-
-# Load into renderer
-renderer = VolumeRenderer(width=512, height=512)
-renderer.load_volume(volume)
-
-# Access volume properties
-print(f"Volume shape: {volume.shape}")
-print(f"Volume center: {volume.center}")
-print(f"Has normals: {volume.has_normals}")
 ```
 
-### Backward Compatibility
-
+**After (v0.2.5)**:
 ```python
-# Old way still works but emits warnings
-renderer.load_volume(data_array)  # DeprecationWarning
-renderer.load_normal_volume(normals)  # DeprecationWarning
-renderer.set_volume_bounds((-1, -1, -1), (1, 1, 1))  # DeprecationWarning
+# Recommended: Use specific backend
+from pyvr.moderngl_renderer import ModernGLVolumeRenderer
+
+# Or for backward compatibility
+from pyvr.moderngl_renderer import VolumeRenderer  # Alias to ModernGLVolumeRenderer
+
+# Or use abstract interface
+from pyvr.renderer import VolumeRenderer  # Abstract base class
+```
+
+### Volume Usage
+
+**Before**:
+```python
+renderer = VolumeRenderer()
+renderer.load_volume(volume_data)  # numpy array
+renderer.load_normal_volume(normals)
+renderer.set_volume_bounds((-1, -1, -1), (1, 1, 1))
+```
+
+**After**:
+```python
+from pyvr.volume import Volume
+
+volume = Volume(
+    data=volume_data,
+    normals=normals,
+    min_bounds=np.array([-1, -1, -1]),
+    max_bounds=np.array([1, 1, 1])
+)
+renderer = ModernGLVolumeRenderer()
+renderer.load_volume(volume)
 ```
 
 ## Benefits Achieved
 
+### Volume Class
 1. ✅ **Data Encapsulation**: Volume data + metadata as single unit
 2. ✅ **Simplified API**: One method call vs multiple
-3. ✅ **Better Validation**: Automatic validation on creation
-4. ✅ **Rich Properties**: Access dimensions, center, spacing, etc.
-5. ✅ **Extensibility**: Easy to add transformations, filters
-6. ✅ **Type Safety**: Clear interface for volume data
+3. ✅ **Backend Agnostic**: Works with any renderer implementation
+4. ✅ **Rich Properties**: Easy access to dimensions, center, spacing
+5. ✅ **Type Safety**: Clear interface for volume data
+
+### Renderer Architecture
+1. ✅ **Backend Independence**: Abstract interface, multiple implementations
+2. ✅ **Clean Separation**: Rendering logic separate from OpenGL specifics
+3. ✅ **Extensibility**: Easy to add new backends (Vulkan, CPU, etc.)
+4. ✅ **Testability**: Can mock renderer without OpenGL
+5. ✅ **Future-Proof**: Architecture supports advanced rendering features
 
 ## Timeline
 
-- **Implementation**: 2 days
+- **Volume Implementation**: 1 day
+- **Renderer Refactoring**: 2 days
 - **Testing**: 1 day
 - **Documentation & Examples**: 0.5 day
-- **Total**: 3-4 days
+- **Total**: 4-5 days
 
 ## Dependencies
 
 - **Requires**: Phase 1 (Camera) and Phase 2 (Light) completed
-- **Blocks**: None
+- **Blocks**: Phase 4 (RenderConfig)
 
 ## Next Phase
 
-After Phase 3 completion, proceed to **Phase 4: RenderConfig Refactoring (v0.2.6)**
+After Phase 3, proceed to **Phase 4: RenderConfig Refactoring (v0.2.6)** which will:
+- Extract rendering parameters (step_size, max_steps, etc.) into RenderConfig
+- Further clean up renderer initialization
+- Complete the pipeline alignment
+
+---
+
+**Phase 3 Status**: 📋 Planning Complete - Ready for Implementation
