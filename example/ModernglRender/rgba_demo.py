@@ -2,7 +2,9 @@
 Demo of RGBA transfer function texture functionality in PyVR.
 This example shows how to use combined RGBA textures for improved performance.
 
-Updated for PyVR v0.2.4:
+Updated for PyVR v0.2.6:
+- Uses new RenderConfig class for quality presets (v0.2.6)
+- Uses new Volume class (v0.2.5)
 - Uses new Camera class (v0.2.3)
 - Uses new Light class (v0.2.4)
 """
@@ -13,31 +15,34 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from pyvr.camera import Camera
+from pyvr.config import RenderConfig
 from pyvr.datasets import compute_normal_volume, create_sample_volume
 from pyvr.lighting import Light
 from pyvr.moderngl_renderer import VolumeRenderer
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
+from pyvr.volume import Volume
 
 # Rendering parameters
-STEP_SIZE = 1e-3
-MAX_STEPS = int(1e3)
 VOLUME_SIZE = 256
 IMAGE_RES = 224
 
 # Configure lighting (v0.2.4)
 light = Light.directional(direction=[1, -1, 0], ambient=0.0, diffuse=1.0)
 
-# Create renderer with light
-renderer = VolumeRenderer(
-    IMAGE_RES, IMAGE_RES, step_size=STEP_SIZE, max_steps=MAX_STEPS, light=light
-)
+# Create renderer with high quality config and light (v0.2.6)
+config = RenderConfig.high_quality()
+renderer = VolumeRenderer(IMAGE_RES, IMAGE_RES, config=config, light=light)
 
-# Load volume data
-volume = create_sample_volume(VOLUME_SIZE, "double_sphere")
-normals = compute_normal_volume(volume)
+# Create Volume with data, normals, and bounds (v0.2.5)
+volume_data = create_sample_volume(VOLUME_SIZE, "double_sphere")
+normals = compute_normal_volume(volume_data)
+volume = Volume(
+    data=volume_data,
+    normals=normals,
+    min_bounds=np.array([-1.0, -1.0, -1.0], dtype=np.float32),
+    max_bounds=np.array([1.0, 1.0, 1.0], dtype=np.float32),
+)
 renderer.load_volume(volume)
-renderer.load_normal_volume(normals)
-renderer.set_volume_bounds((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0))
 
 # Create transfer functions
 ctf = ColorTransferFunction.from_colormap("plasma")
@@ -65,7 +70,7 @@ camera_positions = [
 
 # Create figure for multi-view display
 fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-fig.suptitle("PyVR: RGBA Transfer Function Texture Demo (v0.2.4)", fontsize=16)
+fig.suptitle("PyVR: RGBA Transfer Function Texture Demo (v0.2.5)", fontsize=16)
 
 for i, camera_params in enumerate(camera_positions):
     # Set camera using Camera class (v0.2.3)

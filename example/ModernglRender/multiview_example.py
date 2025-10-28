@@ -1,7 +1,9 @@
 """
 Multi-view volume rendering example using PyVR RGBA transfer function textures
 
-Updated for PyVR v0.2.4:
+Updated for PyVR v0.2.6:
+- Uses new RenderConfig class for quality presets (v0.2.6)
+- Uses new Volume class (v0.2.5)
 - Uses new Camera class (v0.2.3)
 - Uses new Light class (v0.2.4)
 - Light follows camera and always points at the data
@@ -13,27 +15,30 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from pyvr.camera import Camera
+from pyvr.config import RenderConfig
 from pyvr.datasets import compute_normal_volume, create_sample_volume
 from pyvr.lighting import Light
 from pyvr.moderngl_renderer import VolumeRenderer
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
+from pyvr.volume import Volume
 
-STEP_SIZE = 1e-3
-MAX_STEPS = int(1e3)
 VOLUME_SIZE = 256
 IMAGE_RES = 224
 
-# Create renderer (light will be set per view)
-renderer = VolumeRenderer(
-    IMAGE_RES, IMAGE_RES, step_size=1 / VOLUME_SIZE, max_steps=MAX_STEPS
-)
+# Create renderer with high quality preset
+config = RenderConfig.high_quality()
+renderer = VolumeRenderer(IMAGE_RES, IMAGE_RES, config=config)
 
-# Load helix volume and normals
-volume = create_sample_volume(VOLUME_SIZE, "double_sphere")
-normals = compute_normal_volume(volume)
+# Create Volume with data, normals, and bounds (v0.2.5)
+volume_data = create_sample_volume(VOLUME_SIZE, "double_sphere")
+normals = compute_normal_volume(volume_data)
+volume = Volume(
+    data=volume_data,
+    normals=normals,
+    min_bounds=np.array([-1.0, -1.0, -1.0], dtype=np.float32),
+    max_bounds=np.array([1.0, 1.0, 1.0], dtype=np.float32),
+)
 renderer.load_volume(volume)
-renderer.load_normal_volume(normals)
-renderer.set_volume_bounds((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0))
 
 # Use plasma colormap
 ctf = ColorTransferFunction.from_colormap("plasma")

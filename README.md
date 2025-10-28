@@ -2,8 +2,8 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg)](http://www.wtfpl.net/about/)
-![Version](https://img.shields.io/badge/version-0.2.4-blue.svg)
-[![Tests](https://img.shields.io/badge/tests-162%20passing-brightgreen.svg)](#-testing)
+![Version](https://img.shields.io/badge/version-0.2.7-blue.svg)
+[![Tests](https://img.shields.io/badge/tests-204%20passing-brightgreen.svg)](#-testing)
 
 PyVR is a GPU-accelerated 3D volume rendering toolkit for real-time interactive visualization using OpenGL. Built with ModernGL, it provides high-performance volume rendering with a modern, modular architecture.
 
@@ -13,12 +13,14 @@ PyVR is a GPU-accelerated 3D volume rendering toolkit for real-time interactive 
 
 - **⚡ GPU-Accelerated Rendering**: Real-time OpenGL volume rendering via ModernGL at 64+ FPS
 - **🚀 High-Performance RGBA Textures**: Single-texture transfer function lookups for optimal performance
+- **⚙️ Quality Presets**: Easy performance/quality tradeoff with RenderConfig presets (fast, balanced, high_quality)
 - **🧩 Pipeline-Aligned Architecture**: Clean separation of Application, Geometry, and Fragment stages
+- **📦 Backend-Agnostic Volume Data**: Unified Volume class for data, normals, and bounds management
 - **📹 Advanced Camera System**: Matrix generation, spherical coordinates, animation paths, and presets
 - **💡 Flexible Lighting System**: Directional, point, and ambient light presets with easy configuration
 - **🎨 Sophisticated Transfer Functions**: Color and opacity mappings with matplotlib integration
 - **📊 Synthetic Datasets**: Built-in generators for testing and development
-- **✅ Comprehensive Testing**: 162 tests with 95%+ coverage
+- **✅ Comprehensive Testing**: 204 tests with 86%+ coverage
 
 ## 🚀 Quick Start
 
@@ -42,14 +44,22 @@ pip install moderngl numpy matplotlib pillow scipy
 import numpy as np
 import matplotlib.pyplot as plt
 from pyvr.moderngl_renderer import VolumeRenderer
+from pyvr.config import RenderConfig
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
 from pyvr.camera import Camera
 from pyvr.lighting import Light
+from pyvr.volume import Volume
 from pyvr.datasets import create_sample_volume, compute_normal_volume
 
-# Create volume data
-volume = create_sample_volume(256, 'double_sphere')
-normals = compute_normal_volume(volume)
+# Create volume data with Volume class
+volume_data = create_sample_volume(256, 'double_sphere')
+normals = compute_normal_volume(volume_data)
+volume = Volume(
+    data=volume_data,
+    normals=normals,
+    min_bounds=np.array([-1.0, -1.0, -1.0], dtype=np.float32),
+    max_bounds=np.array([1.0, 1.0, 1.0], dtype=np.float32)
+)
 
 # Create camera
 camera = Camera.from_spherical(
@@ -63,11 +73,10 @@ camera = Camera.from_spherical(
 # Create light
 light = Light.directional(direction=[1, -1, 0], ambient=0.2, diffuse=0.8)
 
-# Create renderer
-renderer = VolumeRenderer(width=512, height=512, light=light)
+# Create renderer with high quality preset
+config = RenderConfig.high_quality()  # Or: fast(), balanced(), preview()
+renderer = VolumeRenderer(width=512, height=512, config=config, light=light)
 renderer.load_volume(volume)
-renderer.load_normal_volume(normals)
-renderer.set_volume_bounds((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0))
 renderer.set_camera(camera)
 
 # Set up transfer functions
@@ -89,22 +98,88 @@ PyVR follows a pipeline-aligned architecture based on traditional rendering pipe
 
 ```
 pyvr/
+├── volume/               # Application Stage - Volume data management
+│   └── data.py           # Volume class with properties and operations
 ├── camera/               # Geometry Stage - Camera transformations
-│   ├── parameters.py     # Camera class with matrix generation
+│   ├── camera.py         # Camera class with matrix generation
 │   └── control.py        # Camera controllers and animation
 ├── lighting/             # Application Stage - Light configuration
 │   └── light.py          # Light class with presets
+├── config.py             # Rasterization Stage - Rendering configuration
 ├── transferfunctions/    # Application Stage - Material properties
 │   ├── color.py          # Color transfer functions
 │   └── opacity.py        # Opacity transfer functions
+├── moderngl_renderer/    # OpenGL Volume Renderer
+│   ├── renderer.py       # ModernGLVolumeRenderer (main renderer)
+│   └── manager.py        # Low-level OpenGL resource management
 ├── shaders/              # Fragment Stage - Shading operations
 │   ├── volume.vert.glsl  # Vertex shader
 │   └── volume.frag.glsl  # Fragment shader with RGBA lookups
-├── datasets/             # Application Stage - Volume data
-│   └── synthetic.py      # Synthetic volume generators
-└── moderngl_renderer/    # Rendering orchestration (OpenGL backend)
-    ├── renderer.py       # High-level volume renderer
-    └── manager.py        # Low-level OpenGL resource management
+└── datasets/             # Application Stage - Volume data utilities
+    └── synthetic.py      # Synthetic volume generators
+```
+
+## 📦 Volume System
+
+PyVR provides a unified Volume class for backend-agnostic data management:
+
+### Volume Creation
+
+```python
+from pyvr.volume import Volume
+import numpy as np
+
+# Create Volume with all attributes
+volume = Volume(
+    data=volume_data,                                     # 3D numpy array
+    normals=normal_data,                                  # Optional 4D array (D,H,W,3)
+    min_bounds=np.array([-1.0, -1.0, -1.0], dtype=np.float32),
+    max_bounds=np.array([1.0, 1.0, 1.0], dtype=np.float32),
+    name="my_volume"                                      # Optional name
+)
+
+# Simple volume (default bounds: [-0.5, -0.5, -0.5] to [0.5, 0.5, 0.5])
+volume = Volume(data=volume_data)
+```
+
+### Volume Properties
+
+```python
+# Access volume metadata
+print(volume.shape)          # (256, 256, 256) - voxel dimensions
+print(volume.dimensions)     # [2.0, 2.0, 2.0] - physical size (max - min)
+print(volume.center)         # [0.0, 0.0, 0.0] - bounding box center
+print(volume.has_normals)    # True/False - check if normals present
+print(volume.voxel_spacing)  # [0.0078, 0.0078, 0.0078] - spacing between voxels
+```
+
+### Volume Operations
+
+```python
+# Compute normals from volume data
+volume.compute_normals()  # Generates normals using gradient
+assert volume.has_normals  # True after computation
+
+# Normalize volume data
+normalized_vol = volume.normalize(method="minmax")  # Scale to [0, 1]
+normalized_vol = volume.normalize(method="zscore")  # Z-score normalization
+
+# Create independent copy
+vol_copy = volume.copy()
+vol_copy.data[0, 0, 0] = 1.0  # Doesn't affect original
+```
+
+### Using Volume with Renderer
+
+```python
+from pyvr.moderngl_renderer import VolumeRenderer
+
+# Create and load volume (single call)
+renderer = VolumeRenderer()
+renderer.load_volume(volume)
+
+# Get current volume
+current_volume = renderer.get_volume()
 ```
 
 ## 📊 Synthetic Datasets
@@ -124,6 +199,72 @@ blob = create_sample_volume(256, 'random_blob')
 
 # Compute normal vectors for lighting
 normals = compute_normal_volume(sphere)
+```
+
+## ⚙️ Rendering Configuration
+
+PyVR provides quality presets for easy performance/quality tradeoffs via the `RenderConfig` class:
+
+### Quality Presets
+
+```python
+from pyvr.config import RenderConfig
+from pyvr.moderngl_renderer import VolumeRenderer
+
+# Use a preset
+renderer = VolumeRenderer(config=RenderConfig.fast())          # Fast, interactive
+renderer = VolumeRenderer(config=RenderConfig.balanced())      # Default, good balance
+renderer = VolumeRenderer(config=RenderConfig.high_quality())  # High quality, slower
+renderer = VolumeRenderer(config=RenderConfig.preview())       # Very fast, low quality
+renderer = VolumeRenderer(config=RenderConfig.ultra_quality()) # Maximum quality, very slow
+```
+
+### Preset Comparison
+
+| Preset | Step Size | Max Steps | Est. Speed | Use Case |
+|--------|-----------|-----------|------------|----------|
+| **preview** | 0.05 | 50 | ~15x faster | Quick iteration |
+| **fast** | 0.02 | 100 | ~5x faster | Interactive exploration |
+| **balanced** | 0.01 | 500 | **1x (baseline)** | **General use (default)** |
+| **high_quality** | 0.005 | 1000 | ~5x slower | Final renders |
+| **ultra_quality** | 0.001 | 2000 | ~20x slower | Publication quality |
+
+### Custom Configuration
+
+```python
+# Create custom config
+config = RenderConfig(
+    step_size=0.015,
+    max_steps=300,
+    early_ray_termination=True,
+    opacity_threshold=0.95
+)
+renderer = VolumeRenderer(config=config)
+
+# Or modify a preset
+config = RenderConfig.balanced().with_step_size(0.008)
+config = RenderConfig.fast().with_max_steps(200)
+```
+
+### Runtime Configuration Changes
+
+```python
+# Change quality on the fly
+renderer.set_config(RenderConfig.fast())       # Switch to fast rendering
+renderer.set_config(RenderConfig.high_quality()) # Switch to high quality
+
+# Get current config
+current_config = renderer.get_config()
+print(current_config)  # Shows current settings
+```
+
+### Performance Estimation
+
+```python
+# Estimate rendering performance
+config = RenderConfig.high_quality()
+samples = config.estimate_samples_per_ray()      # ~346 samples
+relative_time = config.estimate_render_time_relative()  # ~5.0x slower than balanced
 ```
 
 ## 🎨 Transfer Functions
@@ -332,7 +473,7 @@ renderer = VolumeRenderer(256, 256, step_size=0.02, max_steps=100)
 PyVR has comprehensive test coverage for reliability:
 
 ```bash
-# Run all tests (162 tests)
+# Run all tests (204 tests)
 pytest tests/
 
 # Run with coverage report
@@ -340,23 +481,32 @@ pytest --cov=pyvr --cov-report=term-missing tests/
 
 # Run specific test modules
 pytest tests/test_camera/              # Camera system tests (42 tests)
+pytest tests/test_config.py            # RenderConfig tests (33 tests)
 pytest tests/test_lighting/            # Lighting tests (22 tests)
-pytest tests/test_moderngl_renderer/   # Renderer tests (36 tests)
-pytest tests/test_transferfunctions/   # Transfer function tests (30 tests)
+pytest tests/test_moderngl_renderer/   # ModernGL renderer tests (71 tests)
+pytest tests/test_transferfunctions/   # Transfer function tests (36 tests)
 ```
 
 **Test Coverage Breakdown:**
 ```
 Module                        Tests    Coverage
 ----------------------------------------------
-📷 Camera System              42       95%
-💡 Lighting System            22       95%
-🎨 Transfer Functions         30       94-100%
-🖥️  ModernGL Renderer         36       93-100%
-📊 Datasets & Utilities       32       Various
+📷 Camera System              42       95-97%
+⚙️  RenderConfig              33       100%
+💡 Lighting System            22       100%
+🎨 Transfer Functions         36       88-100%
+🖥️  ModernGL Renderer         71       93-98%
+📊 Volume & Datasets          -        56-93%
 ----------------------------------------------
-📈 Total                     162       ~90%
+📈 Total                     204       ~86%
 ```
+
+**Key Testing Features:**
+- Zero abstract base tests (removed in v0.2.7)
+- Comprehensive RenderConfig preset testing
+- Full integration test coverage
+- Type checking and validation tests
+- Edge case and error handling tests
 
 ## 🛠️ API Reference
 
@@ -364,13 +514,28 @@ Module                        Tests    Coverage
 
 ```python
 from pyvr.moderngl_renderer import VolumeRenderer
+from pyvr.config import RenderConfig
+from pyvr.volume import Volume
 from pyvr.camera import Camera
 from pyvr.lighting import Light
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
 from pyvr.datasets import create_sample_volume, compute_normal_volume
 import numpy as np
 
-# Create camera
+# 1. Create RenderConfig (v0.2.6)
+config = RenderConfig.high_quality()  # Or: fast(), balanced(), preview()
+
+# 2. Create Volume (v0.2.5)
+volume_data = create_sample_volume(256, 'double_sphere')
+normals = compute_normal_volume(volume_data)
+volume = Volume(
+    data=volume_data,
+    normals=normals,
+    min_bounds=np.array([-1.0, -1.0, -1.0], dtype=np.float32),
+    max_bounds=np.array([1.0, 1.0, 1.0], dtype=np.float32)
+)
+
+# 3. Create Camera (v0.2.3)
 camera = Camera.from_spherical(
     target=np.array([0, 0, 0]),
     distance=5.0,
@@ -379,33 +544,39 @@ camera = Camera.from_spherical(
     roll=0.0
 )
 
-# Create light
+# 4. Create Light (v0.2.4)
 light = Light.directional(direction=[1, -1, 0], ambient=0.2, diffuse=0.8)
 
-# Create renderer
-renderer = VolumeRenderer(width=512, height=512, light=light)
+# 5. Create Renderer (v0.2.7 - no abstract base)
+renderer = VolumeRenderer(width=512, height=512, config=config, light=light)
 renderer.set_camera(camera)
-
-# Load volume data
-volume = create_sample_volume(256, 'double_sphere')
-normals = compute_normal_volume(volume)
 renderer.load_volume(volume)
-renderer.load_normal_volume(normals)
-renderer.set_volume_bounds((-1, -1, -1), (1, 1, 1))
 
-# Configure transfer functions
+# 6. Configure Transfer Functions
 ctf = ColorTransferFunction.from_colormap('viridis')
 otf = OpacityTransferFunction.linear(0.0, 0.1)
 renderer.set_transfer_functions(ctf, otf)
 
-# Render
+# 7. Render
 data = renderer.render()
 
-# Camera operations
+# RenderConfig operations (v0.2.6)
+renderer.set_config(RenderConfig.fast())  # Change quality at runtime
+current_config = renderer.get_config()
+samples = config.estimate_samples_per_ray()  # ~346 samples
+
+# Volume operations (v0.2.5)
+print(f"Volume shape: {volume.shape}")
+print(f"Volume dimensions: {volume.dimensions}")
+normalized_vol = volume.normalize(method="minmax")
+current_volume = renderer.get_volume()
+
+# Camera operations (v0.2.3)
 view_matrix = camera.get_view_matrix()
 projection_matrix = camera.get_projection_matrix(aspect_ratio=16/9)
+current_camera = renderer.get_camera()
 
-# Camera animation
+# Camera animation (v0.2.3)
 from pyvr.camera import CameraController, CameraPath
 controller = CameraController(camera)
 controller.orbit(delta_azimuth=0.1, delta_elevation=0.05)
@@ -464,7 +635,8 @@ This project is licensed under the WTFPL (Do What The F*ck You Want To Public Li
 
 ## 🏆 Acknowledgments
 
-- Claude Sonnet 4 model from GitHub Copilot for the creation of almost all code/documentation/test in this repository (some code was created by Claude Sonnet 3.5) <-- I wrote this sentence. That's about it for my contribution to this repo
+- Claude Sonnet 4.5 model from Claude Code is responsible for code after v0.2.3
+- Claude Sonnet 4 model from GitHub Copilot for the creation of almost all code/documentation/test (before v0.2.3) in this repository (some code was created by Claude Sonnet 3.5)
 - ModernGL community for excellent OpenGL bindings
 - The scientific visualization community
 

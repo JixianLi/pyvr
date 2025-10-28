@@ -12,12 +12,13 @@ from ..datasets import compute_normal_volume, create_sample_volume
 from ..transferfunctions.color import ColorTransferFunction
 from ..transferfunctions.opacity import OpacityTransferFunction
 from .manager import ModernGLManager
-from .renderer import VolumeRenderer
+from .renderer import ModernGLVolumeRenderer, VolumeRenderer  # VolumeRenderer is alias
 
 __all__ = [
     "ColorTransferFunction",
     "OpacityTransferFunction",
-    "VolumeRenderer",
+    "ModernGLVolumeRenderer",
+    "VolumeRenderer",  # For backward compatibility
     "ModernGLManager",
     "CameraController",
     "Camera",
