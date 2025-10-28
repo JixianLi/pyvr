@@ -2,28 +2,29 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg)](http://www.wtfpl.net/about/)
-![Version](https://img.shields.io/badge/version-0.2.3-blue.svg)
-[![Tests](https://img.shields.io/badge/tests-139%20passing-brightgreen.svg)](#-testing)
-[![Coverage](https://img.shields.io/badge/coverage-95%25%20camera-brightgreen.svg)](#-testing)
+![Version](https://img.shields.io/badge/version-0.2.4-blue.svg)
+[![Tests](https://img.shields.io/badge/tests-150%20passing-brightgreen.svg)](#-testing)
+[![Coverage](https://img.shields.io/badge/coverage-95%25%20lighting-brightgreen.svg)](#-testing)
 
 PyVR is a GPU-accelerated 3D volume rendering toolkit focused on real-time interactive visualization using OpenGL. Built with ModernGL, it provides high-performance volume rendering with a modern, modular architecture designed for flexibility and maintainability.
 
 > ⚠️ **Pre-1.0 Development**: PyVR is under active development. Breaking changes are expected in v0.x releases. API stability comes at v1.0.0.
 
-> **🎉 New in v0.2.3**: Camera system refactored for proper pipeline alignment! `CameraParameters` → `Camera` with matrix generation methods. **This is a breaking change.**
+> **🎉 New in v0.2.4**: Lighting system refactored for proper pipeline alignment! New `Light` class with directional, point, and ambient presets. **This is a breaking change.**
 
 ## 🎯 Key Features
 
 - **🚀 High-Performance RGBA Textures**: Revolutionary single-texture transfer function lookups (v0.2.2)
 - **⚡ GPU-Accelerated Rendering**: Real-time OpenGL volume rendering via ModernGL at 64+ FPS
 - **🎮 Interactive Visualization**: Advanced camera controls with quaternion rotations and animation paths
-- **🧩 Pipeline-Aligned Architecture**: Proper Geometry Stage separation with Camera owning matrix generation (v0.2.3)
+- **🧩 Pipeline-Aligned Architecture**: Application Stage separation with Camera and Light classes (v0.2.3-0.2.4)
 - **🎨 Flexible Transfer Functions**: Sophisticated color and opacity mappings with matplotlib integration and peak detection
 - **📹 Enhanced Camera System**: Matrix creation methods, spherical coordinates, camera paths, presets (v0.2.3)
+- **💡 Enhanced Lighting System**: Directional, point, and ambient light presets with easy configuration (v0.2.4)
 - **📊 Synthetic Datasets**: Built-in generators for testing and development
 - **🔧 Modern OpenGL**: Efficient shader-based ray marching with optimized resource management
 - **🔗 Clean API**: Feature-first development with breaking changes for continuous improvement (pre-1.0)
-- **✅ Comprehensive Testing**: 139 tests with 95% camera coverage for reliability
+- **✅ Comprehensive Testing**: 150 tests with 95% lighting coverage for reliability
 
 ## 🚀 Quick Start
 
@@ -49,9 +50,10 @@ import matplotlib.pyplot as plt
 from pyvr.moderngl_renderer import VolumeRenderer
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
 from pyvr.camera import Camera
+from pyvr.lighting import Light
 from pyvr.datasets import create_sample_volume
 
-# Create camera (NEW v0.2.3)
+# Create camera (v0.2.3)
 camera = Camera.from_spherical(
     target=np.array([0.0, 0.0, 0.0]),
     distance=3.0,
@@ -60,8 +62,11 @@ camera = Camera.from_spherical(
     roll=0.0
 )
 
-# Create renderer with camera
-renderer = VolumeRenderer(width=512, height=512, camera=camera)
+# Create light (NEW v0.2.4)
+light = Light.directional(direction=[1, -1, 0], ambient=0.2, diffuse=0.8)
+
+# Create renderer with camera and light
+renderer = VolumeRenderer(width=512, height=512, camera=camera, light=light)
 volume = create_sample_volume(256, 'double_sphere')
 renderer.load_volume(volume)
 
@@ -244,6 +249,70 @@ controller.zoom(factor=1.1)  # Zoom in/out
 controller.pan(delta=np.array([0.1, 0, 0]))  # Pan target
 ```
 
+## 💡 Lighting System
+
+PyVR v0.2.4 introduces a dedicated Light class for pipeline-aligned lighting configuration:
+
+### Light Creation and Presets (NEW v0.2.4)
+```python
+from pyvr.lighting import Light
+import numpy as np
+
+# Directional light (like sunlight)
+light = Light.directional(
+    direction=[1, -1, 0],  # Light direction (normalized automatically)
+    ambient=0.2,           # Ambient intensity (0.0-1.0)
+    diffuse=0.8            # Diffuse intensity (0.0-1.0)
+)
+
+# Point light at specific position
+light = Light.point_light(
+    position=[5, 5, 5],
+    target=[0, 0, 0],  # Optional
+    ambient=0.1,
+    diffuse=0.7
+)
+
+# Ambient-only lighting (no shadows)
+light = Light.ambient_only(intensity=0.5)
+
+# Default light
+light = Light.default()  # Standard directional light
+```
+
+### Using Lights with VolumeRenderer
+```python
+from pyvr.lighting import Light
+from pyvr.moderngl_renderer import VolumeRenderer
+
+# Pass light to renderer
+light = Light.directional(direction=[1, -1, 0], ambient=0.3)
+renderer = VolumeRenderer(width=512, height=512, light=light)
+
+# Or set later
+light = Light.point_light(position=[5, 5, 5])
+renderer.set_light(light)
+
+# Get current light
+current_light = renderer.get_light()
+```
+
+### Light Properties
+```python
+# Access light properties
+print(f"Position: {light.position}")
+print(f"Target: {light.target}")
+print(f"Ambient: {light.ambient_intensity}")
+print(f"Diffuse: {light.diffuse_intensity}")
+
+# Get light direction
+direction = light.get_direction()
+
+# Copy light for modification
+new_light = light.copy()
+new_light.ambient_intensity = 0.5
+```
+
 ## 📸 Examples
 
 Check out the `example/` directory for complete working examples:
@@ -330,6 +399,51 @@ path = CameraPath(keyframes=[camera1, camera2, camera3])
 ```
 
 ## 🔄 Migration Guide
+
+### From v0.2.3 to v0.2.4 (Breaking Changes - Lighting Refactoring)
+
+**⚠️ BREAKING CHANGE - Lighting System Refactored:**
+
+```python
+# OLD v0.2.3 (individual parameters) ❌
+renderer = VolumeRenderer(
+    width=512,
+    height=512,
+    ambient_light=0.2,
+    diffuse_light=0.8,
+    light_position=(1, 1, 1),
+    light_target=(0, 0, 0)
+)
+# Or using setter methods (also removed)
+renderer.set_ambient_light(0.3)
+renderer.set_diffuse_light(0.9)
+renderer.set_light_position([5, 5, 5])
+
+# NEW v0.2.4 (Light class) ✅
+from pyvr.lighting import Light
+
+light = Light.directional(direction=[1, -1, 0], ambient=0.2, diffuse=0.8)
+renderer = VolumeRenderer(width=512, height=512, light=light)
+
+# Or set later
+light = Light.point_light(position=[5, 5, 5], ambient=0.3, diffuse=0.9)
+renderer.set_light(light)
+```
+
+**Key Changes:**
+- ✅ Lighting parameters removed from `VolumeRenderer.__init__()`
+- ✅ New `light` parameter accepts `Light` instance
+- ✅ Removed methods: `set_ambient_light()`, `set_diffuse_light()`, `set_light_position()`, `set_light_target()`
+- ✅ New methods: `set_light()`, `get_light()`
+- ✅ Light presets: `directional()`, `point_light()`, `ambient_only()`, `default()`
+
+**Benefits of v0.2.4:**
+- 🎯 **Pipeline alignment** (Light isolated in Application Stage)
+- 🧪 **Better testability** (lighting testable independently)
+- 🔧 **Easy extension** (foundation for multiple lights, shadows, specular)
+- 🎨 **Cleaner API** (one Light object vs 4+ parameters)
+
+---
 
 ### From v0.2.2 to v0.2.3 (Breaking Changes - Camera Refactoring)
 

@@ -11,7 +11,7 @@ from typing import Callable, List, Optional, Tuple, Union
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from .parameters import CameraParameterError, CameraParameters, validate_camera_angles
+from .parameters import Camera, CameraError, validate_camera_angles
 
 
 def get_camera_pos(
@@ -46,7 +46,7 @@ def get_camera_pos(
 
     Raises:
         ValueError: If parameters are invalid
-        CameraParameterError: If angles are invalid
+        CameraError: If angles are invalid
 
     Examples:
         # Basic usage - camera in front of origin
@@ -131,13 +131,13 @@ def get_camera_pos(
 
 
 def get_camera_pos_from_params(
-    params: CameraParameters,
+    params: Camera,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Calculate camera position and up vector from CameraParameters object.
+    Calculate camera position and up vector from Camera object.
 
     Args:
-        params: CameraParameters instance with all camera settings
+        params: Camera instance with all camera settings
 
     Returns:
         Tuple of (position, up) vectors
@@ -161,12 +161,12 @@ class CameraPath:
     useful for creating camera animations and transitions.
     """
 
-    def __init__(self, keyframes: List[CameraParameters]):
+    def __init__(self, keyframes: List[Camera]):
         """
         Initialize camera path with keyframe positions.
 
         Args:
-            keyframes: List of CameraParameters defining the path
+            keyframes: List of Camera defining the path
         """
         if len(keyframes) < 2:
             raise ValueError("At least 2 keyframes are required for a camera path")
@@ -177,11 +177,11 @@ class CameraPath:
     def validate_keyframes(self) -> None:
         """Validate that all keyframes are consistent."""
         for i, keyframe in enumerate(self.keyframes):
-            if not isinstance(keyframe, CameraParameters):
-                raise ValueError(f"Keyframe {i} must be a CameraParameters instance")
+            if not isinstance(keyframe, Camera):
+                raise ValueError(f"Keyframe {i} must be a Camera instance")
             keyframe.validate()
 
-    def interpolate(self, t: float) -> CameraParameters:
+    def interpolate(self, t: float) -> Camera:
         """
         Interpolate camera parameters at time t.
 
@@ -189,7 +189,7 @@ class CameraPath:
             t: Time parameter (0.0 = first keyframe, 1.0 = last keyframe)
 
         Returns:
-            Interpolated CameraParameters
+            Interpolated Camera
         """
         if not (0.0 <= t <= 1.0):
             raise ValueError("t must be between 0.0 and 1.0")
@@ -208,7 +208,7 @@ class CameraPath:
         kf2 = self.keyframes[segment + 1]
 
         # Linear interpolation for all parameters
-        return CameraParameters(
+        return Camera(
             target=self._lerp_vector(kf1.target, kf2.target, local_t),
             azimuth=self._lerp_angle(kf1.azimuth, kf2.azimuth, local_t),
             elevation=self._lerp_angle(kf1.elevation, kf2.elevation, local_t),
@@ -244,7 +244,7 @@ class CameraPath:
 
         return a1 + diff * t
 
-    def generate_frames(self, n_frames: int) -> List[CameraParameters]:
+    def generate_frames(self, n_frames: int) -> List[Camera]:
         """
         Generate a sequence of camera parameters for animation.
 
@@ -252,7 +252,7 @@ class CameraPath:
             n_frames: Number of frames to generate
 
         Returns:
-            List of CameraParameters for each frame
+            List of Camera for each frame
         """
         if n_frames < 1:
             raise ValueError("n_frames must be at least 1")
@@ -276,7 +276,7 @@ class CameraController:
     panning, zooming, and smooth transitions.
     """
 
-    def __init__(self, initial_params: Optional[CameraParameters] = None):
+    def __init__(self, initial_params: Optional[Camera] = None):
         """
         Initialize camera controller.
 
@@ -285,7 +285,7 @@ class CameraController:
                           Defaults to front view at origin.
         """
         if initial_params is None:
-            initial_params = CameraParameters.front_view()
+            initial_params = Camera.front_view()
 
         self.params = initial_params.copy()
 
@@ -374,10 +374,10 @@ class CameraController:
         dist = distance if distance is not None else self.params.distance
 
         preset_methods = {
-            "front": CameraParameters.front_view,
-            "side": CameraParameters.side_view,
-            "top": CameraParameters.top_view,
-            "isometric": CameraParameters.isometric_view,
+            "front": Camera.front_view,
+            "side": Camera.side_view,
+            "top": Camera.top_view,
+            "isometric": Camera.isometric_view,
         }
 
         if preset not in preset_methods:
@@ -397,8 +397,8 @@ class CameraController:
         return get_camera_pos_from_params(self.params)
 
     def animate_to(
-        self, target_params: CameraParameters, n_frames: int = 30
-    ) -> List[CameraParameters]:
+        self, target_params: Camera, n_frames: int = 30
+    ) -> List[Camera]:
         """
         Create animation frames to transition to target parameters.
 
@@ -407,7 +407,7 @@ class CameraController:
             n_frames: Number of transition frames
 
         Returns:
-            List of CameraParameters for smooth transition
+            List of Camera for smooth transition
         """
         path = CameraPath([self.params.copy(), target_params.copy()])
         return path.generate_frames(n_frames)

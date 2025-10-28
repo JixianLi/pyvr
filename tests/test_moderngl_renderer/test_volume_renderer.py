@@ -8,7 +8,7 @@ import numpy as np
 from unittest.mock import MagicMock, patch, Mock
 
 from pyvr.moderngl_renderer.renderer import VolumeRenderer
-from pyvr.camera.parameters import CameraParameters
+from pyvr.camera.parameters import Camera
 
 
 class TestVolumeRendererInitialization:
@@ -98,14 +98,15 @@ class TestVolumeRendererCameraManagement:
     
     def test_set_camera(self, mock_moderngl_context):
         """Test setting camera parameters."""
+        from pyvr.camera import Camera
+
         renderer = VolumeRenderer()
-        
-        position = (1.0, 2.0, 3.0)
-        target = (0.5, 0.5, 0.5)
-        up = (0.0, 1.0, 0.0)
-        
-        renderer.set_camera(position, target, up)
-        
+
+        # Create camera using Camera class
+        camera = Camera.front_view(distance=3.0)
+
+        renderer.set_camera(camera)
+
         # Should complete without error
         assert True
 
@@ -124,44 +125,10 @@ class TestVolumeRendererRenderingParameters:
     def test_set_max_steps(self, mock_moderngl_context):
         """Test setting maximum ray marching steps."""
         renderer = VolumeRenderer()
-        
+
         renderer.set_max_steps(2000)
-        
+
         assert renderer.max_steps == 2000
-        
-    def test_set_ambient_light(self, mock_moderngl_context):
-        """Test setting ambient light parameter."""
-        renderer = VolumeRenderer()
-        
-        renderer.set_ambient_light(0.5)
-        
-        assert renderer.ambient_light == 0.5
-        
-    def test_set_diffuse_light(self, mock_moderngl_context):
-        """Test setting diffuse light parameter."""
-        renderer = VolumeRenderer()
-        
-        renderer.set_diffuse_light(1.2)
-        
-        assert renderer.diffuse_light == 1.2
-        
-    def test_set_light_position(self, mock_moderngl_context):
-        """Test setting light position."""
-        renderer = VolumeRenderer()
-        
-        position = (2.0, 3.0, 4.0)
-        renderer.set_light_position(position)
-        
-        assert np.allclose(renderer.light_position, position)
-        
-    def test_set_light_target(self, mock_moderngl_context):
-        """Test setting light target."""
-        renderer = VolumeRenderer()
-        
-        target = (0.5, 0.5, 0.5)
-        renderer.set_light_target(target)
-        
-        assert np.allclose(renderer.light_target, target)
 
 
 class TestVolumeRendererVolumeManagement:
@@ -421,8 +388,10 @@ class TestVolumeRendererResourceManagement:
         renderer.gl_manager.render_quad = MagicMock()
         renderer.gl_manager.read_pixels = MagicMock(return_value=np.zeros((100, 100, 4), dtype=np.uint8))
         
-        # Set camera using position, target, up vectors
-        renderer.set_camera(position=[0, 0, 3], target=[0, 0, 0], up=[0, 1, 0])
+        # Set camera using Camera class
+        from pyvr.camera import Camera
+        camera = Camera.front_view(distance=3.0)
+        renderer.set_camera(camera)
         
         # Should not crash
         pixels = renderer.render()
@@ -443,20 +412,111 @@ class TestVolumeRendererResourceManagement:
         
         renderer.set_max_steps(2000)
         assert renderer.max_steps == 2000
-        
-        renderer.set_ambient_light(0.3)
-        assert renderer.ambient_light == 0.3
-        
-        renderer.set_diffuse_light(0.8)
-        assert renderer.diffuse_light == 0.8
-        
-        renderer.set_light_position(np.array([2.0, 2.0, 2.0]))
-        assert np.allclose(renderer.light_position, [2.0, 2.0, 2.0])
-        
-        renderer.set_light_target(np.array([1.0, 1.0, 1.0]))
-        assert np.allclose(renderer.light_target, [1.0, 1.0, 1.0])
-        
+
         # Test volume bounds (doesn't store as attributes but should call GL manager)
         renderer.set_volume_bounds(np.array([0.0, 0.0, 0.0]), np.array([2.0, 2.0, 2.0]))
         renderer.gl_manager.set_uniform_vector.assert_called()
         renderer.gl_manager.set_uniform_int.assert_called_once()
+
+
+class TestVolumeRendererLightIntegration:
+    """Test Light class integration with VolumeRenderer (v0.2.4)."""
+
+    def test_volume_renderer_light_attribute(self, mock_moderngl_context):
+        """VolumeRenderer should have a light attribute."""
+        from pyvr.lighting import Light
+
+        renderer = VolumeRenderer()
+
+        assert hasattr(renderer, 'light')
+        assert isinstance(renderer.light, Light)
+
+    def test_volume_renderer_custom_light(self, mock_moderngl_context):
+        """VolumeRenderer should accept custom light."""
+        from pyvr.lighting import Light
+
+        custom_light = Light.directional(direction=[1, 0, 0], ambient=0.5)
+        renderer = VolumeRenderer(width=256, height=256, light=custom_light)
+
+        assert renderer.light is custom_light
+        assert renderer.light.ambient_intensity == 0.5
+
+    def test_set_light(self, mock_moderngl_context):
+        """set_light should accept Light instance."""
+        from pyvr.lighting import Light
+
+        renderer = VolumeRenderer(width=256, height=256)
+        new_light = Light.point_light(position=[5, 5, 5])
+
+        renderer.set_light(new_light)
+
+        assert renderer.light is new_light
+
+    def test_get_light(self, mock_moderngl_context):
+        """get_light should return current light."""
+        from pyvr.lighting import Light
+
+        renderer = VolumeRenderer(width=256, height=256)
+        light = renderer.get_light()
+
+        assert isinstance(light, Light)
+        assert light is renderer.light
+
+    def test_set_light_type_checking(self, mock_moderngl_context):
+        """set_light should raise TypeError for non-Light instance."""
+        renderer = VolumeRenderer(width=256, height=256)
+
+        with pytest.raises(TypeError, match="Expected Light instance"):
+            renderer.set_light("not a light")
+
+        with pytest.raises(TypeError, match="Expected Light instance"):
+            renderer.set_light({"ambient": 0.5})
+
+    def test_light_updates_uniforms(self, mock_moderngl_context):
+        """Setting light should update GL uniforms."""
+        from pyvr.lighting import Light
+
+        renderer = VolumeRenderer(width=256, height=256)
+
+        # Mock GL manager methods
+        renderer.gl_manager.set_uniform_float = MagicMock()
+        renderer.gl_manager.set_uniform_vector = MagicMock()
+
+        # Create and set new light
+        new_light = Light.directional(direction=[1, -1, 0], ambient=0.3, diffuse=0.9)
+        renderer.set_light(new_light)
+
+        # Should have called set_uniform methods
+        renderer.gl_manager.set_uniform_float.assert_any_call("ambient_light", 0.3)
+        renderer.gl_manager.set_uniform_float.assert_any_call("diffuse_light", 0.9)
+        renderer.gl_manager.set_uniform_vector.assert_called()
+
+    def test_default_light_initialization(self, mock_moderngl_context):
+        """VolumeRenderer should create default light if none provided."""
+        from pyvr.lighting import Light
+
+        renderer = VolumeRenderer()
+
+        assert isinstance(renderer.light, Light)
+        assert renderer.light.ambient_intensity == 0.2
+        assert renderer.light.diffuse_intensity == 0.8
+
+    def test_light_presets_integration(self, mock_moderngl_context):
+        """Test various light presets with VolumeRenderer."""
+        from pyvr.lighting import Light
+
+        # Test directional light
+        light_dir = Light.directional(direction=[1, -1, 0])
+        renderer = VolumeRenderer(light=light_dir)
+        assert isinstance(renderer.light, Light)
+
+        # Test point light
+        light_point = Light.point_light(position=[5, 5, 5])
+        renderer.set_light(light_point)
+        assert np.allclose(renderer.light.position, [5, 5, 5])
+
+        # Test ambient only
+        light_ambient = Light.ambient_only(intensity=0.4)
+        renderer.set_light(light_ambient)
+        assert renderer.light.ambient_intensity == 0.4
+        assert renderer.light.diffuse_intensity == 0.0

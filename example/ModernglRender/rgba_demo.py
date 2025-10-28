@@ -1,6 +1,10 @@
 """
 Demo of RGBA transfer function texture functionality in PyVR.
 This example shows how to use combined RGBA textures for improved performance.
+
+Updated for PyVR v0.2.4:
+- Uses new Camera class (v0.2.3)
+- Uses new Light class (v0.2.4)
 """
 
 import time
@@ -8,8 +12,9 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pyvr.camera import CameraParameters, get_camera_pos_from_params
+from pyvr.camera import Camera
 from pyvr.datasets import compute_normal_volume, create_sample_volume
+from pyvr.lighting import Light
 from pyvr.moderngl_renderer import VolumeRenderer
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
 
@@ -19,9 +24,12 @@ MAX_STEPS = int(1e3)
 VOLUME_SIZE = 256
 IMAGE_RES = 224
 
-# Create renderer
+# Configure lighting (v0.2.4)
+light = Light.directional(direction=[1, -1, 0], ambient=0.0, diffuse=1.0)
+
+# Create renderer with light
 renderer = VolumeRenderer(
-    IMAGE_RES, IMAGE_RES, step_size=STEP_SIZE, max_steps=MAX_STEPS
+    IMAGE_RES, IMAGE_RES, step_size=STEP_SIZE, max_steps=MAX_STEPS, light=light
 )
 
 # Load volume data
@@ -34,10 +42,6 @@ renderer.set_volume_bounds((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0))
 # Create transfer functions
 ctf = ColorTransferFunction.from_colormap("plasma")
 otf = OpacityTransferFunction.linear(0.0, 0.1)
-
-# Configure lighting
-renderer.set_diffuse_light(1.0)
-renderer.set_ambient_light(0.0)
 
 # Camera positions for multi-view demo
 camera_positions = [
@@ -61,11 +65,11 @@ camera_positions = [
 
 # Create figure for multi-view display
 fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-fig.suptitle("PyVR: RGBA Transfer Function Texture Demo", fontsize=16)
+fig.suptitle("PyVR: RGBA Transfer Function Texture Demo (v0.2.4)", fontsize=16)
 
 for i, camera_params in enumerate(camera_positions):
-    # Set camera position
-    camera = CameraParameters.from_spherical(
+    # Set camera using Camera class (v0.2.3)
+    camera = Camera.from_spherical(
         target=np.array([0, 0, 0], dtype=np.float32),
         distance=camera_params["distance"],
         azimuth=camera_params["azimuth"],
@@ -73,8 +77,7 @@ for i, camera_params in enumerate(camera_positions):
         roll=camera_params["roll"],
         init_up=np.array([0, 0, 1], dtype=np.float32),
     )
-    position, up = get_camera_pos_from_params(camera)
-    renderer.set_camera(position=position, target=(0, 0, 0), up=up)
+    renderer.set_camera(camera)
 
     # Set transfer functions using new RGBA texture API
     renderer.set_transfer_functions(ctf, otf)

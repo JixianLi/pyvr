@@ -16,7 +16,7 @@ from pyvr.camera.control import (
     CameraPath,
     CameraController
 )
-from pyvr.camera.parameters import CameraParameters
+from pyvr.camera.parameters import Camera
 
 
 def test_get_camera_pos_basic():
@@ -97,7 +97,7 @@ def test_get_camera_pos_validation():
 
 def test_get_camera_pos_from_params():
     """Test get_camera_pos_from_params function."""
-    params = CameraParameters(
+    params = Camera(
         target=np.array([1.0, 2.0, 3.0]),
         azimuth=np.pi/4,
         elevation=np.pi/6,
@@ -113,8 +113,8 @@ def test_get_camera_pos_from_params():
 
 def test_camera_path():
     """Test CameraPath animation functionality."""
-    start_params = CameraParameters.front_view(distance=3.0)
-    end_params = CameraParameters.side_view(distance=3.0)
+    start_params = Camera.front_view(distance=3.0)
+    end_params = Camera.side_view(distance=3.0)
     
     path = CameraPath([start_params, end_params])
     
@@ -138,10 +138,10 @@ def test_camera_path_validation():
     """Test CameraPath validation."""
     # Need at least 2 keyframes
     with pytest.raises(ValueError, match="At least 2 keyframes are required"):
-        CameraPath([CameraParameters.front_view()])
+        CameraPath([Camera.front_view()])
     
     # Invalid interpolation parameter
-    path = CameraPath([CameraParameters.front_view(), CameraParameters.side_view()])
+    path = CameraPath([Camera.front_view(), Camera.side_view()])
     
     with pytest.raises(ValueError, match="t must be between 0.0 and 1.0"):
         path.interpolate(-0.1)
@@ -152,8 +152,8 @@ def test_camera_path_validation():
 
 def test_camera_path_angle_interpolation():
     """Test angle interpolation handles wraparound correctly."""
-    start_params = CameraParameters(azimuth=-np.pi*0.9)  # Near -π
-    end_params = CameraParameters(azimuth=np.pi*0.9)     # Near +π
+    start_params = Camera(azimuth=-np.pi*0.9)  # Near -π
+    end_params = Camera(azimuth=np.pi*0.9)     # Near +π
     
     path = CameraPath([start_params, end_params])
     mid_params = path.interpolate(0.5)
@@ -239,7 +239,7 @@ def test_camera_controller_presets():
 def test_camera_controller_animation():
     """Test camera controller animation generation."""
     controller = CameraController()
-    target_params = CameraParameters.isometric_view(distance=5.0)
+    target_params = Camera.isometric_view(distance=5.0)
     
     frames = controller.animate_to(target_params, n_frames=10)
     assert len(frames) == 10
@@ -275,7 +275,7 @@ def test_gimbal_lock_handling():
 
 def test_compatibility_with_old_interface():
     """Test that new interface works correctly."""
-    initial_params = CameraParameters(
+    initial_params = Camera(
         target=np.array([0.0, 0.0, 0.0]),
         azimuth=0.0, elevation=0.0, roll=0.0, distance=3.0,
         init_pos=np.array([0.0, 0.0, 1.0])  # Make sure init_pos != target
@@ -316,7 +316,7 @@ def test_get_camera_pos_edge_cases():
 def test_camera_path_edge_cases():
     """Test edge cases for CameraPath."""
     # Test single keyframe (should require at least 2)
-    single_keyframe = CameraParameters(
+    single_keyframe = Camera(
         target=np.array([0.0, 0.0, 0.0]),
         azimuth=0.0, elevation=0.0, roll=0.0, distance=3.0
     )
@@ -325,16 +325,16 @@ def test_camera_path_edge_cases():
         CameraPath([single_keyframe])
     
     # Test invalid keyframe type
-    invalid_keyframe = "not a CameraParameters"
+    invalid_keyframe = "not a Camera"
     
-    with pytest.raises(ValueError, match="must be a CameraParameters instance"):
+    with pytest.raises(ValueError, match="must be a Camera instance"):
         CameraPath([invalid_keyframe, invalid_keyframe])
 
 
 def test_camera_controller_edge_cases():
     """Test edge cases for CameraController."""
     # Test with very small distance
-    initial_params = CameraParameters(
+    initial_params = Camera(
         target=np.array([0.0, 0.0, 0.0]),
         azimuth=0.0, elevation=0.0, roll=0.0, distance=0.001
     )
@@ -345,7 +345,7 @@ def test_camera_controller_edge_cases():
     assert len(up) == 3
     
     # Test with extreme angles
-    extreme_params = CameraParameters(
+    extreme_params = Camera(
         target=np.array([0.0, 0.0, 0.0]),
         azimuth=10 * np.pi,  # Multiple full rotations
         elevation=2 * np.pi,
@@ -359,12 +359,12 @@ def test_camera_controller_edge_cases():
 
 def test_camera_path_interpolation_edge_cases():
     """Test edge cases for camera path interpolation."""
-    params1 = CameraParameters(
+    params1 = Camera(
         target=np.array([0.0, 0.0, 0.0]),
         azimuth=0.0, elevation=0.0, roll=0.0, distance=3.0,
         init_pos=np.array([0.0, 0.0, 1.0])
     )
-    params2 = CameraParameters(
+    params2 = Camera(
         target=np.array([1.0, 0.0, 0.0]),
         azimuth=np.pi, elevation=np.pi/4, roll=0.0, distance=5.0,
         init_pos=np.array([0.0, 0.0, 1.0])
@@ -381,7 +381,7 @@ def test_camera_path_interpolation_edge_cases():
     
     # Test valid interpolation
     result_mid = path.interpolate(0.5)
-    assert isinstance(result_mid, CameraParameters)
+    assert isinstance(result_mid, Camera)
 
 
 if __name__ == "__main__":

@@ -3,10 +3,11 @@
 PyVR provides GPU-accelerated 3D volume rendering using OpenGL/ModernGL
 for real-time interactive visualization.
 
-Version 0.2.3 introduces pipeline-aligned Camera system with matrix generation.
+Version 0.2.4 introduces pipeline-aligned Light system with configurable lighting.
 """
 
-from . import camera, datasets, moderngl_renderer, transferfunctions
+from . import camera, datasets, lighting, moderngl_renderer, transferfunctions
 
-__version__ = "0.2.3"
-__all__ = ["camera", "datasets", "moderngl_renderer", "transferfunctions"]
+__version__ = "0.2.4"
+__all__ = ["camera", "datasets", "lighting", "moderngl_renderer", "transferfunctions"]
+

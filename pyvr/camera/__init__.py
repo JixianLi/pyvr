@@ -6,15 +6,15 @@ It handles camera positioning, orientation, parameter management, and animations
 
 Core Functions:
     get_camera_pos: Calculate camera position from spherical coordinates
-    get_camera_pos_from_params: Calculate position from CameraParameters object
+    get_camera_pos_from_params: Calculate position from Camera object
 
 Classes:
-    CameraParameters: Camera parameter validation and management
+    Camera: Camera parameter validation, matrix creation, and management
     CameraPath: Camera path animation utility
     CameraController: High-level camera controller for interactive manipulation
 
 Exceptions:
-    CameraParameterError: Raised when camera parameters are invalid
+    CameraError: Raised when camera parameters are invalid
 
 Utility Functions:
     validate_camera_angles: Validate camera angle parameters
@@ -22,19 +22,19 @@ Utility Functions:
     radians_to_degrees: Convert angles from radians to degrees
 
 Examples:
-    # Using camera parameters (recommended interface)
-    params = CameraParameters.from_spherical(
+    # Using camera (recommended interface)
+    camera = Camera.from_spherical(
         target=np.array([0, 0, 0]), distance=5.0,
         azimuth=np.pi/4, elevation=np.pi/6, roll=0
     )
-    pos, up = params.get_camera_vectors()
+    pos, up = camera.get_camera_vectors()
 
     # Camera presets
-    params = CameraParameters.preset_isometric_view(distance=3.0)
-    pos, up = params.get_camera_vectors()
+    camera = Camera.isometric_view(distance=3.0)
+    pos, up = camera.get_camera_vectors()
 
     # Camera animation
-    path = CameraPath([start_params, end_params])
+    path = CameraPath([start_camera, end_camera])
     frames = path.generate_frames(30)
 
     # Interactive camera control
@@ -53,8 +53,8 @@ from .control import (
     get_camera_pos_from_params,
 )
 from .parameters import (
-    CameraParameterError,
-    CameraParameters,
+    Camera,
+    CameraError,
     degrees_to_radians,
     radians_to_degrees,
     validate_camera_angles,
@@ -65,11 +65,11 @@ __all__ = [
     "get_camera_pos",
     "get_camera_pos_from_params",
     # Classes
-    "CameraParameters",
+    "Camera",
     "CameraPath",
     "CameraController",
     # Exceptions
-    "CameraParameterError",
+    "CameraError",
     # Utilities
     "validate_camera_angles",
     "degrees_to_radians",

@@ -1,7 +1,6 @@
 import os
 from typing import Optional
 
-import numpy as np
 from PIL import Image
 
 from ..transferfunctions.color import ColorTransferFunction
@@ -16,23 +15,17 @@ class VolumeRenderer:
         height=512,
         step_size=0.01,
         max_steps=200,
-        ambient_light=0.2,
-        diffuse_light=0.8,
-        light_position=(1.0, 1.0, 1.0),
-        light_target=(0.0, 0.0, 0.0),
+        light=None,
     ):
         """
         Initializes the volume renderer with specified rendering parameters and OpenGL resources.
 
         Parameters:
-            width (int):            # The width of the rendering viewport (default: 512).
-            height (int):           # The height of the rendering viewport (default: 512).
-            step_size (float):      # The step size for ray marching in the volume (default: 0.01).
-            max_steps (int):        # The maximum number of steps for ray marching (default: 200).
-            ambient_light (float):  # The intensity of ambient lighting (default: 0.2).
-            diffuse_light (float):  # The intensity of diffuse lighting (default: 0.8).
-            light_position (tuple): # The (x, y, z) position of the light source (default: (1.0, 1.0, 1.0)).
-            light_target (tuple):   # The (x, y, z) target point the light is directed at (default: (0.0, 0.0, 0.0)).
+            width (int):       # The width of the rendering viewport (default: 512).
+            height (int):      # The height of the rendering viewport (default: 512).
+            step_size (float): # The step size for ray marching in the volume (default: 0.01).
+            max_steps (int):   # The maximum number of steps for ray marching (default: 200).
+            light (Light):     # Light configuration. If None, creates default light.
 
         Initializes OpenGL context, loads shaders, creates framebuffer, and sets up geometry and shader uniforms for volume rendering.
         """
@@ -40,10 +33,13 @@ class VolumeRenderer:
         self.height = height
         self.step_size = step_size
         self.max_steps = max_steps
-        self.ambient_light = ambient_light
-        self.diffuse_light = diffuse_light
-        self.light_position = np.array(light_position, dtype=np.float32)
-        self.light_target = np.array(light_target, dtype=np.float32)
+
+        # Initialize light
+        if light is None:
+            from ..lighting import Light
+            self.light = Light.default()
+        else:
+            self.light = light
 
         # Create ModernGL manager
         self.gl_manager = ModernGLManager(width, height)
@@ -61,10 +57,9 @@ class VolumeRenderer:
         self.gl_manager.set_uniform_int("max_steps", self.max_steps)
         self.gl_manager.set_uniform_vector("volume_min_bounds", (-0.5, -0.5, -0.5))
         self.gl_manager.set_uniform_vector("volume_max_bounds", (0.5, 0.5, 0.5))
-        self.gl_manager.set_uniform_float("ambient_light", self.ambient_light)
-        self.gl_manager.set_uniform_float("diffuse_light", self.diffuse_light)
-        self.gl_manager.set_uniform_vector("light_position", self.light_position)
-        self.gl_manager.set_uniform_vector("light_target", self.light_target)
+
+        # Set light uniforms
+        self._update_light()
 
     def load_volume(self, volume_data):
         """Load 3D volume data into a texture. volume_data should always be in shape (D, H, W)"""
@@ -84,51 +79,30 @@ class VolumeRenderer:
         texture_unit = self.gl_manager.create_normal_texture(normal_volume)
         self.gl_manager.set_uniform_int("normal_volume", texture_unit)
 
-    def set_camera(self, position, target=(0, 0, 0), up=(0, 1, 0)):
-        """Set camera position and orientation"""
-        position = np.array(position, dtype=np.float32)
-        target = np.array(target, dtype=np.float32)
-        up = np.array(up, dtype=np.float32)
+    def set_camera(self, camera):
+        """
+        Set camera configuration using Camera instance.
 
-        # Create view matrix
-        forward = target - position
-        forward = forward / np.linalg.norm(forward)
+        Args:
+            camera: Camera instance with position and projection parameters
 
-        right = np.cross(forward, up)
-        right = right / np.linalg.norm(right)
+        Example:
+            >>> from pyvr.camera import Camera
+            >>> camera = Camera.isometric_view(distance=3.0)
+            >>> renderer.set_camera(camera)
+        """
+        from ..camera import Camera
 
-        up = np.cross(right, forward)
+        if not isinstance(camera, Camera):
+            raise TypeError(f"Expected Camera instance, got {type(camera)}")
 
-        view_matrix = np.array(
-            [
-                [right[0], up[0], -forward[0], 0],
-                [right[1], up[1], -forward[1], 0],
-                [right[2], up[2], -forward[2], 0],
-                [
-                    -np.dot(right, position),
-                    -np.dot(up, position),
-                    np.dot(forward, position),
-                    1,
-                ],
-            ],
-            dtype=np.float32,
-        )
-
-        # Create projection matrix (perspective)
-        fov = np.radians(45)
+        # Get view and projection matrices from camera
         aspect = self.width / self.height
-        near, far = 0.1, 100.0
+        view_matrix = camera.get_view_matrix()
+        projection_matrix = camera.get_projection_matrix(aspect)
 
-        f = 1.0 / np.tan(fov / 2.0)
-        projection_matrix = np.array(
-            [
-                [f / aspect, 0, 0, 0],
-                [0, f, 0, 0],
-                [0, 0, (far + near) / (near - far), (2 * far * near) / (near - far)],
-                [0, 0, -1, 0],
-            ],
-            dtype=np.float32,
-        )
+        # Get camera position for lighting calculations
+        position, _ = camera.get_camera_vectors()
 
         # Set uniforms
         self.gl_manager.set_uniform_matrix("view_matrix", view_matrix)
@@ -172,25 +146,46 @@ class VolumeRenderer:
         self.max_steps = max_steps
         self.gl_manager.set_uniform_int("max_steps", max_steps)
 
-    def set_ambient_light(self, ambient_light):
-        """Set the ambient light intensity."""
-        self.ambient_light = ambient_light
-        self.gl_manager.set_uniform_float("ambient_light", ambient_light)
+    def _update_light(self):
+        """Update OpenGL uniforms from current light configuration."""
+        self.gl_manager.set_uniform_float("ambient_light", self.light.ambient_intensity)
+        self.gl_manager.set_uniform_float("diffuse_light", self.light.diffuse_intensity)
+        self.gl_manager.set_uniform_vector("light_position", tuple(self.light.position))
+        self.gl_manager.set_uniform_vector("light_target", tuple(self.light.target))
 
-    def set_diffuse_light(self, diffuse_light):
-        """Set the diffuse light intensity."""
-        self.diffuse_light = diffuse_light
-        self.gl_manager.set_uniform_float("diffuse_light", diffuse_light)
+    def set_light(self, light):
+        """
+        Set lighting configuration.
 
-    def set_light_position(self, light_position):
-        """Set the position of the light source."""
-        self.light_position = np.array(light_position, dtype=np.float32)
-        self.gl_manager.set_uniform_vector("light_position", self.light_position)
+        Args:
+            light: Light instance with lighting parameters
 
-    def set_light_target(self, light_target):
-        """Set the target point the light is pointing to."""
-        self.light_target = np.array(light_target, dtype=np.float32)
-        self.gl_manager.set_uniform_vector("light_target", self.light_target)
+        Example:
+            >>> from pyvr.lighting import Light
+            >>> light = Light.directional(direction=[1, -1, 0], ambient=0.3)
+            >>> renderer.set_light(light)
+        """
+        from ..lighting import Light
+
+        if not isinstance(light, Light):
+            raise TypeError(f"Expected Light instance, got {type(light)}")
+
+        self.light = light
+        self._update_light()
+
+    def get_light(self):
+        """
+        Get current light configuration.
+
+        Returns:
+            Light: Current light instance
+
+        Example:
+            >>> renderer = VolumeRenderer()
+            >>> light = renderer.get_light()
+            >>> print(light)
+        """
+        return self.light
 
     def set_transfer_functions(
         self,

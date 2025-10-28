@@ -1,5 +1,9 @@
 """
 Multi-view volume rendering example using PyVR RGBA transfer function textures
+
+Updated for PyVR v0.2.4:
+- Uses new Camera class (v0.2.3)
+- Uses new Light class (v0.2.4)
 """
 
 import time
@@ -7,8 +11,9 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pyvr.camera import CameraParameters, get_camera_pos_from_params
+from pyvr.camera import Camera
 from pyvr.datasets import compute_normal_volume, create_sample_volume
+from pyvr.lighting import Light
 from pyvr.moderngl_renderer import VolumeRenderer
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
 
@@ -17,10 +22,12 @@ MAX_STEPS = int(1e3)
 VOLUME_SIZE = 256
 IMAGE_RES = 224
 
-# Create renderer (now uses ModernGLManager internally for better architecture)
-# VolumeRenderer handles high-level operations, ModernGLManager handles OpenGL resources
+# Configure lighting (v0.2.4)
+light = Light.directional(direction=[1, -1, 0], ambient=0.0, diffuse=1.0)
+
+# Create renderer with light
 renderer = VolumeRenderer(
-    IMAGE_RES, IMAGE_RES, step_size=1 / VOLUME_SIZE, max_steps=MAX_STEPS
+    IMAGE_RES, IMAGE_RES, step_size=1 / VOLUME_SIZE, max_steps=MAX_STEPS, light=light
 )
 
 # Load helix volume and normals
@@ -30,15 +37,11 @@ renderer.load_volume(volume)
 renderer.load_normal_volume(normals)
 renderer.set_volume_bounds((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0))
 
-# Use plasma colormap with v0.2.1 API
+# Use plasma colormap
 ctf = ColorTransferFunction.from_colormap("plasma")
 
 # Linear opacity from 0 to 0.1
 otf = OpacityTransferFunction.linear(0.0, 0.1)
-
-# Configure lighting (high-level operations handled by VolumeRenderer)
-renderer.set_diffuse_light(1.0)
-renderer.set_ambient_light(0.0)
 
 # Camera parameter sets to test
 # Camera parameter sets to test
@@ -86,8 +89,8 @@ ax_tf = fig.add_subplot(gs[2, :])
 
 # Rendered images
 for i, params in enumerate(camera_params):
-    # Compute camera position and up vector using new v0.2.1 API
-    camera = CameraParameters.from_spherical(
+    # Create camera using Camera class (v0.2.3)
+    camera = Camera.from_spherical(
         target=np.array([0, 0, 0], dtype=np.float32),
         distance=params["distance"],
         azimuth=params["azimuth"],
@@ -95,8 +98,7 @@ for i, params in enumerate(camera_params):
         roll=params["roll"],
         init_up=np.array([0, 0, 1], dtype=np.float32),
     )
-    position, up = get_camera_pos_from_params(camera)
-    renderer.set_camera(position=position, target=(0, 0, 0), up=up)
+    renderer.set_camera(camera)
 
     # Set transfer functions using RGBA texture API
     renderer.set_transfer_functions(ctf, otf)

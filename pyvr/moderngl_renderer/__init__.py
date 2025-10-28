@@ -5,7 +5,7 @@ Provides interactive visualization with camera controls and transfer functions.
 """
 
 from ..camera.control import CameraController
-from ..camera.parameters import CameraParameters
+from ..camera.parameters import Camera
 
 # Re-export dataset functions for convenience
 from ..datasets import compute_normal_volume, create_sample_volume
@@ -20,7 +20,7 @@ __all__ = [
     "VolumeRenderer",
     "ModernGLManager",
     "CameraController",
-    "CameraParameters",
+    "Camera",
     "create_sample_volume",
     "compute_normal_volume",
 ]

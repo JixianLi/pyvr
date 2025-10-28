@@ -14,12 +14,12 @@ import numpy as np
 
 
 @dataclass
-class CameraParameters:
+class Camera:
     """
-    Comprehensive camera parameter container with validation and presets.
+    Camera with validation, matrix creation, and presets.
 
     This class encapsulates all camera-related parameters and provides
-    validation, serialization, and preset management functionality.
+    validation, serialization, matrix generation, and preset management.
 
     Attributes:
         target: 3D point the camera is looking at
@@ -29,9 +29,9 @@ class CameraParameters:
         distance: Distance from camera to target
         init_pos: Initial camera position (relative to target)
         init_up: Initial up vector
-        fov: Field of view in radians (for future use)
-        near_plane: Near clipping plane distance (for future use)
-        far_plane: Far clipping plane distance (for future use)
+        fov: Field of view in radians
+        near_plane: Near clipping plane distance
+        far_plane: Far clipping plane distance
     """
 
     # Core positioning parameters
@@ -121,9 +121,9 @@ class CameraParameters:
         roll: float,
         distance: float,
         **kwargs,
-    ) -> "CameraParameters":
+    ) -> "Camera":
         """
-        Create camera parameters from spherical coordinates (main interface).
+        Create camera from spherical coordinates (main interface).
 
         Args:
             target: 3D point to look at
@@ -134,7 +134,7 @@ class CameraParameters:
             **kwargs: Additional parameters (init_pos, init_up, etc.)
 
         Returns:
-            CameraParameters instance
+            Camera instance
         """
         return cls(
             target=target,
@@ -148,8 +148,8 @@ class CameraParameters:
     @classmethod
     def front_view(
         cls, target: Optional[np.ndarray] = None, distance: float = 3.0
-    ) -> "CameraParameters":
-        """Create parameters for front view."""
+    ) -> "Camera":
+        """Create camera for front view."""
         if target is None:
             target = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         return cls(
@@ -159,8 +159,8 @@ class CameraParameters:
     @classmethod
     def side_view(
         cls, target: Optional[np.ndarray] = None, distance: float = 3.0
-    ) -> "CameraParameters":
-        """Create parameters for side view."""
+    ) -> "Camera":
+        """Create camera for side view."""
         if target is None:
             target = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         return cls(
@@ -170,8 +170,8 @@ class CameraParameters:
     @classmethod
     def top_view(
         cls, target: Optional[np.ndarray] = None, distance: float = 3.0
-    ) -> "CameraParameters":
-        """Create parameters for top view."""
+    ) -> "Camera":
+        """Create camera for top view."""
         if target is None:
             target = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         return cls(
@@ -181,8 +181,8 @@ class CameraParameters:
     @classmethod
     def isometric_view(
         cls, target: Optional[np.ndarray] = None, distance: float = 3.0
-    ) -> "CameraParameters":
-        """Create parameters for isometric view."""
+    ) -> "Camera":
+        """Create camera for isometric view."""
         if target is None:
             target = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         return cls(
@@ -214,15 +214,15 @@ class CameraParameters:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "CameraParameters":
+    def from_dict(cls, data: Dict[str, Any]) -> "Camera":
         """
-        Deserialize camera parameters from dictionary.
+        Deserialize camera from dictionary.
 
         Args:
             data: Dictionary with camera parameter values
 
         Returns:
-            CameraParameters instance
+            Camera instance
         """
         return cls(
             target=np.array(data["target"], dtype=np.float32),
@@ -248,28 +248,129 @@ class CameraParameters:
             json.dump(self.to_dict(), f, indent=2)
 
     @classmethod
-    def load_from_file(cls, filepath: Union[str, Path]) -> "CameraParameters":
+    def load_from_file(cls, filepath: Union[str, Path]) -> "Camera":
         """
-        Load camera parameters from JSON file.
+        Load camera from JSON file.
 
         Args:
             filepath: Path to the JSON file
 
         Returns:
-            CameraParameters instance
+            Camera instance
         """
         with open(filepath, "r") as f:
             data = json.load(f)
         return cls.from_dict(data)
 
-    def copy(self) -> "CameraParameters":
-        """Create a copy of the camera parameters."""
-        return CameraParameters.from_dict(self.to_dict())
+    def copy(self) -> "Camera":
+        """Create a copy of the camera."""
+        return Camera.from_dict(self.to_dict())
+
+    def get_camera_vectors(self) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Get camera position and up vector from spherical parameters.
+
+        Delegates to get_camera_pos_from_params() for quaternion-based calculation.
+
+        Returns:
+            Tuple of (position, up) vectors
+
+        Example:
+            >>> camera = Camera.from_spherical(
+            ...     target=np.array([0, 0, 0]),
+            ...     azimuth=np.pi/4,
+            ...     elevation=np.pi/6,
+            ...     roll=0.0,
+            ...     distance=3.0
+            ... )
+            >>> position, up = camera.get_camera_vectors()
+        """
+        from .control import get_camera_pos_from_params
+        return get_camera_pos_from_params(self)
+
+    def get_view_matrix(self) -> np.ndarray:
+        """
+        Create view matrix from camera parameters.
+
+        Transforms from world space to camera space (Geometry Stage).
+
+        Returns:
+            4x4 view matrix as np.ndarray (float32)
+
+        Example:
+            >>> camera = Camera.isometric_view(distance=5.0)
+            >>> view_matrix = camera.get_view_matrix()
+            >>> view_matrix.shape
+            (4, 4)
+        """
+        position, up = self.get_camera_vectors()
+
+        # Look-at algorithm
+        forward = self.target - position
+        forward = forward / np.linalg.norm(forward)
+
+        right = np.cross(forward, up)
+        right = right / np.linalg.norm(right)
+
+        up_corrected = np.cross(right, forward)
+
+        # View matrix (column-major for OpenGL)
+        view_matrix = np.array(
+            [
+                [right[0], up_corrected[0], -forward[0], 0],
+                [right[1], up_corrected[1], -forward[1], 0],
+                [right[2], up_corrected[2], -forward[2], 0],
+                [
+                    -np.dot(right, position),
+                    -np.dot(up_corrected, position),
+                    np.dot(forward, position),
+                    1,
+                ],
+            ],
+            dtype=np.float32,
+        )
+
+        return view_matrix
+
+    def get_projection_matrix(self, aspect_ratio: float) -> np.ndarray:
+        """
+        Create perspective projection matrix.
+
+        Transforms from camera space to clip space.
+        Uses camera's FOV, near plane, and far plane settings.
+
+        Args:
+            aspect_ratio: Width / height ratio of viewport
+
+        Returns:
+            4x4 projection matrix as np.ndarray (float32)
+
+        Example:
+            >>> camera = Camera.front_view(distance=3.0)
+            >>> camera.fov = np.radians(60)
+            >>> proj = camera.get_projection_matrix(aspect_ratio=16/9)
+        """
+        fov = self.fov
+        near = self.near_plane
+        far = self.far_plane
+
+        f = 1.0 / np.tan(fov / 2.0)
+        projection_matrix = np.array(
+            [
+                [f / aspect_ratio, 0, 0, 0],
+                [0, f, 0, 0],
+                [0, 0, (far + near) / (near - far), (2 * far * near) / (near - far)],
+                [0, 0, -1, 0],
+            ],
+            dtype=np.float32,
+        )
+
+        return projection_matrix
 
     def __repr__(self) -> str:
-        """String representation of camera parameters."""
+        """String representation of camera."""
         return (
-            f"CameraParameters("
+            f"Camera("
             f"target={self.target}, "
             f"azimuth={self.azimuth:.3f} rad ({np.degrees(self.azimuth):.1f}°), "
             f"elevation={self.elevation:.3f} rad ({np.degrees(self.elevation):.1f}°), "
@@ -278,8 +379,8 @@ class CameraParameters:
         )
 
 
-class CameraParameterError(Exception):
-    """Exception raised for camera parameter errors."""
+class CameraError(Exception):
+    """Exception raised for camera errors."""
 
     pass
 
@@ -294,15 +395,15 @@ def validate_camera_angles(azimuth: float, elevation: float, roll: float) -> Non
         roll: Roll rotation angle in radians
 
     Raises:
-        CameraParameterError: If any angle is invalid
+        CameraError: If any angle is invalid
     """
     angles = {"azimuth": azimuth, "elevation": elevation, "roll": roll}
 
     for name, value in angles.items():
         if not isinstance(value, (int, float)):
-            raise CameraParameterError(f"{name} must be numeric, got {type(value)}")
+            raise CameraError(f"{name} must be numeric, got {type(value)}")
         if not np.isfinite(value):
-            raise CameraParameterError(f"{name} must be finite, got {value}")
+            raise CameraError(f"{name} must be finite, got {value}")
 
 
 def degrees_to_radians(**kwargs) -> Dict[str, float]:
