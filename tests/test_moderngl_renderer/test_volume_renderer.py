@@ -520,3 +520,185 @@ class TestVolumeRendererLightIntegration:
         renderer.set_light(light_ambient)
         assert renderer.light.ambient_intensity == 0.4
         assert renderer.light.diffuse_intensity == 0.0
+
+
+class TestVolumeRendererVolumeClass:
+    """Test Volume class integration with VolumeRenderer (v0.2.5)."""
+
+    def test_load_volume_instance(self, mock_moderngl_context):
+        """VolumeRenderer should accept Volume instance."""
+        from pyvr.volume import Volume
+
+        renderer = VolumeRenderer()
+
+        # Mock GL manager methods
+        renderer.gl_manager.create_volume_texture = MagicMock(return_value=0)
+        renderer.gl_manager.set_uniform_int = MagicMock()
+        renderer.gl_manager.set_uniform_vector = MagicMock()
+
+        # Create Volume instance
+        data = np.random.rand(32, 32, 32).astype(np.float32)
+        volume = Volume(data=data)
+
+        renderer.load_volume(volume)
+
+        # Should store the volume
+        assert renderer.volume is volume
+
+        # Should have created texture and set uniforms
+        renderer.gl_manager.create_volume_texture.assert_called_once_with(data)
+        renderer.gl_manager.set_uniform_int.assert_called_with("volume_texture", 0)
+        assert renderer.gl_manager.set_uniform_vector.call_count >= 2  # min_bounds and max_bounds
+
+    def test_load_volume_with_normals(self, mock_moderngl_context):
+        """VolumeRenderer should handle Volume with normals."""
+        from pyvr.volume import Volume
+
+        renderer = VolumeRenderer()
+
+        # Mock GL manager methods
+        renderer.gl_manager.create_volume_texture = MagicMock(return_value=0)
+        renderer.gl_manager.create_normal_texture = MagicMock(return_value=1)
+        renderer.gl_manager.set_uniform_int = MagicMock()
+        renderer.gl_manager.set_uniform_vector = MagicMock()
+
+        # Create Volume with normals
+        data = np.random.rand(32, 32, 32).astype(np.float32)
+        normals = np.random.rand(32, 32, 32, 3).astype(np.float32)
+        volume = Volume(data=data, normals=normals)
+
+        renderer.load_volume(volume)
+
+        # Should have created both textures
+        renderer.gl_manager.create_volume_texture.assert_called_once()
+        renderer.gl_manager.create_normal_texture.assert_called_once_with(normals)
+
+        # Should have set both texture uniforms
+        assert renderer.gl_manager.set_uniform_int.call_count >= 2
+
+    def test_load_volume_with_custom_bounds(self, mock_moderngl_context):
+        """VolumeRenderer should respect custom volume bounds."""
+        from pyvr.volume import Volume
+
+        renderer = VolumeRenderer()
+
+        # Mock GL manager methods
+        renderer.gl_manager.create_volume_texture = MagicMock(return_value=0)
+        renderer.gl_manager.set_uniform_int = MagicMock()
+        renderer.gl_manager.set_uniform_vector = MagicMock()
+
+        # Create Volume with custom bounds
+        data = np.random.rand(32, 32, 32).astype(np.float32)
+        min_bounds = np.array([-1.0, -1.0, -1.0], dtype=np.float32)
+        max_bounds = np.array([1.0, 1.0, 1.0], dtype=np.float32)
+        volume = Volume(data=data, min_bounds=min_bounds, max_bounds=max_bounds)
+
+        renderer.load_volume(volume)
+
+        # Should have set the custom bounds
+        renderer.gl_manager.set_uniform_vector.assert_any_call("volume_min_bounds", (-1.0, -1.0, -1.0))
+        renderer.gl_manager.set_uniform_vector.assert_any_call("volume_max_bounds", (1.0, 1.0, 1.0))
+
+    def test_load_numpy_array_deprecated(self, mock_moderngl_context):
+        """Loading numpy array should trigger deprecation warning."""
+        import warnings
+
+        renderer = VolumeRenderer()
+
+        # Mock GL manager methods
+        renderer.gl_manager.create_volume_texture = MagicMock(return_value=0)
+        renderer.gl_manager.set_uniform_int = MagicMock()
+
+        # Create numpy array
+        data = np.random.rand(32, 32, 32).astype(np.float32)
+
+        # Should trigger deprecation warning
+        with pytest.warns(DeprecationWarning, match="Passing raw numpy array to load_volume.*is deprecated"):
+            renderer.load_volume(data)
+
+        # Should still work (backward compatibility)
+        renderer.gl_manager.create_volume_texture.assert_called_once()
+
+    def test_load_normal_volume_deprecated(self, mock_moderngl_context):
+        """load_normal_volume should trigger deprecation warning."""
+        import warnings
+
+        renderer = VolumeRenderer()
+
+        # Mock GL manager methods
+        renderer.gl_manager.create_normal_texture = MagicMock(return_value=1)
+        renderer.gl_manager.set_uniform_int = MagicMock()
+
+        # Create normal data
+        normals = np.random.rand(32, 32, 32, 3).astype(np.float32)
+
+        # Should trigger deprecation warning
+        with pytest.warns(DeprecationWarning, match="load_normal_volume.*is deprecated"):
+            renderer.load_normal_volume(normals)
+
+        # Should still work (backward compatibility)
+        renderer.gl_manager.create_normal_texture.assert_called_once()
+
+    def test_set_volume_bounds_deprecated(self, mock_moderngl_context):
+        """set_volume_bounds should trigger deprecation warning."""
+        import warnings
+
+        renderer = VolumeRenderer()
+
+        # Mock GL manager methods
+        renderer.gl_manager.set_uniform_vector = MagicMock()
+
+        # Should trigger deprecation warning
+        with pytest.warns(DeprecationWarning, match="set_volume_bounds.*is deprecated"):
+            renderer.set_volume_bounds((-1, -1, -1), (1, 1, 1))
+
+        # Should still work (backward compatibility)
+        renderer.gl_manager.set_uniform_vector.assert_called()
+
+    def test_get_volume(self, mock_moderngl_context):
+        """get_volume should return current Volume instance."""
+        from pyvr.volume import Volume
+
+        renderer = VolumeRenderer()
+
+        # Mock GL manager methods
+        renderer.gl_manager.create_volume_texture = MagicMock(return_value=0)
+        renderer.gl_manager.set_uniform_int = MagicMock()
+        renderer.gl_manager.set_uniform_vector = MagicMock()
+
+        # Initially None
+        assert renderer.get_volume() is None
+
+        # Create and load volume
+        data = np.random.rand(32, 32, 32).astype(np.float32)
+        volume = Volume(data=data)
+        renderer.load_volume(volume)
+
+        # Should return the same volume
+        assert renderer.get_volume() is volume
+
+    def test_volume_replacement(self, mock_moderngl_context):
+        """Replacing volume should update stored Volume instance."""
+        from pyvr.volume import Volume
+
+        renderer = VolumeRenderer()
+
+        # Mock GL manager methods
+        renderer.gl_manager.create_volume_texture = MagicMock(return_value=0)
+        renderer.gl_manager.set_uniform_int = MagicMock()
+        renderer.gl_manager.set_uniform_vector = MagicMock()
+
+        # Load first volume
+        data1 = np.random.rand(32, 32, 32).astype(np.float32)
+        volume1 = Volume(data=data1, name="volume1")
+        renderer.load_volume(volume1)
+        assert renderer.get_volume() is volume1
+
+        # Load second volume
+        data2 = np.random.rand(64, 64, 64).astype(np.float32)
+        volume2 = Volume(data=data2, name="volume2")
+        renderer.load_volume(volume2)
+        assert renderer.get_volume() is volume2
+
+        # Should have called create_volume_texture twice
+        assert renderer.gl_manager.create_volume_texture.call_count == 2
