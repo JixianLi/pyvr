@@ -76,159 +76,46 @@ class ModernGLVolumeRenderer(VolumeRendererBase):
         # Set light uniforms
         self._update_light()
 
-    def load_volume(self, volume) -> None:
+    def load_volume(self, volume: Volume) -> None:
         """
         Load volume data into renderer.
 
-        Supports both new Volume instances and legacy numpy arrays for
-        backward compatibility.
-
         Args:
-            volume: Volume instance (recommended) or 3D numpy array (legacy)
+            volume: Volume instance containing data, normals, and bounds
 
         Raises:
-            TypeError: If volume is invalid type
-            ValueError: If volume data is invalid
+            TypeError: If volume is not a Volume instance
 
         Example:
             >>> from pyvr.volume import Volume
             >>> vol = Volume(data=volume_data, normals=normals)
             >>> renderer.load_volume(vol)
         """
-        if isinstance(volume, Volume):
-            # New interface: Volume instance
-            self.volume = volume
-
-            # Load volume data texture
-            texture_unit = self.gl_manager.create_volume_texture(volume.data)
-            self.gl_manager.set_uniform_int("volume_texture", texture_unit)
-
-            # Set bounds
-            self.gl_manager.set_uniform_vector(
-                "volume_min_bounds", tuple(volume.min_bounds)
-            )
-            self.gl_manager.set_uniform_vector(
-                "volume_max_bounds", tuple(volume.max_bounds)
+        if not isinstance(volume, Volume):
+            raise TypeError(
+                f"Expected Volume instance, got {type(volume)}. "
+                "Create a Volume instance: from pyvr.volume import Volume; "
+                "volume = Volume(data=your_array)"
             )
 
-            # Load normals if present
-            if volume.has_normals:
-                normal_unit = self.gl_manager.create_normal_texture(volume.normals)
-                self.gl_manager.set_uniform_int("normal_volume", normal_unit)
+        self.volume = volume
 
-        else:
-            # Legacy interface: raw numpy array (backward compatibility)
-            import warnings
-            import numpy as np
+        # Load volume data texture
+        texture_unit = self.gl_manager.create_volume_texture(volume.data)
+        self.gl_manager.set_uniform_int("volume_texture", texture_unit)
 
-            if not isinstance(volume, np.ndarray):
-                raise TypeError(
-                    f"Expected Volume instance or numpy array, got {type(volume)}"
-                )
-
-            warnings.warn(
-                "Passing raw numpy array to load_volume() is deprecated. "
-                "Use Volume instance instead: "
-                "from pyvr.volume import Volume; "
-                "volume = Volume(data=your_array); "
-                "renderer.load_volume(volume)",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
-            # Validate data
-            if len(volume.shape) != 3:
-                raise ValueError("Volume data must be 3D")
-
-            # Create temporary Volume instance for internal tracking
-            self.volume = Volume(data=volume)
-
-            # Load texture
-            texture_unit = self.gl_manager.create_volume_texture(volume)
-            self.gl_manager.set_uniform_int("volume_texture", texture_unit)
-
-    def load_normal_volume(self, normal_volume):
-        """
-        Load 3D normal data into a texture.
-
-        .. deprecated:: 0.2.5
-            Include normals in Volume instance instead.
-
-        Args:
-            normal_volume: 4D array with shape (D, H, W, 3)
-
-        Example:
-            >>> # Old way (deprecated)
-            >>> renderer.load_normal_volume(normals)
-            >>>
-            >>> # New way (recommended)
-            >>> volume = Volume(data=volume_data, normals=normals)
-            >>> renderer.load_volume(volume)
-        """
-        import warnings
-
-        warnings.warn(
-            "load_normal_volume() is deprecated. Include normals in Volume instance: "
-            "from pyvr.volume import Volume; "
-            "volume = Volume(data=your_data, normals=your_normals); "
-            "renderer.load_volume(volume)",
-            DeprecationWarning,
-            stacklevel=2,
+        # Set bounds
+        self.gl_manager.set_uniform_vector(
+            "volume_min_bounds", tuple(volume.min_bounds)
+        )
+        self.gl_manager.set_uniform_vector(
+            "volume_max_bounds", tuple(volume.max_bounds)
         )
 
-        if normal_volume.shape[-1] != 3:
-            raise ValueError("Normal volume must have 3 channels (last dimension).")
-
-        # Create normal texture
-        texture_unit = self.gl_manager.create_normal_texture(normal_volume)
-        self.gl_manager.set_uniform_int("normal_volume", texture_unit)
-
-        # Update volume's normals if volume exists
-        if self.volume is not None:
-            self.volume.normals = normal_volume
-
-    def set_volume_bounds(
-        self, min_bounds=(-0.5, -0.5, -0.5), max_bounds=(0.5, 0.5, 0.5)
-    ):
-        """
-        Set the world space bounding box for the volume.
-
-        .. deprecated:: 0.2.5
-            Set bounds on Volume instance instead.
-
-        Args:
-            min_bounds: Minimum corner of bounding box
-            max_bounds: Maximum corner of bounding box
-
-        Example:
-            >>> # Old way (deprecated)
-            >>> renderer.set_volume_bounds((-1, -1, -1), (1, 1, 1))
-            >>>
-            >>> # New way (recommended)
-            >>> volume = Volume(data=volume_data,
-            ...                 min_bounds=np.array([-1, -1, -1]),
-            ...                 max_bounds=np.array([1, 1, 1]))
-            >>> renderer.load_volume(volume)
-        """
-        import warnings
-        import numpy as np
-
-        warnings.warn(
-            "set_volume_bounds() is deprecated. Set bounds on Volume instance: "
-            "from pyvr.volume import Volume; "
-            "volume = Volume(data=your_data, min_bounds=..., max_bounds=...); "
-            "renderer.load_volume(volume)",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        self.gl_manager.set_uniform_vector("volume_min_bounds", tuple(min_bounds))
-        self.gl_manager.set_uniform_vector("volume_max_bounds", tuple(max_bounds))
-
-        # Update volume bounds if volume exists
-        if self.volume is not None:
-            self.volume.min_bounds = np.array(min_bounds, dtype=np.float32)
-            self.volume.max_bounds = np.array(max_bounds, dtype=np.float32)
+        # Load normals if present
+        if volume.has_normals:
+            normal_unit = self.gl_manager.create_normal_texture(volume.normals)
+            self.gl_manager.set_uniform_int("normal_volume", normal_unit)
 
     def set_camera(self, camera: Camera) -> None:
         """

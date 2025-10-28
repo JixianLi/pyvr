@@ -553,7 +553,8 @@ This project is licensed under the WTFPL (Do What The F*ck You Want To Public Li
 
 ## 🏆 Acknowledgments
 
-- Claude Sonnet 4 model from GitHub Copilot for the creation of almost all code/documentation/test in this repository (some code was created by Claude Sonnet 3.5) <-- I wrote this sentence. That's about it for my contribution to this repo
+- Claude Sonnet 4.5 model from Claude Code is responsible for code after v0.2.3
+- Claude Sonnet 4 model from GitHub Copilot for the creation of almost all code/documentation/test (before v0.2.3) in this repository (some code was created by Claude Sonnet 3.5)
 - ModernGL community for excellent OpenGL bindings
 - The scientific visualization community
 
