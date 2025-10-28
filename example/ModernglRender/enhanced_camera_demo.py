@@ -1,18 +1,20 @@
 """
-Enhanced Multi-view volume rendering example - PyVR with Advanced Camera System
+Enhanced Multi-view volume rendering example - PyVR with Advanced Camera and Light System
 
-This example demonstrates the enhanced camera system:
-- Camera parameter management with validation and presets
+This example demonstrates the enhanced camera and lighting system:
+- Camera parameter management with validation and presets (v0.2.3)
 - Camera animation and path interpolation
 - Interactive camera controller
+- Light configuration with presets (v0.2.4)
 - RGBA transfer function textures for improved performance
 
-Key features:
+Key features (updated for v0.2.4):
 1. Modular transfer functions: pyvr.transferfunctions
-2. Enhanced camera system: pyvr.camera with advanced functionality
-3. Parameter validation and preset views
-4. Camera animation capabilities
-5. Single RGBA texture lookup for better performance
+2. Enhanced camera system: pyvr.camera with Camera class (v0.2.3)
+3. Enhanced lighting system: pyvr.lighting with Light class (v0.2.4)
+4. Parameter validation and preset views
+5. Camera animation capabilities
+6. Single RGBA texture lookup for better performance
 """
 
 import time
@@ -20,16 +22,10 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pyvr.camera import (
-    CameraController,
-    CameraParameters,
-    CameraPath,
-    get_camera_pos_from_params,
-)
+from pyvr.camera import Camera, CameraController, CameraPath
 from pyvr.datasets import compute_normal_volume, create_sample_volume
+from pyvr.lighting import Light
 from pyvr.moderngl_renderer import VolumeRenderer
-
-# Enhanced modular imports
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
 
 STEP_SIZE = 1e-3
@@ -37,9 +33,12 @@ MAX_STEPS = int(1e3)
 VOLUME_SIZE = 256
 IMAGE_RES = 224
 
-# Create renderer
+# Configure lighting (v0.2.4)
+light = Light.directional(direction=[1, -1, 0], ambient=0.0, diffuse=1.0)
+
+# Create renderer with light
 renderer = VolumeRenderer(
-    IMAGE_RES, IMAGE_RES, step_size=1 / VOLUME_SIZE, max_steps=MAX_STEPS
+    IMAGE_RES, IMAGE_RES, step_size=1 / VOLUME_SIZE, max_steps=MAX_STEPS, light=light
 )
 
 # Load volume and normals
@@ -64,32 +63,28 @@ otf = OpacityTransferFunction.peaks(
 # Alternative: Linear opacity (simpler)
 # otf = OpacityTransferFunction.linear(0.0, 0.1)
 
-# Configure lighting
-renderer.set_diffuse_light(1.0)
-renderer.set_ambient_light(0.0)
-
 # Demonstrate enhanced camera system
-print("=== PyVR Enhanced Camera System Demo ===")
+print("=== PyVR Enhanced Camera & Light System Demo (v0.2.4) ===")
 
-# Method 1: Using camera presets (new in v0.2.0)
+# Method 1: Using camera presets (v0.2.3 Camera class)
 camera_presets = [
-    CameraParameters.front_view(distance=3.0),
-    CameraParameters.side_view(distance=3.0),
-    CameraParameters.top_view(distance=3.0),
-    CameraParameters.isometric_view(distance=3.0),
+    Camera.front_view(distance=3.0),
+    Camera.side_view(distance=3.0),
+    Camera.top_view(distance=3.0),
+    Camera.isometric_view(distance=3.0),
 ]
 
 preset_names = ["Front View", "Side View", "Top View", "Isometric View"]
 
 # Method 2: Using CameraController for interactive manipulation
-controller = CameraController(CameraParameters.front_view(distance=3.0))
+controller = CameraController(Camera.front_view(distance=3.0))
 controller.orbit(np.pi / 6, np.pi / 8)  # Slightly angled front view
 controlled_params = controller.params.copy()
 controlled_params.distance = 3.5  # Zoom out a bit
 
 # Method 3: Camera animation between views
-start_view = CameraParameters.front_view(distance=2.5)
-end_view = CameraParameters(
+start_view = Camera.front_view(distance=2.5)
+end_view = Camera(
     target=np.array([0.0, 0.0, 0.0]),
     azimuth=3 * np.pi / 4,  # 135 degrees
     elevation=np.pi / 6,  # 30 degrees
@@ -133,9 +128,8 @@ ax_tf = fig.add_subplot(gs[2, :])
 for i, (params, view_name) in enumerate(zip(all_camera_params, view_names)):
     print(f"Rendering {view_name}...")
 
-    # Use enhanced camera parameter system
-    position, up = get_camera_pos_from_params(params)
-    renderer.set_camera(position=position, target=params.target, up=up)
+    # Use Camera class (v0.2.3)
+    renderer.set_camera(params)
 
     # Set transfer functions using RGBA texture API
     renderer.set_transfer_functions(ctf, otf)

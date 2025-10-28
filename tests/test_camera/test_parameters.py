@@ -1,5 +1,5 @@
 """
-Tests for CameraParameters class.
+Tests for Camera class.
 """
 
 import pytest
@@ -12,9 +12,9 @@ import os
 # Add the project root to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from pyvr.camera.parameters import (
-    CameraParameters, 
-    CameraParameterError,
+from pyvr.camera.camera import (
+    Camera,
+    CameraError,
     validate_camera_angles,
     degrees_to_radians,
     radians_to_degrees
@@ -22,9 +22,9 @@ from pyvr.camera.parameters import (
 
 
 def test_camera_parameters_initialization():
-    """Test basic CameraParameters initialization."""
+    """Test basic Camera initialization."""
     # Default initialization
-    params = CameraParameters()
+    params = Camera()
     assert np.array_equal(params.target, np.array([0.0, 0.0, 0.0]))
     assert params.azimuth == 0.0
     assert params.elevation == 0.0
@@ -33,7 +33,7 @@ def test_camera_parameters_initialization():
     
     # Custom initialization
     target = np.array([1.0, 2.0, 3.0])
-    params = CameraParameters(
+    params = Camera(
         target=target,
         azimuth=np.pi/4,
         elevation=np.pi/6,
@@ -50,41 +50,41 @@ def test_camera_parameters_initialization():
 def test_camera_parameters_validation():
     """Test parameter validation."""
     # Valid parameters should not raise
-    CameraParameters(
+    Camera(
         target=np.array([0.0, 0.0, 0.0]),
         distance=1.0
     )
     
     # Invalid distance
     with pytest.raises(ValueError, match="distance must be positive"):
-        CameraParameters(distance=-1.0)
+        Camera(distance=-1.0)
     
     with pytest.raises(ValueError, match="distance must be positive"):
-        CameraParameters(distance=0.0)
+        Camera(distance=0.0)
     
     # Invalid target
     with pytest.raises(ValueError, match="target must be a 3D numpy array"):
-        CameraParameters(target=[0, 0, 0])  # List instead of array
+        Camera(target=[0, 0, 0])  # List instead of array
     
     with pytest.raises(ValueError, match="target must be a 3D numpy array"):
-        CameraParameters(target=np.array([0, 0]))  # Wrong shape
+        Camera(target=np.array([0, 0]))  # Wrong shape
     
     # Invalid initial vectors
     with pytest.raises(ValueError, match="init_pos must be a 3D numpy array"):
-        CameraParameters(init_pos=np.array([0, 0]))
+        Camera(init_pos=np.array([0, 0]))
     
     with pytest.raises(ValueError, match="init_up must be a 3D numpy array"):
-        CameraParameters(init_up=np.array([0, 0]))
+        Camera(init_up=np.array([0, 0]))
     
     # Zero vectors
     with pytest.raises(ValueError, match="init_pos must not be at the same location as target"):
-        CameraParameters(
+        Camera(
             target=np.array([1, 0, 0]),
             init_pos=np.array([1, 0, 0])
         )
     
     with pytest.raises(ValueError, match="init_up must not be the zero vector"):
-        CameraParameters(init_up=np.array([0, 0, 0]))
+        Camera(init_up=np.array([0, 0, 0]))
 
 
 def test_camera_parameters_presets():
@@ -93,7 +93,7 @@ def test_camera_parameters_presets():
     distance = 5.0
     
     # Front view
-    front = CameraParameters.front_view(target=target, distance=distance)
+    front = Camera.front_view(target=target, distance=distance)
     assert np.array_equal(front.target, target)
     assert front.azimuth == 0.0
     assert front.elevation == 0.0
@@ -101,24 +101,24 @@ def test_camera_parameters_presets():
     assert front.distance == distance
     
     # Side view
-    side = CameraParameters.side_view(target=target, distance=distance)
+    side = Camera.side_view(target=target, distance=distance)
     assert side.azimuth == pytest.approx(np.pi/2)
     assert side.elevation == 0.0
     
     # Top view
-    top = CameraParameters.top_view(target=target, distance=distance)
+    top = Camera.top_view(target=target, distance=distance)
     assert top.azimuth == 0.0
     assert top.elevation == pytest.approx(np.pi/2)
     
     # Isometric view
-    iso = CameraParameters.isometric_view(target=target, distance=distance)
+    iso = Camera.isometric_view(target=target, distance=distance)
     assert iso.azimuth == pytest.approx(np.pi/4)
     assert iso.elevation == pytest.approx(np.pi/6)
 
 
 def test_camera_parameters_serialization():
     """Test serialization and deserialization."""
-    original = CameraParameters(
+    original = Camera(
         target=np.array([1.0, 2.0, 3.0]),
         azimuth=np.pi/3,
         elevation=np.pi/4,
@@ -128,7 +128,7 @@ def test_camera_parameters_serialization():
     
     # Test dictionary conversion
     data = original.to_dict()
-    restored = CameraParameters.from_dict(data)
+    restored = Camera.from_dict(data)
     
     assert np.allclose(restored.target, original.target)
     assert restored.azimuth == pytest.approx(original.azimuth)
@@ -142,7 +142,7 @@ def test_camera_parameters_serialization():
     
     try:
         original.save_to_file(temp_path)
-        loaded = CameraParameters.load_from_file(temp_path)
+        loaded = Camera.load_from_file(temp_path)
         
         assert np.allclose(loaded.target, original.target)
         assert loaded.azimuth == pytest.approx(original.azimuth)
@@ -153,7 +153,7 @@ def test_camera_parameters_serialization():
 
 def test_camera_parameters_copy():
     """Test copying camera parameters."""
-    original = CameraParameters(
+    original = Camera(
         azimuth=np.pi/4,
         elevation=np.pi/6,
         distance=2.0
@@ -181,20 +181,20 @@ def test_validate_camera_angles():
     validate_camera_angles(0.0, np.pi/2, -np.pi/4)  # Should not raise
     
     # Invalid angle types
-    with pytest.raises(CameraParameterError, match="azimuth must be numeric"):
+    with pytest.raises(CameraError, match="azimuth must be numeric"):
         validate_camera_angles("invalid", 0.0, 0.0)
     
-    with pytest.raises(CameraParameterError, match="elevation must be numeric"):
+    with pytest.raises(CameraError, match="elevation must be numeric"):
         validate_camera_angles(0.0, "invalid", 0.0)
     
-    with pytest.raises(CameraParameterError, match="roll must be numeric"):
+    with pytest.raises(CameraError, match="roll must be numeric"):
         validate_camera_angles(0.0, 0.0, "invalid")
     
     # Non-finite values
-    with pytest.raises(CameraParameterError, match="azimuth must be finite"):
+    with pytest.raises(CameraError, match="azimuth must be finite"):
         validate_camera_angles(np.inf, 0.0, 0.0)
     
-    with pytest.raises(CameraParameterError, match="elevation must be finite"):
+    with pytest.raises(CameraError, match="elevation must be finite"):
         validate_camera_angles(0.0, np.nan, 0.0)
 
 
@@ -220,7 +220,7 @@ def test_angle_conversion_utilities():
 def test_from_spherical_class_method():
     """Test from_spherical class method."""
     target = np.array([1.0, 2.0, 3.0])
-    params = CameraParameters.from_spherical(
+    params = Camera.from_spherical(
         target=target,
         azimuth=np.pi/4,
         elevation=np.pi/6,
@@ -239,14 +239,14 @@ def test_from_spherical_class_method():
 
 def test_repr():
     """Test string representation."""
-    params = CameraParameters(
+    params = Camera(
         azimuth=np.pi/4,
         elevation=np.pi/6,
         distance=2.5
     )
     
     repr_str = repr(params)
-    assert "CameraParameters" in repr_str
+    assert "Camera" in repr_str
     assert "azimuth=" in repr_str
     assert "45.0°" in repr_str  # Should show degrees
     assert "distance=2.50" in repr_str
@@ -255,7 +255,7 @@ def test_repr():
 def test_camera_parameters_validation_edge_cases():
     """Test edge cases for camera parameter validation."""
     # Test extreme angle warnings (should not raise, but may print warnings)
-    params = CameraParameters(
+    params = Camera(
         target=np.array([0.0, 0.0, 0.0]),
         azimuth=10 * np.pi,  # More than 2 full rotations
         elevation=8 * np.pi,
@@ -267,21 +267,21 @@ def test_camera_parameters_validation_edge_cases():
     
     # Test invalid initial vectors  
     with pytest.raises(ValueError, match="init_pos must be a 3D numpy array"):
-        CameraParameters(
+        Camera(
             target=np.array([0.0, 0.0, 0.0]),
             azimuth=0.0, elevation=0.0, roll=0.0, distance=3.0,
             init_pos=np.array([1.0, 2.0])  # 2D instead of 3D
         )
     
     with pytest.raises(ValueError, match="init_up must be a 3D numpy array"):
-        CameraParameters(
+        Camera(
             target=np.array([0.0, 0.0, 0.0]),
             azimuth=0.0, elevation=0.0, roll=0.0, distance=3.0,
             init_up=[1.0, 2.0, 3.0, 4.0]  # 4D instead of 3D
         )
     
     # Test validation method directly
-    params = CameraParameters(
+    params = Camera(
         target=np.array([0.0, 0.0, 0.0]),
         azimuth=0.0, elevation=0.0, roll=0.0, distance=3.0
     )
@@ -291,7 +291,7 @@ def test_camera_parameters_validation_edge_cases():
 
 def test_camera_parameters_copy_edge_cases():
     """Test edge cases for camera parameter copying."""
-    params = CameraParameters(
+    params = Camera(
         target=np.array([1.0, 2.0, 3.0]),
         azimuth=0.5, elevation=1.0, roll=0.0,
         distance=5.0,
@@ -313,7 +313,7 @@ def test_camera_parameters_copy_edge_cases():
 
 def test_camera_parameters_serialization_edge_cases():
     """Test edge cases for camera parameter serialization."""
-    params = CameraParameters(
+    params = Camera(
         target=np.array([1.0, 2.0, 3.0]),
         azimuth=np.pi/4, elevation=np.pi/3, roll=np.pi/6,
         distance=5.0,
@@ -333,7 +333,7 @@ def test_camera_parameters_serialization_edge_cases():
     assert isinstance(data['init_up'], list)
     
     # Test from_dict reconstruction
-    reconstructed = CameraParameters.from_dict(data)
+    reconstructed = Camera.from_dict(data)
     assert np.allclose(reconstructed.target, params.target)
     assert np.allclose(reconstructed.init_pos, params.init_pos)
     assert np.allclose(reconstructed.init_up, params.init_up)
