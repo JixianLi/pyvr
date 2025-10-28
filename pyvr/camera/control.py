@@ -11,7 +11,7 @@ from typing import Callable, List, Optional, Tuple, Union
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from .parameters import Camera, CameraError, validate_camera_angles
+from .camera import Camera, CameraError, validate_camera_angles
 
 
 def get_camera_pos(

@@ -8,7 +8,7 @@ import numpy as np
 from unittest.mock import MagicMock, patch, Mock
 
 from pyvr.moderngl_renderer.renderer import VolumeRenderer
-from pyvr.camera.parameters import Camera
+from pyvr.camera.camera import Camera
 
 
 class TestVolumeRendererInitialization:

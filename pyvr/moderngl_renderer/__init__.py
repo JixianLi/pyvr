@@ -5,7 +5,7 @@ Provides interactive visualization with camera controls and transfer functions.
 """
 
 from ..camera.control import CameraController
-from ..camera.parameters import Camera
+from ..camera.camera import Camera
 
 # Re-export dataset functions for convenience
 from ..datasets import compute_normal_volume, create_sample_volume

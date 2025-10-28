@@ -52,7 +52,7 @@ from .control import (
     get_camera_pos,
     get_camera_pos_from_params,
 )
-from .parameters import (
+from .camera import (
     Camera,
     CameraError,
     degrees_to_radians,

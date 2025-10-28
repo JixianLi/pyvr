@@ -16,7 +16,7 @@ from pyvr.camera.control import (
     CameraPath,
     CameraController
 )
-from pyvr.camera.parameters import Camera
+from pyvr.camera.camera import Camera
 
 
 def test_get_camera_pos_basic():
