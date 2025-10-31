@@ -98,8 +98,10 @@ class InteractiveVolumeRenderer:
         self.color_selector: Optional[ColorSelector] = None
         self.fig: Optional[Figure] = None
 
-        # Render caching
+        # Render caching and throttling
         self._cached_image: Optional[np.ndarray] = None
+        self._last_render_time: float = 0.0
+        self._min_render_interval: float = 0.1  # 100ms minimum between renders
 
     def _update_transfer_functions(self) -> None:
         """Update renderer with current transfer functions from state."""
@@ -135,21 +137,40 @@ class InteractiveVolumeRenderer:
             placeholder = np.zeros((self.height, self.width, 3), dtype=np.uint8)
             return placeholder
 
-    def _update_display(self) -> None:
-        """Update all display widgets based on current state."""
+    def _should_render(self) -> bool:
+        """
+        Check if enough time has passed since last render.
+
+        Returns:
+            True if rendering should proceed, False otherwise
+        """
+        import time
+        current_time = time.time()
+        if current_time - self._last_render_time > self._min_render_interval:
+            self._last_render_time = current_time
+            return True
+        return False
+
+    def _update_display(self, force_render: bool = False) -> None:
+        """
+        Update all display widgets based on current state.
+
+        Args:
+            force_render: If True, bypass render throttling
+        """
         # Update transfer functions if needed
         if self.state.needs_tf_update:
             self._update_transfer_functions()
             self.state.needs_render = True
 
-        # Update volume rendering if needed
-        if self.state.needs_render:
+        # Update volume rendering with throttling
+        if self.state.needs_render and (force_render or self._should_render()):
             image_array = self._render_volume()
             if self.image_display is not None:
                 self.image_display.update_image(image_array)
             self.state.needs_render = False
 
-        # Update opacity editor
+        # Always update opacity editor (fast)
         if self.opacity_editor is not None:
             self.opacity_editor.update_plot(
                 self.state.control_points,
@@ -192,20 +213,25 @@ class InteractiveVolumeRenderer:
 
     def _setup_info_display(self, ax) -> None:
         """
-        Set up info display panel.
+        Set up info display panel with all controls.
 
         Args:
             ax: Matplotlib axes for info display
         """
         ax.axis('off')
         info_text = (
-            "Controls:\n"
-            "  Image: Drag to orbit, scroll to zoom\n"
-            "  Opacity: Click to add, drag to move, right-click to remove"
+            "Mouse Controls:\n"
+            "  Image: Drag=orbit, Scroll=zoom\n"
+            "  Opacity: L-click=add/select, R-click=remove, Drag=move\n\n"
+            "Keyboard Shortcuts:\n"
+            "  r: Reset view\n"
+            "  s: Save image\n"
+            "  Esc: Deselect\n"
+            "  Del: Remove selected"
         )
         ax.text(0.05, 0.5, info_text,
                transform=ax.transAxes,
-               fontsize=9,
+               fontsize=8,
                verticalalignment='center',
                family='monospace',
                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
@@ -402,6 +428,72 @@ class InteractiveVolumeRenderer:
                 return i
         return None
 
+    def _on_key_press(self, event) -> None:
+        """
+        Handle keyboard shortcuts.
+
+        Args:
+            event: Matplotlib key press event
+        """
+        if event.key == 'r':
+            # Reset view to isometric
+            self.camera_controller.params = Camera.isometric_view(distance=3.0)
+            self.state.needs_render = True
+            self._update_display(force_render=True)
+
+        elif event.key == 's':
+            # Save current rendering
+            self._save_image()
+
+        elif event.key == 'escape':
+            # Deselect control point
+            if self.state.selected_control_point is not None:
+                self.state.select_control_point(None)
+                self._update_display()
+
+        elif event.key == 'delete' or event.key == 'backspace':
+            # Delete selected control point
+            if self.state.selected_control_point is not None:
+                try:
+                    self.state.remove_control_point(self.state.selected_control_point)
+                    self._update_display(force_render=True)
+                except ValueError:
+                    pass  # Can't delete first/last
+
+    def _save_image(self) -> None:
+        """Save current rendering to file."""
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"pyvr_render_{timestamp}.png"
+
+        if self._cached_image is not None:
+            from PIL import Image
+            img = Image.fromarray(self._cached_image)
+            img.save(filename)
+            print(f"Saved rendering to {filename}")
+        else:
+            print("No rendered image to save")
+
+    def _update_cursor(self, event) -> None:
+        """
+        Update cursor based on context.
+
+        Args:
+            event: Matplotlib axes enter event
+        """
+        if self.fig is None:
+            return
+
+        if event.inaxes == self.image_display.ax:
+            # Hand cursor for camera controls
+            self.fig.canvas.set_cursor(1)  # Hand cursor
+        elif self.opacity_editor and event.inaxes == self.opacity_editor.ax:
+            # Crosshair for control point editing
+            self.fig.canvas.set_cursor(2)  # Crosshair cursor
+        else:
+            # Default cursor
+            self.fig.canvas.set_cursor(0)
+
     def show(self) -> None:
         """
         Display the interactive interface.
@@ -425,6 +517,8 @@ class InteractiveVolumeRenderer:
         self.fig.canvas.mpl_connect('button_release_event', self._on_mouse_release)
         self.fig.canvas.mpl_connect('motion_notify_event', self._on_mouse_move)
         self.fig.canvas.mpl_connect('scroll_event', self._on_scroll)
+        self.fig.canvas.mpl_connect('key_press_event', self._on_key_press)
+        self.fig.canvas.mpl_connect('axes_enter_event', self._update_cursor)
 
         # Initial display update
         self._update_display()

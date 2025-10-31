@@ -686,3 +686,202 @@ def test_opacity_editor_updates_during_drag(mock_renderer_class, small_volume):
 
     # Opacity editor should have been updated
     interface.opacity_editor.update_plot.assert_called_once()
+
+
+# ========== Event Coordination and Keyboard Shortcuts Tests (Phase 7) ==========
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_render_throttling(mock_renderer_class, small_volume):
+    """Test rendering is throttled to prevent excessive updates."""
+    import time
+    mock_renderer = Mock()
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface._last_render_time = time.time()
+
+    # Should not render immediately
+    assert not interface._should_render()
+
+    # Should render after interval
+    time.sleep(0.15)
+    assert interface._should_render()
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_force_render_bypasses_throttling(mock_renderer_class, small_volume):
+    """Test force_render bypasses throttling."""
+    import time
+    mock_renderer = Mock()
+    mock_renderer.render_to_pil.return_value = Mock()
+    mock_renderer.render_to_pil.return_value.__array__ = lambda **kwargs: np.zeros((512, 512, 3), dtype=np.uint8)
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.image_display = Mock()
+    interface.opacity_editor = Mock()
+    interface._last_render_time = time.time()
+    interface.state.needs_render = True
+
+    # Force render should work even with recent render
+    interface._update_display(force_render=True)
+
+    # Image should have been updated
+    interface.image_display.update_image.assert_called()
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_keyboard_reset_view(mock_renderer_class, small_volume):
+    """Test 'r' key resets camera view."""
+    mock_renderer = Mock()
+    mock_renderer.render_to_pil.return_value = Mock()
+    mock_renderer.render_to_pil.return_value.__array__ = lambda **kwargs: np.zeros((512, 512, 3), dtype=np.uint8)
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.image_display = Mock()
+    interface.opacity_editor = Mock()
+
+    # Modify camera
+    interface.camera_controller.orbit(delta_azimuth=1.0, delta_elevation=0.5)
+    initial_distance = interface.camera_controller.params.distance
+
+    # Reset
+    event = Mock(key='r')
+    interface._on_key_press(event)
+
+    # Should be back to isometric view
+    camera = interface.camera_controller.params
+    assert camera.distance == pytest.approx(3.0)
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+@patch('PIL.Image')
+def test_keyboard_save_image(mock_image, mock_renderer_class, small_volume):
+    """Test 's' key saves image."""
+    mock_renderer = Mock()
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface._cached_image = np.zeros((512, 512, 3), dtype=np.uint8)
+
+    mock_img = Mock()
+    mock_image.fromarray.return_value = mock_img
+
+    event = Mock(key='s')
+    interface._on_key_press(event)
+
+    mock_img.save.assert_called_once()
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_keyboard_deselect(mock_renderer_class, small_volume):
+    """Test Esc key deselects control point."""
+    mock_renderer = Mock()
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.state.select_control_point(0)
+    interface.opacity_editor = Mock()
+    interface.image_display = Mock()
+
+    event = Mock(key='escape')
+    interface._on_key_press(event)
+
+    assert interface.state.selected_control_point is None
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_keyboard_delete_selected(mock_renderer_class, small_volume):
+    """Test Delete key removes selected control point."""
+    mock_renderer = Mock()
+    mock_renderer.render_to_pil.return_value = Mock()
+    mock_renderer.render_to_pil.return_value.__array__ = lambda **kwargs: np.zeros((512, 512, 3), dtype=np.uint8)
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.state.add_control_point(0.5, 0.5)
+    interface.state.select_control_point(1)
+    interface.opacity_editor = Mock()
+    interface.image_display = Mock()
+
+    event = Mock(key='delete')
+    interface._on_key_press(event)
+
+    assert (0.5, 0.5) not in interface.state.control_points
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_keyboard_backspace_deletes_selected(mock_renderer_class, small_volume):
+    """Test Backspace key also removes selected control point."""
+    mock_renderer = Mock()
+    mock_renderer.render_to_pil.return_value = Mock()
+    mock_renderer.render_to_pil.return_value.__array__ = lambda **kwargs: np.zeros((512, 512, 3), dtype=np.uint8)
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.state.add_control_point(0.5, 0.5)
+    interface.state.select_control_point(1)
+    interface.opacity_editor = Mock()
+    interface.image_display = Mock()
+
+    event = Mock(key='backspace')
+    interface._on_key_press(event)
+
+    assert (0.5, 0.5) not in interface.state.control_points
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_event_conflict_resolution(mock_renderer_class, small_volume):
+    """Test that events in different axes don't interfere."""
+    mock_renderer = Mock()
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.image_display = Mock()
+    interface.opacity_editor = Mock()
+
+    # Click in image should not affect opacity editor
+    event = Mock(inaxes=interface.image_display.ax, button=1, xdata=100, ydata=100)
+    interface._on_mouse_press(event)
+
+    assert interface.state.is_dragging_camera
+    assert not interface.state.is_dragging_control_point
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_cursor_changes(mock_renderer_class, small_volume):
+    """Test cursor changes based on axes."""
+    mock_renderer = Mock()
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.image_display = Mock()
+    interface.opacity_editor = Mock()
+    interface.fig = Mock()
+    interface.fig.canvas = Mock()
+
+    # Test cursor in image display
+    event = Mock(inaxes=interface.image_display.ax)
+    interface._update_cursor(event)
+
+    interface.fig.canvas.set_cursor.assert_called_with(1)  # Hand cursor
+
+    # Test cursor in opacity editor
+    event = Mock(inaxes=interface.opacity_editor.ax)
+    interface._update_cursor(event)
+
+    interface.fig.canvas.set_cursor.assert_called_with(2)  # Crosshair cursor
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_save_image_no_cache(mock_renderer_class, small_volume):
+    """Test save image with no cached image."""
+    mock_renderer = Mock()
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface._cached_image = None
+
+    # Should not crash, just print message
+    interface._save_image()
