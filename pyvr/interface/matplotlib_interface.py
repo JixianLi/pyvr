@@ -181,9 +181,15 @@ class InteractiveVolumeRenderer:
         # Update light from camera if linked
         light = self.renderer.get_light()
         if light.is_linked:
-            light.update_from_camera(self.camera_controller.params)
-            self.renderer.set_light(light)
-            self.state.needs_render = True
+            try:
+                light.update_from_camera(self.camera_controller.params)
+                self.renderer.set_light(light)
+                self.state.needs_render = True
+            except Exception as e:
+                print(f"Warning: Failed to update linked light: {e}")
+                # Unlink light to prevent continued errors
+                light.unlink_from_camera()
+                self.state.light_linked_to_camera = False
 
         # Update volume rendering with throttling
         if self.state.needs_render and (force_render or self._should_render()):
@@ -239,9 +245,10 @@ class InteractiveVolumeRenderer:
         """Set up info display panel with all controls and status indicators."""
         ax.axis('off')
 
-        # Create text elements for dynamic status
-        self.info_text_static = ax.text(
-            0.05, 0.65, self._get_controls_text(),
+        # Single text block with both controls and status (no overlap)
+        self.info_text = ax.text(
+            0.05, 0.98,  # Top of axes
+            self._get_full_info_text(),
             transform=ax.transAxes,
             fontsize=8,
             verticalalignment='top',
@@ -249,18 +256,9 @@ class InteractiveVolumeRenderer:
             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3)
         )
 
-        self.info_text_status = ax.text(
-            0.05, 0.35, self._get_status_text(),
-            transform=ax.transAxes,
-            fontsize=8,
-            verticalalignment='top',
-            family='monospace',
-            bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.3)
-        )
-
-    def _get_controls_text(self) -> str:
-        """Get static controls text."""
-        return (
+    def _get_full_info_text(self) -> str:
+        """Get complete info text with controls and status."""
+        controls = (
             "Mouse Controls:\n"
             "  Image: Drag=orbit, Scroll=zoom\n"
             "  Opacity: L-click=add/select, R-click=remove, Drag=move\n\n"
@@ -272,36 +270,32 @@ class InteractiveVolumeRenderer:
             "  l: Toggle light link\n"
             "  q: Toggle auto-quality\n"
             "  Esc: Deselect\n"
-            "  Del: Remove selected"
+            "  Del: Remove selected\n"
         )
 
-    def _get_status_text(self) -> str:
-        """Get dynamic status text showing current settings."""
+        # Add dynamic status
         light = self.renderer.get_light()
-
-        status_lines = [
-            "Current Status:",
-            f"  Preset: {self.state.current_preset_name}",
-            f"  FPS Display: {'ON' if self.state.show_fps else 'OFF'}",
-            f"  Histogram: {'ON' if self.state.show_histogram else 'OFF'}",
-            f"  Light Linked: {'YES' if light.is_linked else 'NO'}",
-            f"  Auto-Quality: {'ON' if self.state.auto_quality_enabled else 'OFF'}",
-        ]
+        status = (
+            f"\nCurrent Status:\n"
+            f"  Preset: {self.state.current_preset_name}\n"
+            f"  FPS: {'ON' if self.state.show_fps else 'OFF'}\n"
+            f"  Histogram: {'ON' if self.state.show_histogram else 'OFF'}\n"
+            f"  Light Linked: {'YES' if light.is_linked else 'NO'}\n"
+            f"  Auto-Quality: {'ON' if self.state.auto_quality_enabled else 'OFF'}"
+        )
 
         # Add light offset info if linked
         if light.is_linked:
             offsets = light.get_offsets()
             if offsets and isinstance(offsets, dict):
-                status_lines.append(
-                    f"    (offsets: az={offsets['azimuth']:.2f}, el={offsets['elevation']:.2f})"
-                )
+                status += f"\n    (offsets: az={offsets['azimuth']:.2f}, el={offsets['elevation']:.2f})"
 
-        return "\n".join(status_lines)
+        return controls + status
 
     def _update_status_display(self) -> None:
         """Update status text with current settings."""
-        if hasattr(self, 'info_text_status') and self.info_text_status is not None:
-            self.info_text_status.set_text(self._get_status_text())
+        if hasattr(self, 'info_text') and self.info_text is not None:
+            self.info_text.set_text(self._get_full_info_text())
             if self.fig is not None:
                 self.fig.canvas.draw_idle()
 
@@ -604,27 +598,32 @@ class InteractiveVolumeRenderer:
 
         elif event.key == 'l':
             # Toggle light camera linking
-            light = self.renderer.get_light()
+            try:
+                light = self.renderer.get_light()
 
-            if light.is_linked:
-                light.unlink_from_camera()
-                self.state.light_linked_to_camera = False
-                print("Light unlinked from camera (fixed position)")
-            else:
-                # Link with default offsets (light follows camera)
-                light.link_to_camera(
-                    azimuth_offset=0.0,
-                    elevation_offset=0.0,
-                    distance_offset=0.0
-                )
-                light.update_from_camera(self.camera_controller.params)
-                self.renderer.set_light(light)
-                self.state.light_linked_to_camera = True
-                print("Light linked to camera (will follow movement)")
+                if light.is_linked:
+                    light.unlink_from_camera()
+                    self.state.light_linked_to_camera = False
+                    print("Light unlinked from camera (fixed position)")
+                else:
+                    # Link with default offsets (light follows camera)
+                    light.link_to_camera(
+                        azimuth_offset=0.0,
+                        elevation_offset=0.0,
+                        distance_offset=0.0
+                    )
+                    light.update_from_camera(self.camera_controller.params)
+                    self.renderer.set_light(light)
+                    self.state.light_linked_to_camera = True
+                    print("Light linked to camera (will follow movement)")
 
-            self.state.needs_render = True
-            self._update_display(force_render=True)
-            self._update_status_display()
+                self.state.needs_render = True
+                self._update_display(force_render=True)
+                self._update_status_display()
+            except Exception as e:
+                print(f"Error toggling light linking: {e}")
+                import traceback
+                traceback.print_exc()
 
         elif event.key == 'q':
             # Toggle automatic quality adjustment
@@ -791,6 +790,37 @@ class InteractiveVolumeRenderer:
 
         Creates matplotlib figure with layout and starts event loop.
         """
+        # Disable matplotlib default key bindings to prevent conflicts
+        import matplotlib as mpl
+
+        # Store original keymaps to restore later if needed
+        self._original_keymaps = {
+            'fullscreen': mpl.rcParams['keymap.fullscreen'][:],
+            'home': mpl.rcParams['keymap.home'][:],
+            'back': mpl.rcParams['keymap.back'][:],
+            'forward': mpl.rcParams['keymap.forward'][:],
+            'pan': mpl.rcParams['keymap.pan'][:],
+            'zoom': mpl.rcParams['keymap.zoom'][:],
+            'save': mpl.rcParams['keymap.save'][:],
+            'quit': mpl.rcParams['keymap.quit'][:],
+            'grid': mpl.rcParams['keymap.grid'][:],
+            'yscale': mpl.rcParams['keymap.yscale'][:],
+            'xscale': mpl.rcParams['keymap.xscale'][:],
+        }
+
+        # Clear all default keybindings
+        mpl.rcParams['keymap.fullscreen'] = []
+        mpl.rcParams['keymap.home'] = []
+        mpl.rcParams['keymap.back'] = []
+        mpl.rcParams['keymap.forward'] = []
+        mpl.rcParams['keymap.pan'] = []
+        mpl.rcParams['keymap.zoom'] = []
+        mpl.rcParams['keymap.save'] = []
+        mpl.rcParams['keymap.quit'] = []
+        mpl.rcParams['keymap.grid'] = []
+        mpl.rcParams['keymap.yscale'] = []
+        mpl.rcParams['keymap.xscale'] = []
+
         # Create figure and axes
         self.fig, axes = self._create_layout()
 
@@ -825,6 +855,13 @@ class InteractiveVolumeRenderer:
 
         # Show figure
         plt.show()
+
+    def _restore_matplotlib_keymaps(self) -> None:
+        """Restore original matplotlib keymaps."""
+        if hasattr(self, '_original_keymaps'):
+            import matplotlib as mpl
+            for key, value in self._original_keymaps.items():
+                mpl.rcParams[f'keymap.{key}'] = value
 
     def _on_colormap_change(self, colormap_name: str) -> None:
         """

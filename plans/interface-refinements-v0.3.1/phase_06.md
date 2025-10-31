@@ -4,6 +4,17 @@
 
 Complete the v0.3.1 release by updating all project documentation, examples, and release notes to reflect the new interface refinements.
 
+## Bug Fixes from Phase 5.5
+
+Before finalizing documentation, the following critical bugs were fixed:
+
+1. **Status Display Overlay** - Combined info display into single text block to prevent controls/status overlap
+2. **Light Linking Errors** - Added error handling and automatic unlinking on failures
+3. **Matplotlib Keybinding Conflicts** - Disabled all default matplotlib key bindings to prevent conflicts (e.g., 'f' no longer triggers fullscreen)
+4. **Event Handler Verification** - Confirmed all mouse/keyboard event handlers are properly connected
+
+All bug fixes are tested with 8 new tests in `test_bug_fixes.py`. Total test count increased from 129 to 137 interface tests.
+
 ## Implementation Steps
 
 ### 1. Update README.md
