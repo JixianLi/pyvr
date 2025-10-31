@@ -16,7 +16,7 @@ Example:
     >>> interface.show()  # Launch interactive GUI
 """
 
-from pyvr.interface.matplotlib import InteractiveVolumeRenderer
+from pyvr.interface.matplotlib_interface import InteractiveVolumeRenderer
 from pyvr.interface.widgets import ImageDisplay, OpacityEditor, ColorSelector
 from pyvr.interface.state import InterfaceState
 
