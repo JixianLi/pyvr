@@ -50,6 +50,10 @@ class InterfaceState:
     # Light linking
     light_linked_to_camera: bool = False
 
+    # Automatic quality adjustment
+    auto_quality_enabled: bool = True
+    saved_preset_name: Optional[str] = None  # For restoring after interaction
+
     def __post_init__(self):
         """Validate initial state."""
         if len(self.control_points) < 2:

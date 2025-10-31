@@ -236,32 +236,121 @@ class InteractiveVolumeRenderer:
         return fig, axes_dict
 
     def _setup_info_display(self, ax) -> None:
-        """
-        Set up info display panel with all controls.
-
-        Args:
-            ax: Matplotlib axes for info display
-        """
+        """Set up info display panel with all controls and status indicators."""
         ax.axis('off')
-        info_text = (
+
+        # Create text elements for dynamic status
+        self.info_text_static = ax.text(
+            0.05, 0.65, self._get_controls_text(),
+            transform=ax.transAxes,
+            fontsize=8,
+            verticalalignment='top',
+            family='monospace',
+            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3)
+        )
+
+        self.info_text_status = ax.text(
+            0.05, 0.35, self._get_status_text(),
+            transform=ax.transAxes,
+            fontsize=8,
+            verticalalignment='top',
+            family='monospace',
+            bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.3)
+        )
+
+    def _get_controls_text(self) -> str:
+        """Get static controls text."""
+        return (
             "Mouse Controls:\n"
             "  Image: Drag=orbit, Scroll=zoom\n"
             "  Opacity: L-click=add/select, R-click=remove, Drag=move\n\n"
             "Keyboard Shortcuts:\n"
             "  r: Reset view\n"
             "  s: Save image\n"
-            "  f: Toggle FPS counter\n"
+            "  f: Toggle FPS\n"
             "  h: Toggle histogram\n"
-            "  l: Toggle light linking\n"
+            "  l: Toggle light link\n"
+            "  q: Toggle auto-quality\n"
             "  Esc: Deselect\n"
             "  Del: Remove selected"
         )
-        ax.text(0.05, 0.5, info_text,
-               transform=ax.transAxes,
-               fontsize=8,
-               verticalalignment='center',
-               family='monospace',
-               bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
+
+    def _get_status_text(self) -> str:
+        """Get dynamic status text showing current settings."""
+        light = self.renderer.get_light()
+
+        status_lines = [
+            "Current Status:",
+            f"  Preset: {self.state.current_preset_name}",
+            f"  FPS Display: {'ON' if self.state.show_fps else 'OFF'}",
+            f"  Histogram: {'ON' if self.state.show_histogram else 'OFF'}",
+            f"  Light Linked: {'YES' if light.is_linked else 'NO'}",
+            f"  Auto-Quality: {'ON' if self.state.auto_quality_enabled else 'OFF'}",
+        ]
+
+        # Add light offset info if linked
+        if light.is_linked:
+            offsets = light.get_offsets()
+            if offsets and isinstance(offsets, dict):
+                status_lines.append(
+                    f"    (offsets: az={offsets['azimuth']:.2f}, el={offsets['elevation']:.2f})"
+                )
+
+        return "\n".join(status_lines)
+
+    def _update_status_display(self) -> None:
+        """Update status text with current settings."""
+        if hasattr(self, 'info_text_status') and self.info_text_status is not None:
+            self.info_text_status.set_text(self._get_status_text())
+            if self.fig is not None:
+                self.fig.canvas.draw_idle()
+
+    def _switch_to_interaction_quality(self) -> None:
+        """Switch to fast preset for responsive interaction."""
+        from pyvr.config import RenderConfig
+
+        # Save current preset if not already saved
+        if self.state.saved_preset_name is None:
+            self.state.saved_preset_name = self.state.current_preset_name
+
+        # Switch to fast preset if not already
+        if self.state.current_preset_name != 'fast':
+            fast_config = RenderConfig.fast()
+            self.renderer.set_config(fast_config)
+            self.state.current_preset_name = 'fast'
+            # Don't update preset selector UI during interaction
+
+    def _restore_quality_after_interaction(self) -> None:
+        """Restore previous quality preset after interaction."""
+        from pyvr.config import RenderConfig
+
+        if self.state.saved_preset_name is None:
+            return
+
+        # Restore saved preset if different from current
+        if self.state.current_preset_name != self.state.saved_preset_name:
+            preset_map = {
+                'preview': RenderConfig.preview,
+                'fast': RenderConfig.fast,
+                'balanced': RenderConfig.balanced,
+                'high_quality': RenderConfig.high_quality,
+                'ultra_quality': RenderConfig.ultra_quality,
+            }
+
+            restored_config = preset_map[self.state.saved_preset_name]()
+            self.renderer.set_config(restored_config)
+            self.state.current_preset_name = self.state.saved_preset_name
+
+            # Update preset selector UI
+            if self.preset_selector:
+                self.preset_selector.set_preset(self.state.saved_preset_name)
+
+            # Trigger re-render with restored quality
+            self.state.needs_render = True
+            self._update_display(force_render=True)
+
+        # Clear saved preset
+        self.state.saved_preset_name = None
 
     def _on_mouse_press(self, event) -> None:
         """
@@ -275,6 +364,10 @@ class InteractiveVolumeRenderer:
             if event.button == 1:  # Left click
                 self.state.is_dragging_camera = True
                 self.state.drag_start_pos = (event.xdata, event.ydata)
+
+                # Switch to fast preset during interaction
+                if self.state.auto_quality_enabled:
+                    self._switch_to_interaction_quality()
             return
 
         # Handle opacity editor
@@ -294,9 +387,16 @@ class InteractiveVolumeRenderer:
         if self.state.is_dragging_camera:
             self.state.is_dragging_camera = False
             self.state.drag_start_pos = None
-            # Trigger final render after drag
-            self.state.needs_render = True
-            self._update_display()
+
+            # Restore quality after interaction
+            if self.state.auto_quality_enabled and self.state.saved_preset_name is not None:
+                self._restore_quality_after_interaction()
+            else:
+                # Trigger final render after drag
+                self.state.needs_render = True
+                self._update_display()
+                # Clear saved preset if we had one
+                self.state.saved_preset_name = None
 
         if self.state.is_dragging_control_point:
             self.state.is_dragging_control_point = False
@@ -378,6 +478,10 @@ class InteractiveVolumeRenderer:
         if event.inaxes != self.image_display.ax:
             return
 
+        # Switch to fast preset temporarily
+        if self.state.auto_quality_enabled:
+            self._switch_to_interaction_quality()
+
         # Scroll up = zoom in (decrease distance), scroll down = zoom out (increase distance)
         zoom_factor = 0.9 if event.step > 0 else 1.1
 
@@ -386,6 +490,16 @@ class InteractiveVolumeRenderer:
         # Render immediately for zoom (it's fast enough)
         self.state.needs_render = True
         self._update_display()
+
+        # Restore quality after short delay
+        if self.state.auto_quality_enabled:
+            import threading
+            # Cancel any existing timer
+            if hasattr(self, '_scroll_restore_timer') and self._scroll_restore_timer is not None:
+                self._scroll_restore_timer.cancel()
+            # Start new timer
+            self._scroll_restore_timer = threading.Timer(0.5, self._restore_quality_after_interaction)
+            self._scroll_restore_timer.start()
 
     def _handle_opacity_left_click(self, event) -> None:
         """
@@ -478,6 +592,7 @@ class InteractiveVolumeRenderer:
             if self.image_display is not None:
                 self.image_display.set_fps_visible(self.state.show_fps)
             self.fig.canvas.draw_idle()
+            self._update_status_display()
 
         elif event.key == 'h':
             # Toggle histogram display
@@ -485,6 +600,7 @@ class InteractiveVolumeRenderer:
             if self.opacity_editor is not None:
                 self.opacity_editor.set_histogram_visible(self.state.show_histogram)
             print(f"Histogram {'visible' if self.state.show_histogram else 'hidden'}")
+            self._update_status_display()
 
         elif event.key == 'l':
             # Toggle light camera linking
@@ -508,6 +624,14 @@ class InteractiveVolumeRenderer:
 
             self.state.needs_render = True
             self._update_display(force_render=True)
+            self._update_status_display()
+
+        elif event.key == 'q':
+            # Toggle automatic quality adjustment
+            self.state.auto_quality_enabled = not self.state.auto_quality_enabled
+            status = 'enabled' if self.state.auto_quality_enabled else 'disabled'
+            print(f"Automatic quality adjustment {status}")
+            self._update_status_display()
 
         elif event.key == 'escape':
             # Deselect control point
@@ -562,6 +686,104 @@ class InteractiveVolumeRenderer:
             # macOS backend sometimes returns NULL without setting an exception
             # This is a known matplotlib issue - cursor change is non-critical
             pass
+
+    def set_high_quality_mode(self) -> None:
+        """
+        Switch to high quality rendering mode.
+
+        Convenience method for final renders.
+        """
+        from pyvr.config import RenderConfig
+
+        self.state.set_preset('high_quality')
+        self.renderer.set_config(RenderConfig.high_quality())
+
+        if self.preset_selector:
+            self.preset_selector.set_preset('high_quality')
+
+        self.state.needs_render = True
+        self._update_display(force_render=True)
+        self._update_status_display()
+
+        print("Switched to high quality mode")
+
+    def set_camera_linked_lighting(self, azimuth_offset: float = 0.0,
+                                   elevation_offset: float = 0.0) -> None:
+        """
+        Enable camera-linked lighting with offsets.
+
+        Args:
+            azimuth_offset: Horizontal angle offset in radians
+            elevation_offset: Vertical angle offset in radians
+
+        Example:
+            >>> interface.set_camera_linked_lighting(azimuth_offset=np.pi/4)
+        """
+        light = self.renderer.get_light()
+        light.link_to_camera(azimuth_offset=azimuth_offset,
+                            elevation_offset=elevation_offset)
+        light.update_from_camera(self.camera_controller.params)
+        self.renderer.set_light(light)
+        self.state.light_linked_to_camera = True
+        self.state.needs_render = True
+        self._update_display(force_render=True)
+        self._update_status_display()
+
+        print(f"Light linked to camera (az_offset={azimuth_offset:.2f}, el_offset={elevation_offset:.2f})")
+
+    def capture_high_quality_image(self, filename: Optional[str] = None) -> str:
+        """
+        Capture a high-quality rendering of current view.
+
+        Temporarily switches to ultra_quality preset, renders, and restores
+        previous preset.
+
+        Args:
+            filename: Optional filename (default: auto-generated with timestamp)
+
+        Returns:
+            Path to saved image
+
+        Example:
+            >>> path = interface.capture_high_quality_image("my_render.png")
+        """
+        from pyvr.config import RenderConfig
+        import datetime
+
+        # Save current state
+        original_preset = self.state.current_preset_name
+        original_auto_quality = self.state.auto_quality_enabled
+
+        # Disable auto-quality and switch to ultra
+        self.state.auto_quality_enabled = False
+        self.renderer.set_config(RenderConfig.ultra_quality())
+
+        # Render high quality
+        self.state.needs_render = True
+        image_array = self._render_volume()
+
+        # Save to file
+        from PIL import Image
+        if filename is None:
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"pyvr_hq_render_{timestamp}.png"
+
+        img = Image.fromarray(image_array)
+        img.save(filename)
+
+        # Restore original state
+        preset_map = {
+            'preview': RenderConfig.preview,
+            'fast': RenderConfig.fast,
+            'balanced': RenderConfig.balanced,
+            'high_quality': RenderConfig.high_quality,
+            'ultra_quality': RenderConfig.ultra_quality,
+        }
+        self.renderer.set_config(preset_map[original_preset]())
+        self.state.auto_quality_enabled = original_auto_quality
+
+        print(f"High quality image saved to {filename}")
+        return filename
 
     def show(self) -> None:
         """
@@ -645,6 +867,9 @@ class InteractiveVolumeRenderer:
         # Print feedback
         samples = new_config.estimate_samples_per_ray()
         print(f"Switched to '{preset_name}' preset (~{samples} samples/ray)")
+
+        # Update status display
+        self._update_status_display()
 
     def update(self) -> None:
         """
