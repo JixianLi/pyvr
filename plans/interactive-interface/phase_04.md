@@ -10,7 +10,7 @@ Implement interactive camera controls using matplotlib mouse events. Enable orbi
 
 ## Implementation Plan
 
-### Modify: `pyvr/interface/matplotlib.py`
+### Modify: `pyvr/interface/matplotlib_interface.py`
 
 Add event handlers:
 

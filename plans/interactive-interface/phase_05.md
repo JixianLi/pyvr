@@ -87,7 +87,7 @@ class ColorSelector:
         self.radio.set_active(idx)
 ```
 
-### Modify: `pyvr/interface/matplotlib.py`
+### Modify: `pyvr/interface/matplotlib_interface.py`
 
 Update layout to accommodate radio buttons:
 

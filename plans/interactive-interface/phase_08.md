@@ -274,7 +274,7 @@ Add new section in "Core Module Structure":
 
 ```markdown
 8. **`pyvr/interface/`** - Interactive matplotlib-based interface (v0.3.0)
-   - `matplotlib.py`: `InteractiveVolumeRenderer` - main interface class
+   - `matplotlib_interface.py`: `InteractiveVolumeRenderer` - main interface class
    - `widgets.py`: UI components (`ImageDisplay`, `OpacityEditor`, `ColorSelector`)
    - `state.py`: `InterfaceState` - centralized state management
    - Testing/development interface with real-time transfer function editing

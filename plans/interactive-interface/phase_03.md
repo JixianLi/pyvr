@@ -17,7 +17,7 @@ Ensure the image display widget properly integrates with the ModernGL renderer, 
 3. **Add error handling** - Handle OpenGL context issues gracefully
 4. **Add loading indicator** - Show feedback during slow renders
 
-### Modify: `pyvr/interface/matplotlib.py`
+### Modify: `pyvr/interface/matplotlib_interface.py`
 
 Add render optimization:
 

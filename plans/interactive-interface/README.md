@@ -96,7 +96,7 @@ This is a minor version bump (v0.2.7 → v0.3.0) because:
 pyvr/
 ├── interface/
 │   ├── __init__.py          # Public API exports
-│   ├── matplotlib.py         # Main interface class (InteractiveVolumeRenderer)
+│   ├── matplotlib_interface.py         # Main interface class (InteractiveVolumeRenderer)
 │   ├── widgets.py           # Reusable widget components
 │   │   ├── ImageDisplay     # Volume rendering display with camera controls
 │   │   ├── OpacityEditor    # Interactive opacity transfer function editor

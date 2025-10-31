@@ -16,7 +16,7 @@ This is the most complex phase due to event coordinate transforms and interactio
 
 ## Implementation Plan
 
-### Modify: `pyvr/interface/matplotlib.py`
+### Modify: `pyvr/interface/matplotlib_interface.py`
 
 Add opacity editor event handlers:
 

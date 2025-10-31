@@ -16,7 +16,7 @@ Create the following structure:
 ```
 pyvr/interface/
 ├── __init__.py          # Public API exports
-├── matplotlib.py        # Main interface class
+├── matplotlib_interface.py        # Main interface class
 ├── widgets.py           # UI widget components
 └── state.py             # State management
 ```
@@ -45,7 +45,7 @@ Example:
     >>> interface.show()  # Launch interactive GUI
 """
 
-from pyvr.interface.matplotlib import InteractiveVolumeRenderer
+from pyvr.interface.matplotlib_interface import InteractiveVolumeRenderer
 from pyvr.interface.widgets import ImageDisplay, OpacityEditor, ColorSelector
 from pyvr.interface.state import InterfaceState
 
@@ -383,7 +383,7 @@ class ColorSelector:
             self.on_change(colormap_name)
 ```
 
-### File: `pyvr/interface/matplotlib.py`
+### File: `pyvr/interface/matplotlib_interface.py`
 
 **Purpose**: Main interface class (placeholder implementation)
 
@@ -692,7 +692,7 @@ Empty init file for test module.
 - [x] Created `pyvr/interface/` module directory
 - [x] Implemented `state.py` with `InterfaceState` class
 - [x] Implemented `widgets.py` with placeholder widget classes
-- [x] Implemented `matplotlib.py` with `InteractiveVolumeRenderer` skeleton
+- [x] Implemented `matplotlib_interface.py` with `InteractiveVolumeRenderer` skeleton
 - [x] Implemented `__init__.py` with public API exports
 
 ### Testing Deliverables

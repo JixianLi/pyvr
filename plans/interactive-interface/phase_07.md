@@ -18,7 +18,7 @@ Integrate all event handlers into a cohesive system, resolve event conflicts, op
 4. **Improve visual feedback** - Cursor changes, tooltips
 5. **Error handling** - Graceful handling of edge cases
 
-### Modify: `pyvr/interface/matplotlib.py`
+### Modify: `pyvr/interface/matplotlib_interface.py`
 
 Add event coordination and optimization:
 

@@ -10,7 +10,7 @@ Implement the complete matplotlib layout with proper figure organization, widget
 
 ## Implementation Plan
 
-### Modify: `pyvr/interface/matplotlib.py`
+### Modify: `pyvr/interface/matplotlib_interface.py`
 
 **Changes**:
 1. Improve figure layout with better spacing and sizing
@@ -539,7 +539,7 @@ import pytest
 import numpy as np
 from unittest.mock import Mock, patch, MagicMock
 
-from pyvr.interface.matplotlib import InteractiveVolumeRenderer
+from pyvr.interface.matplotlib_interface import InteractiveVolumeRenderer
 from pyvr.volume import Volume
 from pyvr.datasets import create_sample_volume
 
@@ -551,7 +551,7 @@ def small_volume():
     return Volume(data=data)
 
 
-@patch('pyvr.interface.matplotlib.VolumeRenderer')
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
 def test_interactive_renderer_initialization(mock_renderer_class, small_volume):
     """Test InteractiveVolumeRenderer initializes correctly."""
     # Mock the renderer instance
@@ -567,7 +567,7 @@ def test_interactive_renderer_initialization(mock_renderer_class, small_volume):
     assert len(interface.state.control_points) == 2  # Default control points
 
 
-@patch('pyvr.interface.matplotlib.VolumeRenderer')
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
 def test_custom_dimensions(mock_renderer_class, small_volume):
     """Test custom width and height."""
     mock_renderer = Mock()
@@ -583,7 +583,7 @@ def test_custom_dimensions(mock_renderer_class, small_volume):
     assert call_kwargs['height'] == 768
 
 
-@patch('pyvr.interface.matplotlib.VolumeRenderer')
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
 def test_update_transfer_functions(mock_renderer_class, small_volume):
     """Test transfer function updates."""
     mock_renderer = Mock()
@@ -599,7 +599,7 @@ def test_update_transfer_functions(mock_renderer_class, small_volume):
     mock_renderer.set_transfer_functions.assert_called()
 
 
-@patch('pyvr.interface.matplotlib.VolumeRenderer')
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
 def test_render_volume(mock_renderer_class, small_volume):
     """Test volume rendering."""
     mock_renderer = Mock()
@@ -616,8 +616,8 @@ def test_render_volume(mock_renderer_class, small_volume):
     mock_renderer.render_to_pil.assert_called_once()
 
 
-@patch('pyvr.interface.matplotlib.VolumeRenderer')
-@patch('pyvr.interface.matplotlib.plt')
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+@patch('pyvr.interface.matplotlib_interface.plt')
 def test_show_creates_layout(mock_plt, mock_renderer_class, small_volume):
     """Test show() creates figure and layout."""
     mock_renderer = Mock()
@@ -641,7 +641,7 @@ def test_show_creates_layout(mock_plt, mock_renderer_class, small_volume):
     assert interface.color_selector is not None
 
 
-@patch('pyvr.interface.matplotlib.VolumeRenderer')
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
 def test_colormap_change_callback(mock_renderer_class, small_volume):
     """Test colormap change callback."""
     mock_renderer = Mock()
@@ -656,7 +656,7 @@ def test_colormap_change_callback(mock_renderer_class, small_volume):
     assert interface.state.needs_render
 
 
-@patch('pyvr.interface.matplotlib.VolumeRenderer')
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
 def test_manual_update(mock_renderer_class, small_volume):
     """Test manual update() method."""
     mock_renderer = Mock()
