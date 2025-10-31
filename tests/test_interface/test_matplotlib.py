@@ -221,3 +221,180 @@ def test_render_error_handling(mock_renderer_class, small_volume):
     assert img.shape == (512, 512, 3)
     # Placeholder is all zeros
     assert np.all(img == 0)
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_mouse_press_starts_camera_drag(mock_renderer_class, small_volume):
+    """Test left-click in image display starts camera drag."""
+    mock_renderer = Mock()
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.image_display = Mock()
+
+    event = Mock(inaxes=interface.image_display.ax, button=1, xdata=100, ydata=100)
+    interface._on_mouse_press(event)
+
+    assert interface.state.is_dragging_camera
+    assert interface.state.drag_start_pos == (100, 100)
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_mouse_press_outside_image_ignored(mock_renderer_class, small_volume):
+    """Test click outside image display is ignored."""
+    mock_renderer = Mock()
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.image_display = Mock()
+
+    event = Mock(inaxes=None, button=1, xdata=100, ydata=100)
+    interface._on_mouse_press(event)
+
+    assert not interface.state.is_dragging_camera
+    assert interface.state.drag_start_pos is None
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_mouse_release_ends_camera_drag(mock_renderer_class, small_volume):
+    """Test mouse release ends camera drag and triggers render."""
+    mock_renderer = Mock()
+    mock_renderer.render_to_pil.return_value = Mock()
+    mock_renderer.render_to_pil.return_value.__array__ = lambda **kwargs: np.zeros((512, 512, 3), dtype=np.uint8)
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.image_display = Mock()
+    interface.opacity_editor = Mock()
+    interface.state.is_dragging_camera = True
+    interface.state.drag_start_pos = (100, 100)
+
+    event = Mock()
+    interface._on_mouse_release(event)
+
+    assert not interface.state.is_dragging_camera
+    assert interface.state.drag_start_pos is None
+    # Should have triggered render
+    interface.image_display.update_image.assert_called_once()
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_mouse_move_orbits_camera(mock_renderer_class, small_volume):
+    """Test mouse movement orbits camera."""
+    mock_renderer = Mock()
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.image_display = Mock()
+    interface.state.is_dragging_camera = True
+    interface.state.drag_start_pos = (100, 100)
+
+    initial_azimuth = interface.camera_controller.params.azimuth
+
+    event = Mock(inaxes=interface.image_display.ax, xdata=150, ydata=100)
+    interface._on_mouse_move(event)
+
+    # Azimuth should have changed
+    assert interface.camera_controller.params.azimuth != initial_azimuth
+    # Drag start position should be updated
+    assert interface.state.drag_start_pos == (150, 100)
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_mouse_move_when_not_dragging_ignored(mock_renderer_class, small_volume):
+    """Test mouse move when not dragging is ignored."""
+    mock_renderer = Mock()
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.image_display = Mock()
+    interface.state.is_dragging_camera = False
+
+    initial_azimuth = interface.camera_controller.params.azimuth
+
+    event = Mock(inaxes=interface.image_display.ax, xdata=150, ydata=100)
+    interface._on_mouse_move(event)
+
+    # Camera should not have changed
+    assert interface.camera_controller.params.azimuth == initial_azimuth
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_mouse_move_outside_image_ignored(mock_renderer_class, small_volume):
+    """Test mouse move outside image display is ignored."""
+    mock_renderer = Mock()
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.image_display = Mock()
+    interface.state.is_dragging_camera = True
+    interface.state.drag_start_pos = (100, 100)
+
+    initial_azimuth = interface.camera_controller.params.azimuth
+
+    event = Mock(inaxes=None, xdata=None, ydata=None)
+    interface._on_mouse_move(event)
+
+    # Camera should not have changed
+    assert interface.camera_controller.params.azimuth == initial_azimuth
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_scroll_zooms_camera(mock_renderer_class, small_volume):
+    """Test scroll event zooms camera."""
+    mock_renderer = Mock()
+    mock_renderer.render_to_pil.return_value = Mock()
+    mock_renderer.render_to_pil.return_value.__array__ = lambda **kwargs: np.zeros((512, 512, 3), dtype=np.uint8)
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.image_display = Mock()
+    interface.opacity_editor = Mock()
+
+    initial_distance = interface.camera_controller.params.distance
+
+    # Scroll up (zoom in)
+    event = Mock(inaxes=interface.image_display.ax, step=1)
+    interface._on_scroll(event)
+
+    assert interface.camera_controller.params.distance < initial_distance
+    # Should have triggered render
+    interface.image_display.update_image.assert_called_once()
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_scroll_zoom_out(mock_renderer_class, small_volume):
+    """Test scroll down zooms out."""
+    mock_renderer = Mock()
+    mock_renderer.render_to_pil.return_value = Mock()
+    mock_renderer.render_to_pil.return_value.__array__ = lambda **kwargs: np.zeros((512, 512, 3), dtype=np.uint8)
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.image_display = Mock()
+    interface.opacity_editor = Mock()
+
+    initial_distance = interface.camera_controller.params.distance
+
+    # Scroll down (zoom out)
+    event = Mock(inaxes=interface.image_display.ax, step=-1)
+    interface._on_scroll(event)
+
+    assert interface.camera_controller.params.distance > initial_distance
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_scroll_outside_image_ignored(mock_renderer_class, small_volume):
+    """Test scroll outside image display is ignored."""
+    mock_renderer = Mock()
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+    interface.image_display = Mock()
+
+    initial_distance = interface.camera_controller.params.distance
+
+    event = Mock(inaxes=None, step=1)
+    interface._on_scroll(event)
+
+    assert interface.camera_controller.params.distance == initial_distance

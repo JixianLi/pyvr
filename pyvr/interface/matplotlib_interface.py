@@ -210,6 +210,90 @@ class InteractiveVolumeRenderer:
                family='monospace',
                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
 
+    def _on_mouse_press(self, event) -> None:
+        """
+        Handle mouse button press.
+
+        Args:
+            event: Matplotlib mouse button press event
+        """
+        # Check if click is in image display axes
+        if event.inaxes != self.image_display.ax:
+            return
+
+        if event.button == 1:  # Left click
+            self.state.is_dragging_camera = True
+            self.state.drag_start_pos = (event.xdata, event.ydata)
+
+    def _on_mouse_release(self, event) -> None:
+        """
+        Handle mouse button release.
+
+        Args:
+            event: Matplotlib mouse button release event
+        """
+        if self.state.is_dragging_camera:
+            self.state.is_dragging_camera = False
+            self.state.drag_start_pos = None
+            # Trigger final render after drag
+            self.state.needs_render = True
+            self._update_display()
+
+    def _on_mouse_move(self, event) -> None:
+        """
+        Handle mouse movement.
+
+        Args:
+            event: Matplotlib mouse motion event
+        """
+        if not self.state.is_dragging_camera:
+            return
+
+        if event.inaxes != self.image_display.ax or event.xdata is None:
+            return
+
+        # Calculate drag delta
+        if self.state.drag_start_pos is not None:
+            dx = event.xdata - self.state.drag_start_pos[0]
+            dy = event.ydata - self.state.drag_start_pos[1]
+
+            # Convert pixel movement to camera angles
+            # Sensitivity factor for camera movement
+            sensitivity = 0.005
+            delta_azimuth = -dx * sensitivity
+            delta_elevation = dy * sensitivity
+
+            # Update camera using controller
+            self.camera_controller.orbit(
+                delta_azimuth=delta_azimuth,
+                delta_elevation=delta_elevation
+            )
+
+            # Update drag start position for next move
+            self.state.drag_start_pos = (event.xdata, event.ydata)
+
+            # Don't render every frame - too slow
+            # Will render on mouse release
+
+    def _on_scroll(self, event) -> None:
+        """
+        Handle mouse scroll for zoom.
+
+        Args:
+            event: Matplotlib scroll event
+        """
+        if event.inaxes != self.image_display.ax:
+            return
+
+        # Scroll up = zoom in (decrease distance), scroll down = zoom out (increase distance)
+        zoom_factor = 0.9 if event.step > 0 else 1.1
+
+        self.camera_controller.zoom(factor=zoom_factor)
+
+        # Render immediately for zoom (it's fast enough)
+        self.state.needs_render = True
+        self._update_display()
+
     def show(self) -> None:
         """
         Display the interactive interface.
@@ -227,6 +311,12 @@ class InteractiveVolumeRenderer:
 
         # Set up info display
         self._setup_info_display(axes['info'])
+
+        # Connect event handlers
+        self.fig.canvas.mpl_connect('button_press_event', self._on_mouse_press)
+        self.fig.canvas.mpl_connect('button_release_event', self._on_mouse_release)
+        self.fig.canvas.mpl_connect('motion_notify_event', self._on_mouse_move)
+        self.fig.canvas.mpl_connect('scroll_event', self._on_scroll)
 
         # Initial display update
         self._update_display()
