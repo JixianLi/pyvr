@@ -1,6 +1,6 @@
 [project]
 name = "pyvr"
-version = "0.2.3"
+version = "0.3.0"
 description = "GPU-Accelerated Volume Rendering in Python using OpenGL"
 authors = [
     {name = "Jixian Li",email = "jixianli@sci.utah.edu"}

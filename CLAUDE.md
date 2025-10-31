@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 PyVR is a GPU-accelerated 3D volume rendering toolkit built with ModernGL for real-time interactive visualization using OpenGL. The project emphasizes clean, modular architecture with comprehensive testing (204 tests, ~86% coverage).
 
-**Current Version**: 0.2.7 (branch: 0.2.3-CameraRefactoring)
+**Current Version**: 0.3.0 (branch: interactive-interface)
 **Python**: 3.11+
 **License**: WTFPL
 
@@ -131,6 +131,15 @@ The codebase follows a pipeline-aligned architecture with clean separation of co
    - `synthetic.py`: Testing datasets (sphere, torus, double_sphere, cube, helix, random_blob)
    - `compute_normal_volume()`: Generate normal vectors for lighting
 
+8. **`pyvr/interface/`** - Interactive matplotlib-based interface (v0.3.0)
+   - `matplotlib_interface.py`: `InteractiveVolumeRenderer` - main interface class with event handling
+   - `widgets.py`: UI components (`ImageDisplay`, `OpacityEditor`, `ColorSelector`)
+   - `state.py`: `InterfaceState` - centralized state management
+   - Testing/development interface with real-time transfer function editing
+   - Mouse controls: orbit (drag), zoom (scroll), control point editing (click/drag/right-click)
+   - Keyboard shortcuts: reset (r), save (s), deselect (Esc), delete (Del)
+   - Performance: Render throttling (100ms), caching, smart updates
+
 ### Key Architectural Patterns
 
 **Shader Management**: Shaders live in `pyvr/shaders/` (shared across renderers):
@@ -197,8 +206,9 @@ Lighting System               22       100%
 Transfer Functions            36       88-100%
 ModernGL Renderer             71       93-98%
 Volume & Datasets             -        56-93%
+Interactive Interface         80       >90%
 ----------------------------------------------
-Total                         204      ~86%
+Total                         284      ~86%
 ```
 
 ## Version History & Migration Notes
@@ -482,3 +492,4 @@ relative_time = config.estimate_render_time_relative()  # ~5.0x slower
 - Test: Ensure all tests pass
 - Document: Update README, version notes, examples
 - Clean up: Remove plan files after completion
+- my conda is in /Users/jixianli/miniforge3/condabin/conda the project should use pyvr conda env for Python
