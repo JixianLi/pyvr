@@ -42,6 +42,7 @@ class InterfaceState:
 
     # Display flags
     show_fps: bool = True
+    show_histogram: bool = True
 
     # Rendering configuration
     current_preset_name: str = "fast"  # Default to fast for interactivity

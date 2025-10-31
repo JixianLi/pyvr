@@ -114,7 +114,7 @@ class ImageDisplay:
 
 class OpacityEditor:
     """
-    Widget for editing opacity transfer function with control points.
+    Widget for editing opacity transfer function with control points and histogram background.
 
     Supports adding, removing, selecting, and dragging control points.
 
@@ -122,18 +122,23 @@ class OpacityEditor:
         ax: Matplotlib axes for opacity plot
         line: Line artist for transfer function curve
         points: Scatter artist for control points
+        histogram_bars: BarContainer for histogram background (optional)
+        show_histogram: Whether to show histogram background
     """
 
-    def __init__(self, ax: Axes):
+    def __init__(self, ax: Axes, show_histogram: bool = True):
         """
         Initialize opacity editor widget.
 
         Args:
             ax: Matplotlib axes to use for editor
+            show_histogram: Whether to show histogram background (default: True)
         """
         self.ax = ax
         self.line: Optional[Line2D] = None
         self.points: Optional[PathCollection] = None
+        self.histogram_bars = None
+        self.show_histogram = show_histogram
 
         # Style the axes
         self.ax.set_title("Opacity Transfer Function", fontsize=11, fontweight='bold')
@@ -146,6 +151,50 @@ class OpacityEditor:
 
         # Set background
         self.ax.set_facecolor('#f8f8f8')
+
+    def set_histogram(self, bin_edges: np.ndarray, log_counts: np.ndarray) -> None:
+        """
+        Set histogram background data.
+
+        Args:
+            bin_edges: Histogram bin edges (length: num_bins + 1)
+            log_counts: Log-scale histogram counts (length: num_bins)
+
+        Example:
+            >>> from pyvr.interface.cache import get_or_compute_histogram
+            >>> edges, counts = get_or_compute_histogram(volume.data)
+            >>> editor.set_histogram(edges, counts)
+        """
+        if not self.show_histogram:
+            return
+
+        # Normalize counts to [0, 1] for display
+        max_count = np.max(log_counts)
+        if max_count > 0:
+            normalized_counts = log_counts / max_count
+        else:
+            normalized_counts = log_counts
+
+        # Compute bin centers for bar plot
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        bin_width = bin_edges[1] - bin_edges[0]
+
+        # Remove old histogram if exists
+        if self.histogram_bars is not None:
+            self.histogram_bars.remove()
+
+        # Create bar plot for histogram (subtle blue-gray color)
+        self.histogram_bars = self.ax.bar(
+            bin_centers,
+            normalized_counts,
+            width=bin_width,
+            color='#a0b0c0',  # Subtle blue-gray
+            alpha=0.3,
+            zorder=1,  # Behind control points and line
+            edgecolor='none'
+        )
+
+        self.ax.figure.canvas.draw_idle()
 
     def update_plot(self, control_points: List[Tuple[float, float]],
                    selected_index: Optional[int] = None) -> None:
@@ -165,7 +214,7 @@ class OpacityEditor:
 
         # Update line
         if self.line is None:
-            self.line, = self.ax.plot(x_vals, y_vals, 'b-', linewidth=2.5, alpha=0.7)
+            self.line, = self.ax.plot(x_vals, y_vals, 'b-', linewidth=2.5, alpha=0.7, zorder=3)
         else:
             self.line.set_data(x_vals, y_vals)
 
@@ -193,14 +242,30 @@ class OpacityEditor:
 
         self.ax.figure.canvas.draw_idle()
 
+    def set_histogram_visible(self, visible: bool) -> None:
+        """
+        Toggle histogram visibility.
+
+        Args:
+            visible: Whether histogram should be visible
+        """
+        self.show_histogram = visible
+        if self.histogram_bars is not None:
+            for bar in self.histogram_bars:
+                bar.set_visible(visible)
+        self.ax.figure.canvas.draw_idle()
+
     def clear(self) -> None:
-        """Clear the opacity plot."""
+        """Clear the opacity plot including histogram."""
         if self.line is not None:
             self.line.remove()
             self.line = None
         if self.points is not None:
             self.points.remove()
             self.points = None
+        if self.histogram_bars is not None:
+            self.histogram_bars.remove()
+            self.histogram_bars = None
         self.ax.figure.canvas.draw_idle()
 
 

@@ -207,3 +207,56 @@ class TestColorSelector:
         # inferno is at index 2 in AVAILABLE_COLORMAPS
         expected_index = ColorSelector.AVAILABLE_COLORMAPS.index('inferno')
         selector.radio.set_active.assert_called_once_with(expected_index)
+
+class TestOpacityEditorHistogram:
+    """Tests for histogram integration in OpacityEditor."""
+
+    def test_set_histogram(self, mock_axes):
+        """Test setting histogram background."""
+        editor = OpacityEditor(mock_axes, show_histogram=True)
+
+        bin_edges = np.linspace(0, 1, 257)
+        log_counts = np.random.rand(256)
+
+        # Should not raise
+        editor.set_histogram(bin_edges, log_counts)
+
+    def test_histogram_normalized(self, mock_axes):
+        """Test histogram counts are normalized for display."""
+        editor = OpacityEditor(mock_axes, show_histogram=True)
+
+        bin_edges = np.linspace(0, 1, 257)
+        log_counts = np.array([1, 10, 100, 1000])  # Wide range
+
+        editor.set_histogram(bin_edges[:5], log_counts)
+
+        # Bar plot should be created
+        mock_axes.bar.assert_called_once()
+
+    def test_histogram_disabled(self, mock_axes):
+        """Test histogram not shown when disabled."""
+        editor = OpacityEditor(mock_axes, show_histogram=False)
+
+        bin_edges = np.linspace(0, 1, 257)
+        log_counts = np.random.rand(256)
+
+        editor.set_histogram(bin_edges, log_counts)
+
+        # Bar plot should not be created
+        mock_axes.bar.assert_not_called()
+
+    def test_set_histogram_visible(self, mock_axes):
+        """Test toggling histogram visibility."""
+        editor = OpacityEditor(mock_axes, show_histogram=True)
+
+        bin_edges = np.linspace(0, 1, 257)
+        log_counts = np.random.rand(256)
+        editor.set_histogram(bin_edges, log_counts)
+
+        # Toggle off
+        editor.set_histogram_visible(False)
+        assert editor.show_histogram is False
+
+        # Toggle on
+        editor.set_histogram_visible(True)
+        assert editor.show_histogram is True

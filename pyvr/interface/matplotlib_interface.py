@@ -93,6 +93,9 @@ class InteractiveVolumeRenderer:
         # Set up initial transfer functions
         self._update_transfer_functions()
 
+        # Compute/load histogram for opacity editor background
+        self._load_histogram()
+
         # Widget placeholders (will be created in show())
         self.image_display: Optional[ImageDisplay] = None
         self.opacity_editor: Optional[OpacityEditor] = None
@@ -111,6 +114,16 @@ class InteractiveVolumeRenderer:
         otf = OpacityTransferFunction(control_points=self.state.control_points)
         self.renderer.set_transfer_functions(ctf, otf)
         self.state.needs_tf_update = False
+
+    def _load_histogram(self) -> None:
+        """Load or compute volume histogram for opacity editor."""
+        from pyvr.interface.cache import get_or_compute_histogram
+
+        print("Loading histogram...")
+        self.histogram_bin_edges, self.histogram_log_counts = get_or_compute_histogram(
+            self.volume.data, num_bins=256
+        )
+        print("Histogram loaded.")
 
     def _render_volume(self) -> np.ndarray:
         """
@@ -238,6 +251,7 @@ class InteractiveVolumeRenderer:
             "  r: Reset view\n"
             "  s: Save image\n"
             "  f: Toggle FPS counter\n"
+            "  h: Toggle histogram\n"
             "  l: Toggle light linking\n"
             "  Esc: Deselect\n"
             "  Del: Remove selected"
@@ -465,6 +479,13 @@ class InteractiveVolumeRenderer:
                 self.image_display.set_fps_visible(self.state.show_fps)
             self.fig.canvas.draw_idle()
 
+        elif event.key == 'h':
+            # Toggle histogram display
+            self.state.show_histogram = not self.state.show_histogram
+            if self.opacity_editor is not None:
+                self.opacity_editor.set_histogram_visible(self.state.show_histogram)
+            print(f"Histogram {'visible' if self.state.show_histogram else 'hidden'}")
+
         elif event.key == 'l':
             # Toggle light camera linking
             light = self.renderer.get_light()
@@ -551,14 +572,20 @@ class InteractiveVolumeRenderer:
         # Create figure and axes
         self.fig, axes = self._create_layout()
 
-        # Initialize widgets - pass show_fps to ImageDisplay
+        # Initialize widgets - pass show_fps to ImageDisplay, show_histogram to OpacityEditor
         self.image_display = ImageDisplay(axes['image'], show_fps=self.state.show_fps)
-        self.opacity_editor = OpacityEditor(axes['opacity'])
+        self.opacity_editor = OpacityEditor(axes['opacity'], show_histogram=self.state.show_histogram)
         self.color_selector = ColorSelector(axes['color'],
                                            on_change=self._on_colormap_change)
         self.preset_selector = PresetSelector(axes['preset'],
                                              initial_preset=self.state.current_preset_name,
                                              on_change=self._on_preset_change)
+
+        # Set histogram background
+        self.opacity_editor.set_histogram(
+            self.histogram_bin_edges,
+            self.histogram_log_counts
+        )
 
         # Set up info display
         self._setup_info_display(axes['info'])
