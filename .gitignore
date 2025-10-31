@@ -204,4 +204,4 @@ cython_debug/
 .claude/
 
 # tmp_dev directory for local file caching
-tmp_dev/
+tmp_dev/CLAUDE.md
