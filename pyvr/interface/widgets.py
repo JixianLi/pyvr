@@ -326,6 +326,125 @@ class ColorSelector:
             self.ax.figure.canvas.draw_idle()
 
 
+class PresetSelector:
+    """
+    Widget for selecting RenderConfig quality presets.
+
+    Provides interactive RadioButtons for preset selection with real-time quality switching.
+
+    Attributes:
+        ax: Matplotlib axes for preset display
+        current_preset: Name of currently selected preset
+        on_change: Callback function when preset changes
+        radio: RadioButtons widget for preset selection
+    """
+
+    # RenderConfig presets in order from fastest to highest quality
+    AVAILABLE_PRESETS = [
+        'preview',      # Extremely fast, low quality
+        'fast',         # Fast, interactive
+        'balanced',     # Default, good balance
+        'high_quality', # High quality, slower
+        'ultra_quality' # Maximum quality, very slow
+    ]
+
+    # Human-readable labels with performance hints
+    PRESET_LABELS = [
+        'Preview (fastest)',
+        'Fast',
+        'Balanced',
+        'High Quality',
+        'Ultra (slowest)'
+    ]
+
+    def __init__(self, ax: Axes, initial_preset: str = 'fast',
+                 on_change: Optional[Callable[[str], None]] = None):
+        """
+        Initialize preset selector widget.
+
+        Args:
+            ax: Matplotlib axes to use for display
+            initial_preset: Initial preset name (default: 'fast')
+            on_change: Callback function called with preset name when selection changes
+
+        Raises:
+            ValueError: If initial_preset not in AVAILABLE_PRESETS
+        """
+        self.ax = ax
+        self.on_change = on_change
+
+        if initial_preset not in self.AVAILABLE_PRESETS:
+            raise ValueError(f"Invalid preset '{initial_preset}'. "
+                           f"Choose from: {self.AVAILABLE_PRESETS}")
+
+        self.current_preset = initial_preset
+
+        # Style axes
+        self.ax.set_title("Rendering Quality", fontsize=11, fontweight='bold')
+        self.ax.axis('off')
+
+        # Create radio buttons for preset selection
+        initial_index = self.AVAILABLE_PRESETS.index(initial_preset)
+        self.radio = RadioButtons(
+            ax=self.ax,
+            labels=self.PRESET_LABELS,
+            active=initial_index
+        )
+
+        # Style radio buttons
+        for label in self.radio.labels:
+            label.set_fontsize(9)
+
+        # Connect callback
+        self.radio.on_clicked(self._on_selection)
+
+    def _on_selection(self, label: str) -> None:
+        """
+        Handle preset selection from radio buttons.
+
+        Args:
+            label: Display label of selected preset
+        """
+        # Map display label back to preset name
+        label_index = self.PRESET_LABELS.index(label)
+        preset_name = self.AVAILABLE_PRESETS[label_index]
+
+        self.current_preset = preset_name
+
+        # Call external callback
+        if self.on_change:
+            self.on_change(preset_name)
+
+    def set_preset(self, preset_name: str) -> None:
+        """
+        Programmatically set the current preset.
+
+        Args:
+            preset_name: Name of RenderConfig preset
+
+        Raises:
+            ValueError: If preset_name not in AVAILABLE_PRESETS
+        """
+        if preset_name not in self.AVAILABLE_PRESETS:
+            raise ValueError(f"Invalid preset '{preset_name}'. "
+                           f"Choose from: {self.AVAILABLE_PRESETS}")
+
+        self.current_preset = preset_name
+
+        # Update radio button selection
+        preset_index = self.AVAILABLE_PRESETS.index(preset_name)
+        self.radio.set_active(preset_index)
+
+    def get_preset(self) -> str:
+        """
+        Get currently selected preset name.
+
+        Returns:
+            Current preset name (e.g., 'balanced')
+        """
+        return self.current_preset
+
+
 class FPSCounter:
     """
     Helper class for calculating and tracking frames per second.

@@ -12,7 +12,7 @@ from pyvr.config import RenderConfig
 from pyvr.camera import Camera, CameraController
 from pyvr.lighting import Light
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
-from pyvr.interface.widgets import ImageDisplay, OpacityEditor, ColorSelector
+from pyvr.interface.widgets import ImageDisplay, OpacityEditor, ColorSelector, PresetSelector
 from pyvr.interface.state import InterfaceState
 
 
@@ -45,6 +45,7 @@ class InteractiveVolumeRenderer:
         image_display: Widget for volume rendering display
         opacity_editor: Widget for opacity transfer function editing
         color_selector: Widget for colormap selection
+        preset_selector: Widget for rendering quality preset selection
         fig: Matplotlib figure
     """
 
@@ -96,6 +97,7 @@ class InteractiveVolumeRenderer:
         self.image_display: Optional[ImageDisplay] = None
         self.opacity_editor: Optional[OpacityEditor] = None
         self.color_selector: Optional[ColorSelector] = None
+        self.preset_selector: Optional[PresetSelector] = None
         self.fig: Optional[Figure] = None
 
         # Render caching and throttling
@@ -182,30 +184,32 @@ class InteractiveVolumeRenderer:
         Create matplotlib figure layout.
 
         Returns:
-            Tuple of (figure, axes_dict) where axes_dict contains 'image', 'opacity', 'color', 'info'
+            Tuple of (figure, axes_dict) with keys: 'image', 'opacity', 'color', 'preset', 'info'
         """
-        # Create figure - slightly taller to accommodate radio buttons
+        # Create figure
         fig = plt.figure(figsize=(14, 8))
         fig.suptitle("PyVR Interactive Volume Renderer", fontsize=14, fontweight='bold')
 
         # Create grid layout
         # Left side: Large image display
-        # Right side: Stacked transfer function editors
-        gs = GridSpec(3, 2, figure=fig,
+        # Right side: Stacked control panels
+        gs = GridSpec(4, 2, figure=fig,
                      width_ratios=[2, 1],
-                     height_ratios=[4, 3, 1],  # More space for color selector with radio buttons
+                     height_ratios=[4, 2, 2, 1],  # Image, Opacity, Color, Preset+Info
                      hspace=0.3, wspace=0.3)
 
         # Create axes
-        ax_image = fig.add_subplot(gs[:, 0])  # Full left column
-        ax_opacity = fig.add_subplot(gs[0, 1])  # Top right
-        ax_color = fig.add_subplot(gs[1, 1])  # Middle right - more space for radio buttons
-        ax_info = fig.add_subplot(gs[2, 1])  # Bottom right (for future info display)
+        ax_image = fig.add_subplot(gs[:, 0])         # Full left column
+        ax_opacity = fig.add_subplot(gs[0, 1])       # Top right
+        ax_color = fig.add_subplot(gs[1, 1])         # Middle-top right
+        ax_preset = fig.add_subplot(gs[2, 1])        # Middle-bottom right
+        ax_info = fig.add_subplot(gs[3, 1])          # Bottom right
 
         axes_dict = {
             'image': ax_image,
             'opacity': ax_opacity,
             'color': ax_color,
+            'preset': ax_preset,
             'info': ax_info,
         }
 
@@ -516,6 +520,9 @@ class InteractiveVolumeRenderer:
         self.opacity_editor = OpacityEditor(axes['opacity'])
         self.color_selector = ColorSelector(axes['color'],
                                            on_change=self._on_colormap_change)
+        self.preset_selector = PresetSelector(axes['preset'],
+                                             initial_preset=self.state.current_preset_name,
+                                             on_change=self._on_preset_change)
 
         # Set up info display
         self._setup_info_display(axes['info'])
@@ -543,6 +550,38 @@ class InteractiveVolumeRenderer:
         """
         self.state.set_colormap(colormap_name)
         self._update_display()
+
+    def _on_preset_change(self, preset_name: str) -> None:
+        """
+        Callback when rendering preset changes.
+
+        Args:
+            preset_name: Name of new preset
+        """
+        # Update state
+        self.state.set_preset(preset_name)
+
+        # Get new config based on preset name
+        preset_map = {
+            'preview': RenderConfig.preview,
+            'fast': RenderConfig.fast,
+            'balanced': RenderConfig.balanced,
+            'high_quality': RenderConfig.high_quality,
+            'ultra_quality': RenderConfig.ultra_quality,
+        }
+
+        new_config = preset_map[preset_name]()
+
+        # Update renderer config
+        self.renderer.set_config(new_config)
+
+        # Trigger re-render
+        self.state.needs_render = True
+        self._update_display(force_render=True)
+
+        # Print feedback
+        samples = new_config.estimate_samples_per_ray()
+        print(f"Switched to '{preset_name}' preset (~{samples} samples/ray)")
 
     def update(self) -> None:
         """

@@ -169,3 +169,54 @@ def test_concurrent_camera_and_opacity_editing(full_interface):
     assert not interface.state.is_dragging_camera
     # New control point should have been added
     assert len(interface.state.control_points) == 3
+
+
+def test_preset_change_triggers_rerender(full_interface):
+    """Test changing preset triggers re-render."""
+    interface = full_interface
+
+    # Change preset
+    interface.state.set_preset('high_quality')
+
+    # Should flag for re-render
+    assert interface.state.needs_render is True
+
+
+def test_preset_updates_renderer_config(full_interface):
+    """Test preset change updates renderer config."""
+    interface = full_interface
+
+    # Simulate preset change callback
+    interface._on_preset_change('high_quality')
+
+    # Renderer set_config should be called
+    interface.renderer.set_config.assert_called_once()
+
+
+def test_preset_change_prints_feedback(full_interface, capsys):
+    """Test preset change prints feedback to console."""
+    interface = full_interface
+
+    # Change preset
+    interface._on_preset_change('balanced')
+
+    # Should print feedback
+    captured = capsys.readouterr()
+    assert "Switched to 'balanced' preset" in captured.out
+    assert "samples/ray" in captured.out
+
+
+def test_preset_integration_with_transfer_functions(full_interface):
+    """Test preset changes work alongside transfer function edits."""
+    interface = full_interface
+
+    # Change colormap
+    interface._on_colormap_change('plasma')
+    assert interface.state.current_colormap == 'plasma'
+
+    # Change preset
+    interface.state.set_preset('high_quality')
+    assert interface.state.current_preset_name == 'high_quality'
+
+    # Both should trigger renders
+    assert interface.state.needs_render

@@ -22,6 +22,7 @@ class InterfaceState:
         needs_render: Flag indicating volume needs to be re-rendered
         needs_tf_update: Flag indicating transfer function needs update
         show_fps: Flag indicating whether FPS counter should be displayed
+        current_preset_name: Name of currently selected RenderConfig preset
     """
 
     # Transfer function state
@@ -40,6 +41,9 @@ class InterfaceState:
 
     # Display flags
     show_fps: bool = True
+
+    # Rendering configuration
+    current_preset_name: str = "fast"  # Default to fast for interactivity
 
     def __post_init__(self):
         """Validate initial state."""
@@ -160,4 +164,21 @@ class InterfaceState:
         """
         self.current_colormap = colormap_name
         self.needs_tf_update = True
+        self.needs_render = True
+
+    def set_preset(self, preset_name: str) -> None:
+        """
+        Change the current rendering preset.
+
+        Args:
+            preset_name: Name of RenderConfig preset
+
+        Raises:
+            ValueError: If preset_name is not valid
+        """
+        valid_presets = ['preview', 'fast', 'balanced', 'high_quality', 'ultra_quality']
+        if preset_name not in valid_presets:
+            raise ValueError(f"Invalid preset '{preset_name}'. Choose from: {valid_presets}")
+
+        self.current_preset_name = preset_name
         self.needs_render = True
