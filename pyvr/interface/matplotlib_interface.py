@@ -431,8 +431,9 @@ class InteractiveVolumeRenderer:
                 # Update drag start position for next move
                 self.state.drag_start_pos = (event.xdata, event.ydata)
 
-                # Don't render every frame - too slow
-                # Will render on mouse release
+                # Trigger render (throttled to avoid performance issues)
+                self.state.needs_render = True
+                self._update_display()  # Throttling prevents excessive renders
             return
 
         # Handle control point drag
