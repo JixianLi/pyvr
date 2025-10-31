@@ -272,12 +272,17 @@ class Light:
             >>> copy = original.copy()
             >>> copy.ambient_intensity = 0.5  # Doesn't affect original
         """
-        return Light(
+        new_light = Light(
             position=self.position.copy(),
             target=self.target.copy(),
             ambient_intensity=self.ambient_intensity,
             diffuse_intensity=self.diffuse_intensity,
         )
+        # Preserve linking state
+        new_light._is_linked = self._is_linked
+        if self._camera_offsets is not None:
+            new_light._camera_offsets = self._camera_offsets.copy()
+        return new_light
 
     @property
     def is_linked(self) -> bool:

@@ -188,6 +188,32 @@ class TestLightLinking:
         offsets2 = light.get_offsets()
         assert offsets2['azimuth'] == 1.0  # Original unchanged
 
+    def test_copy_preserves_linking_state(self):
+        """Test that copy() preserves linking state."""
+        light = Light.default()
+        light.link_to_camera(azimuth_offset=np.pi/4, elevation_offset=np.pi/6, distance_offset=1.0)
+
+        # Copy the light
+        light_copy = light.copy()
+
+        # Linking state should be preserved
+        assert light_copy.is_linked is True
+        offsets = light_copy.get_offsets()
+        assert offsets is not None
+        assert offsets['azimuth'] == pytest.approx(np.pi/4)
+        assert offsets['elevation'] == pytest.approx(np.pi/6)
+        assert offsets['distance'] == pytest.approx(1.0)
+
+    def test_copy_unlinked_light(self):
+        """Test that copy() works for unlinked light."""
+        light = Light.default()
+
+        # Copy unlinked light
+        light_copy = light.copy()
+
+        assert light_copy.is_linked is False
+        assert light_copy.get_offsets() is None
+
     def test_camera_linked_preset(self):
         """Test Light.camera_linked() preset."""
         light = Light.camera_linked(
