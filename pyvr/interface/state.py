@@ -23,6 +23,7 @@ class InterfaceState:
         needs_tf_update: Flag indicating transfer function needs update
         show_fps: Flag indicating whether FPS counter should be displayed
         current_preset_name: Name of currently selected RenderConfig preset
+        light_linked_to_camera: Flag indicating whether light is linked to camera movement
     """
 
     # Transfer function state
@@ -44,6 +45,9 @@ class InterfaceState:
 
     # Rendering configuration
     current_preset_name: str = "fast"  # Default to fast for interactivity
+
+    # Light linking
+    light_linked_to_camera: bool = False
 
     def __post_init__(self):
         """Validate initial state."""

@@ -6,7 +6,7 @@ illumination in volume rendering scenes.
 """
 
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Tuple, Optional
 
 import numpy as np
 
@@ -34,6 +34,10 @@ class Light:
     )
     ambient_intensity: float = 0.2
     diffuse_intensity: float = 0.8
+
+    # Camera linking (private attributes)
+    _is_linked: bool = field(default=False, init=False, repr=False)
+    _camera_offsets: Optional[dict] = field(default=None, init=False, repr=False)
 
     def __post_init__(self):
         """Validate lighting parameters after initialization."""
@@ -185,6 +189,57 @@ class Light:
             diffuse_intensity=0.0,
         )
 
+    @classmethod
+    def camera_linked(
+        cls,
+        azimuth_offset: float = 0.0,
+        elevation_offset: float = 0.0,
+        distance_offset: float = 0.0,
+        ambient: float = 0.2,
+        diffuse: float = 0.8,
+    ) -> "Light":
+        """
+        Create a camera-linked directional light.
+
+        The light will follow camera movement with specified offsets,
+        providing consistent illumination from the camera's perspective.
+
+        Args:
+            azimuth_offset: Horizontal angle offset in radians (default: 0.0)
+            elevation_offset: Vertical angle offset in radians (default: 0.0)
+            distance_offset: Additional distance from target (default: 0.0)
+            ambient: Ambient light intensity (default: 0.2)
+            diffuse: Diffuse light intensity (default: 0.8)
+
+        Returns:
+            Light instance configured for camera linking
+
+        Example:
+            >>> # Light follows camera with 45° horizontal offset
+            >>> light = Light.camera_linked(azimuth_offset=np.pi/4)
+            >>> renderer = VolumeRenderer(light=light)
+            >>>
+            >>> # In render loop:
+            >>> light.update_from_camera(camera)
+            >>> renderer.set_light(light)
+        """
+        # Start with default light
+        light = cls(
+            position=np.array([1.0, 1.0, 1.0], dtype=np.float32),
+            target=np.array([0.0, 0.0, 0.0], dtype=np.float32),
+            ambient_intensity=ambient,
+            diffuse_intensity=diffuse,
+        )
+
+        # Link to camera
+        light.link_to_camera(
+            azimuth_offset=azimuth_offset,
+            elevation_offset=elevation_offset,
+            distance_offset=distance_offset,
+        )
+
+        return light
+
     def get_direction(self) -> np.ndarray:
         """
         Calculate light direction vector (from position to target).
@@ -223,6 +278,125 @@ class Light:
             ambient_intensity=self.ambient_intensity,
             diffuse_intensity=self.diffuse_intensity,
         )
+
+    @property
+    def is_linked(self) -> bool:
+        """
+        Check if light is linked to camera.
+
+        Returns:
+            True if light is currently linked to camera
+        """
+        return self._is_linked
+
+    def link_to_camera(
+        self,
+        azimuth_offset: float = 0.0,
+        elevation_offset: float = 0.0,
+        distance_offset: float = 0.0,
+    ) -> "Light":
+        """
+        Link this light to follow camera movement with offsets.
+
+        The light position will be calculated relative to camera orientation
+        using the provided offsets. This creates consistent illumination
+        from the camera's perspective.
+
+        Args:
+            azimuth_offset: Horizontal angle offset in radians (default: 0.0)
+            elevation_offset: Vertical angle offset in radians (default: 0.0)
+            distance_offset: Additional distance from target (default: 0.0)
+
+        Returns:
+            Self for method chaining
+
+        Example:
+            >>> light = Light.directional([1, -1, 0])
+            >>> light.link_to_camera(azimuth_offset=np.pi/4, elevation_offset=0.0)
+            >>> # Now light will follow camera with 45° horizontal offset
+        """
+        self._is_linked = True
+        self._camera_offsets = {
+            'azimuth': azimuth_offset,
+            'elevation': elevation_offset,
+            'distance': distance_offset,
+        }
+        return self
+
+    def unlink_from_camera(self) -> "Light":
+        """
+        Unlink this light from camera movement.
+
+        Light position becomes fixed at current location.
+
+        Returns:
+            Self for method chaining
+
+        Example:
+            >>> light.unlink_from_camera()
+            >>> # Light no longer follows camera
+        """
+        self._is_linked = False
+        self._camera_offsets = None
+        return self
+
+    def update_from_camera(self, camera) -> None:
+        """
+        Update light position based on camera and offsets.
+
+        This method should be called each frame if the light is linked.
+
+        Args:
+            camera: Camera instance to derive position from
+
+        Raises:
+            ValueError: If light is not linked or camera is invalid
+
+        Example:
+            >>> if light.is_linked:
+            ...     light.update_from_camera(camera)
+            ...     renderer.set_light(light)
+        """
+        if not self._is_linked:
+            raise ValueError("Light is not linked to camera. Call link_to_camera() first.")
+
+        if self._camera_offsets is None:
+            raise ValueError("Camera offsets not set. Call link_to_camera() first.")
+
+        # Import Camera here to avoid circular dependency
+        from pyvr.camera import Camera
+        if not isinstance(camera, Camera):
+            raise ValueError("camera must be a Camera instance")
+
+        # Calculate light position from camera orientation + offsets
+        azimuth = camera.azimuth + self._camera_offsets['azimuth']
+        elevation = camera.elevation + self._camera_offsets['elevation']
+        distance = camera.distance + self._camera_offsets['distance']
+
+        # Convert spherical coordinates to Cartesian position
+        # This mirrors the Camera.get_camera_vectors() logic
+        cos_elev = np.cos(elevation)
+        x = distance * cos_elev * np.cos(azimuth)
+        y = distance * np.sin(elevation)
+        z = distance * cos_elev * np.sin(azimuth)
+
+        # Position relative to camera target
+        self.position = camera.target + np.array([x, y, z], dtype=np.float32)
+        self.target = camera.target.copy()
+
+    def get_offsets(self) -> Optional[dict]:
+        """
+        Get current camera offsets if linked.
+
+        Returns:
+            Dictionary with 'azimuth', 'elevation', 'distance' keys, or None if not linked
+
+        Example:
+            >>> offsets = light.get_offsets()
+            >>> if offsets:
+            ...     print(f"Azimuth offset: {offsets['azimuth']:.2f} rad")
+        """
+        return self._camera_offsets.copy() if self._camera_offsets else None
 
     def __repr__(self) -> str:
         """String representation of light configuration."""

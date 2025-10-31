@@ -165,6 +165,13 @@ class InteractiveVolumeRenderer:
             self._update_transfer_functions()
             self.state.needs_render = True
 
+        # Update light from camera if linked
+        light = self.renderer.get_light()
+        if light.is_linked:
+            light.update_from_camera(self.camera_controller.params)
+            self.renderer.set_light(light)
+            self.state.needs_render = True
+
         # Update volume rendering with throttling
         if self.state.needs_render and (force_render or self._should_render()):
             image_array = self._render_volume()
@@ -231,6 +238,7 @@ class InteractiveVolumeRenderer:
             "  r: Reset view\n"
             "  s: Save image\n"
             "  f: Toggle FPS counter\n"
+            "  l: Toggle light linking\n"
             "  Esc: Deselect\n"
             "  Del: Remove selected"
         )
@@ -456,6 +464,29 @@ class InteractiveVolumeRenderer:
             if self.image_display is not None:
                 self.image_display.set_fps_visible(self.state.show_fps)
             self.fig.canvas.draw_idle()
+
+        elif event.key == 'l':
+            # Toggle light camera linking
+            light = self.renderer.get_light()
+
+            if light.is_linked:
+                light.unlink_from_camera()
+                self.state.light_linked_to_camera = False
+                print("Light unlinked from camera (fixed position)")
+            else:
+                # Link with default offsets (light follows camera)
+                light.link_to_camera(
+                    azimuth_offset=0.0,
+                    elevation_offset=0.0,
+                    distance_offset=0.0
+                )
+                light.update_from_camera(self.camera_controller.params)
+                self.renderer.set_light(light)
+                self.state.light_linked_to_camera = True
+                print("Light linked to camera (will follow movement)")
+
+            self.state.needs_render = True
+            self._update_display(force_render=True)
 
         elif event.key == 'escape':
             # Deselect control point
