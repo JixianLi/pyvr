@@ -6,29 +6,37 @@ from matplotlib.image import AxesImage
 from matplotlib.lines import Line2D
 from matplotlib.collections import PathCollection
 from matplotlib.widgets import RadioButtons
+import matplotlib.text
 import numpy as np
 
 
 class ImageDisplay:
     """
-    Widget for displaying rendered volume with camera controls.
+    Widget for displaying rendered volume with camera controls and FPS counter.
 
     Handles mouse interactions for orbiting and zooming the camera.
 
     Attributes:
         ax: Matplotlib axes for image display
         image: Image artist for displaying rendered volume
+        show_fps: Whether to show FPS counter
+        fps_text: Text artist for FPS display
+        fps_counter: FPSCounter instance for tracking FPS
     """
 
-    def __init__(self, ax: Axes):
+    def __init__(self, ax: Axes, show_fps: bool = True):
         """
         Initialize image display widget.
 
         Args:
             ax: Matplotlib axes to use for display
+            show_fps: Whether to show FPS counter (default: True)
         """
         self.ax = ax
         self.image: Optional[AxesImage] = None
+        self.show_fps = show_fps
+        self.fps_text: Optional[matplotlib.text.Text] = None
+        self.fps_counter = FPSCounter(window_size=30)
 
         # Style the axes
         self.ax.set_title("Volume Rendering", fontsize=12, fontweight='bold')
@@ -39,7 +47,7 @@ class ImageDisplay:
 
     def update_image(self, image_array: np.ndarray) -> None:
         """
-        Update displayed image.
+        Update displayed image and FPS counter.
 
         Args:
             image_array: RGB image array of shape (H, W, 3) or (H, W, 4)
@@ -47,18 +55,60 @@ class ImageDisplay:
         if image_array.shape[2] not in [3, 4]:
             raise ValueError(f"Image must have 3 or 4 channels, got {image_array.shape[2]}")
 
+        # Update image
         if self.image is None:
             self.image = self.ax.imshow(image_array, interpolation='nearest')
         else:
             self.image.set_data(image_array)
 
+        # Update FPS counter
+        if self.show_fps:
+            self.fps_counter.tick()
+            self._update_fps_display()
+
         self.ax.figure.canvas.draw_idle()
+
+    def _update_fps_display(self) -> None:
+        """Update FPS text overlay."""
+        fps = self.fps_counter.get_fps()
+        fps_string = f"FPS: {fps:.1f}"
+
+        if self.fps_text is None:
+            # Create FPS text in top-left corner
+            self.fps_text = self.ax.text(
+                0.02, 0.98, fps_string,
+                transform=self.ax.transAxes,
+                fontsize=10,
+                verticalalignment='top',
+                color='#00ff00',  # Bright green
+                fontweight='bold',
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='black', alpha=0.7)
+            )
+        else:
+            self.fps_text.set_text(fps_string)
+
+    def set_fps_visible(self, visible: bool) -> None:
+        """
+        Toggle FPS counter visibility.
+
+        Args:
+            visible: Whether FPS counter should be visible
+        """
+        self.show_fps = visible
+        if self.fps_text is not None:
+            self.fps_text.set_visible(visible)
+        if not visible:
+            self.fps_counter.reset()
 
     def clear(self) -> None:
         """Clear the image display."""
         if self.image is not None:
             self.image.remove()
             self.image = None
+        if self.fps_text is not None:
+            self.fps_text.remove()
+            self.fps_text = None
+        self.fps_counter.reset()
         self.ax.figure.canvas.draw_idle()
 
 
@@ -274,3 +324,60 @@ class ColorSelector:
         if hasattr(self, 'colormap_preview'):
             self.colormap_preview.set_cmap(colormap_name)
             self.ax.figure.canvas.draw_idle()
+
+
+class FPSCounter:
+    """
+    Helper class for calculating and tracking frames per second.
+
+    Uses a rolling window average for stable FPS display.
+
+    Attributes:
+        window_size: Number of frames to average over
+        frame_times: Deque of recent frame timestamps
+        last_time: Timestamp of last frame
+    """
+
+    def __init__(self, window_size: int = 30):
+        """
+        Initialize FPS counter.
+
+        Args:
+            window_size: Number of frames to average (default: 30)
+        """
+        from collections import deque
+        self.window_size = window_size
+        self.frame_times = deque(maxlen=window_size)
+        self.last_time = None
+
+    def tick(self) -> None:
+        """Record a frame render event."""
+        import time
+        current_time = time.perf_counter()
+
+        if self.last_time is not None:
+            frame_time = current_time - self.last_time
+            self.frame_times.append(frame_time)
+
+        self.last_time = current_time
+
+    def get_fps(self) -> float:
+        """
+        Get current FPS value.
+
+        Returns:
+            Current FPS (frames per second), or 0.0 if insufficient data
+        """
+        if len(self.frame_times) == 0:
+            return 0.0
+
+        avg_frame_time = sum(self.frame_times) / len(self.frame_times)
+        if avg_frame_time == 0:
+            return 0.0
+
+        return 1.0 / avg_frame_time
+
+    def reset(self) -> None:
+        """Reset FPS tracking."""
+        self.frame_times.clear()
+        self.last_time = None

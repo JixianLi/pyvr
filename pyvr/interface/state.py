@@ -21,6 +21,7 @@ class InterfaceState:
         drag_start_pos: (x, y) position where drag started (in axes coordinates)
         needs_render: Flag indicating volume needs to be re-rendered
         needs_tf_update: Flag indicating transfer function needs update
+        show_fps: Flag indicating whether FPS counter should be displayed
     """
 
     # Transfer function state
@@ -36,6 +37,9 @@ class InterfaceState:
     # Update flags
     needs_render: bool = True
     needs_tf_update: bool = False
+
+    # Display flags
+    show_fps: bool = True
 
     def __post_init__(self):
         """Validate initial state."""

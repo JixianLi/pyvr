@@ -226,6 +226,7 @@ class InteractiveVolumeRenderer:
             "Keyboard Shortcuts:\n"
             "  r: Reset view\n"
             "  s: Save image\n"
+            "  f: Toggle FPS counter\n"
             "  Esc: Deselect\n"
             "  Del: Remove selected"
         )
@@ -445,6 +446,13 @@ class InteractiveVolumeRenderer:
             # Save current rendering
             self._save_image()
 
+        elif event.key == 'f':
+            # Toggle FPS display
+            self.state.show_fps = not self.state.show_fps
+            if self.image_display is not None:
+                self.image_display.set_fps_visible(self.state.show_fps)
+            self.fig.canvas.draw_idle()
+
         elif event.key == 'escape':
             # Deselect control point
             if self.state.selected_control_point is not None:
@@ -503,8 +511,8 @@ class InteractiveVolumeRenderer:
         # Create figure and axes
         self.fig, axes = self._create_layout()
 
-        # Initialize widgets
-        self.image_display = ImageDisplay(axes['image'])
+        # Initialize widgets - pass show_fps to ImageDisplay
+        self.image_display = ImageDisplay(axes['image'], show_fps=self.state.show_fps)
         self.opacity_editor = OpacityEditor(axes['opacity'])
         self.color_selector = ColorSelector(axes['color'],
                                            on_change=self._on_colormap_change)
