@@ -217,13 +217,19 @@ class InteractiveVolumeRenderer:
         Args:
             event: Matplotlib mouse button press event
         """
-        # Check if click is in image display axes
-        if event.inaxes != self.image_display.ax:
+        # Handle image display (camera controls)
+        if event.inaxes == self.image_display.ax:
+            if event.button == 1:  # Left click
+                self.state.is_dragging_camera = True
+                self.state.drag_start_pos = (event.xdata, event.ydata)
             return
 
-        if event.button == 1:  # Left click
-            self.state.is_dragging_camera = True
-            self.state.drag_start_pos = (event.xdata, event.ydata)
+        # Handle opacity editor
+        if self.opacity_editor and event.inaxes == self.opacity_editor.ax:
+            if event.button == 1:  # Left click
+                self._handle_opacity_left_click(event)
+            elif event.button == 3:  # Right click
+                self._handle_opacity_right_click(event)
 
     def _on_mouse_release(self, event) -> None:
         """
@@ -239,6 +245,13 @@ class InteractiveVolumeRenderer:
             self.state.needs_render = True
             self._update_display()
 
+        if self.state.is_dragging_control_point:
+            self.state.is_dragging_control_point = False
+            self.state.drag_start_pos = None
+            # Final render with new transfer function
+            self.state.needs_render = True
+            self._update_display()
+
     def _on_mouse_move(self, event) -> None:
         """
         Handle mouse movement.
@@ -246,34 +259,61 @@ class InteractiveVolumeRenderer:
         Args:
             event: Matplotlib mouse motion event
         """
-        if not self.state.is_dragging_camera:
+        # Handle camera drag
+        if self.state.is_dragging_camera:
+            if event.inaxes != self.image_display.ax or event.xdata is None:
+                return
+
+            # Calculate drag delta
+            if self.state.drag_start_pos is not None:
+                dx = event.xdata - self.state.drag_start_pos[0]
+                dy = event.ydata - self.state.drag_start_pos[1]
+
+                # Convert pixel movement to camera angles
+                # Sensitivity factor for camera movement
+                sensitivity = 0.005
+                delta_azimuth = -dx * sensitivity
+                delta_elevation = dy * sensitivity
+
+                # Update camera using controller
+                self.camera_controller.orbit(
+                    delta_azimuth=delta_azimuth,
+                    delta_elevation=delta_elevation
+                )
+
+                # Update drag start position for next move
+                self.state.drag_start_pos = (event.xdata, event.ydata)
+
+                # Don't render every frame - too slow
+                # Will render on mouse release
             return
 
-        if event.inaxes != self.image_display.ax or event.xdata is None:
-            return
+        # Handle control point drag
+        if self.state.is_dragging_control_point:
+            if not self.opacity_editor or event.inaxes != self.opacity_editor.ax or event.xdata is None:
+                return
 
-        # Calculate drag delta
-        if self.state.drag_start_pos is not None:
-            dx = event.xdata - self.state.drag_start_pos[0]
-            dy = event.ydata - self.state.drag_start_pos[1]
+            if self.state.selected_control_point is None:
+                return
 
-            # Convert pixel movement to camera angles
-            # Sensitivity factor for camera movement
-            sensitivity = 0.005
-            delta_azimuth = -dx * sensitivity
-            delta_elevation = dy * sensitivity
+            # Clamp to valid range
+            new_x = np.clip(event.xdata, 0.0, 1.0)
+            new_y = np.clip(event.ydata, 0.0, 1.0)
 
-            # Update camera using controller
-            self.camera_controller.orbit(
-                delta_azimuth=delta_azimuth,
-                delta_elevation=delta_elevation
-            )
-
-            # Update drag start position for next move
-            self.state.drag_start_pos = (event.xdata, event.ydata)
-
-            # Don't render every frame - too slow
-            # Will render on mouse release
+            try:
+                self.state.update_control_point(
+                    self.state.selected_control_point,
+                    new_x,
+                    new_y
+                )
+                # Update opacity editor display (but don't re-render volume yet, too slow)
+                if self.opacity_editor:
+                    self.opacity_editor.update_plot(
+                        self.state.control_points,
+                        self.state.selected_control_point
+                    )
+            except (ValueError, IndexError):
+                pass  # Invalid update, ignore
 
     def _on_scroll(self, event) -> None:
         """
@@ -293,6 +333,74 @@ class InteractiveVolumeRenderer:
         # Render immediately for zoom (it's fast enough)
         self.state.needs_render = True
         self._update_display()
+
+    def _handle_opacity_left_click(self, event) -> None:
+        """
+        Handle left click in opacity editor.
+
+        Args:
+            event: Matplotlib mouse button press event
+        """
+        click_x, click_y = event.xdata, event.ydata
+
+        # Check if clicking near existing control point
+        cp_index = self._find_control_point_near(click_x, click_y, threshold=0.05)
+
+        if cp_index is not None:
+            # Select existing control point
+            self.state.select_control_point(cp_index)
+            self.state.is_dragging_control_point = True
+            self.state.drag_start_pos = (click_x, click_y)
+        else:
+            # Add new control point
+            try:
+                self.state.add_control_point(click_x, click_y)
+                # Find and select the newly added point
+                # (add_control_point sorts the list, so we need to find it)
+                for i, (cp_x, cp_y) in enumerate(self.state.control_points):
+                    if abs(cp_x - click_x) < 0.001 and abs(cp_y - click_y) < 0.001:
+                        self.state.select_control_point(i)
+                        break
+            except ValueError:
+                pass  # Out of range, ignore
+
+        self._update_display()
+
+    def _handle_opacity_right_click(self, event) -> None:
+        """
+        Handle right click in opacity editor (remove control point).
+
+        Args:
+            event: Matplotlib mouse button press event
+        """
+        click_x, click_y = event.xdata, event.ydata
+
+        cp_index = self._find_control_point_near(click_x, click_y, threshold=0.05)
+
+        if cp_index is not None:
+            try:
+                self.state.remove_control_point(cp_index)
+                self._update_display()
+            except ValueError:
+                pass  # First/last point, cannot remove
+
+    def _find_control_point_near(self, x: float, y: float, threshold: float = 0.05) -> Optional[int]:
+        """
+        Find control point near given coordinates.
+
+        Args:
+            x: X coordinate (scalar value)
+            y: Y coordinate (opacity value)
+            threshold: Distance threshold for "near"
+
+        Returns:
+            Index of control point if found, None otherwise
+        """
+        for i, (cp_x, cp_y) in enumerate(self.state.control_points):
+            distance = np.sqrt((cp_x - x)**2 + (cp_y - y)**2)
+            if distance < threshold:
+                return i
+        return None
 
     def show(self) -> None:
         """
