@@ -2,8 +2,8 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg)](http://www.wtfpl.net/about/)
-![Version](https://img.shields.io/badge/version-0.2.7-blue.svg)
-[![Tests](https://img.shields.io/badge/tests-204%20passing-brightgreen.svg)](#-testing)
+![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)
+[![Tests](https://img.shields.io/badge/tests-284%20passing-brightgreen.svg)](#-testing)
 
 PyVR is a GPU-accelerated 3D volume rendering toolkit for real-time interactive visualization using OpenGL. Built with ModernGL, it provides high-performance volume rendering with a modern, modular architecture.
 
@@ -19,8 +19,9 @@ PyVR is a GPU-accelerated 3D volume rendering toolkit for real-time interactive 
 - **📹 Advanced Camera System**: Matrix generation, spherical coordinates, animation paths, and presets
 - **💡 Flexible Lighting System**: Directional, point, and ambient light presets with easy configuration
 - **🎨 Sophisticated Transfer Functions**: Color and opacity mappings with matplotlib integration
+- **🎮 Interactive Interface**: Real-time volume visualization with transfer function editing (v0.3.0+)
 - **📊 Synthetic Datasets**: Built-in generators for testing and development
-- **✅ Comprehensive Testing**: 204 tests with 86%+ coverage
+- **✅ Comprehensive Testing**: 284 tests with 86%+ coverage
 
 ## 🚀 Quick Start
 
@@ -91,6 +92,45 @@ image = np.frombuffer(data, dtype=np.uint8).reshape((512, 512, 4))
 plt.imshow(image, origin='lower')
 plt.show()
 ```
+
+## 🎮 Interactive Interface
+
+PyVR includes an interactive matplotlib-based interface for real-time volume visualization and transfer function editing (v0.3.0+):
+
+```python
+from pyvr.interface import InteractiveVolumeRenderer
+from pyvr.datasets import create_sample_volume
+from pyvr.volume import Volume
+
+# Create volume
+volume_data = create_sample_volume(128, 'sphere')
+volume = Volume(data=volume_data)
+
+# Launch interactive interface
+interface = InteractiveVolumeRenderer(volume=volume)
+interface.show()
+```
+
+**Features:**
+- 🎥 **Real-time camera controls**: Mouse drag to orbit, scroll to zoom
+- 🎨 **Interactive opacity transfer function editor**: Add, remove, and drag control points
+- 🌈 **Colormap selection**: Choose from 12+ matplotlib colormaps
+- ⌨️ **Keyboard shortcuts**: Reset view (r), save image (s), deselect (Esc), delete point (Del)
+- ⚡ **Performance optimized**: Render throttling, caching, and smart updates
+
+**Mouse Controls:**
+- **Image Display**: Drag to orbit camera, scroll to zoom
+- **Opacity Editor**: Left-click to add/select points, right-click to remove, drag to move
+
+**Keyboard Shortcuts:**
+- `r`: Reset camera to isometric view
+- `s`: Save current rendering to PNG file
+- `Esc`: Deselect control point
+- `Delete`/`Backspace`: Remove selected control point
+
+**Note:** This is a testing/development interface. For production use, consider implementing a custom backend.
+
+See `example/ModernglRender/interactive_interface_demo.py` for a complete example.
 
 ## 🏗️ Architecture
 
