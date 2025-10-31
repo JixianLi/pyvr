@@ -2,8 +2,8 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg)](http://www.wtfpl.net/about/)
-![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)
-[![Tests](https://img.shields.io/badge/tests-284%20passing-brightgreen.svg)](#-testing)
+![Version](https://img.shields.io/badge/version-0.3.1-blue.svg)
+[![Tests](https://img.shields.io/badge/tests-361%20passing-brightgreen.svg)](#-testing)
 
 PyVR is a GPU-accelerated 3D volume rendering toolkit for real-time interactive visualization using OpenGL. Built with ModernGL, it provides high-performance volume rendering with a modern, modular architecture.
 
@@ -20,8 +20,9 @@ PyVR is a GPU-accelerated 3D volume rendering toolkit for real-time interactive 
 - **💡 Flexible Lighting System**: Directional, point, and ambient light presets with easy configuration
 - **🎨 Sophisticated Transfer Functions**: Color and opacity mappings with matplotlib integration
 - **🎮 Interactive Interface**: Real-time volume visualization with transfer function editing (v0.3.0+)
+  - **NEW in v0.3.1**: FPS counter, quality presets, camera-linked lighting, histogram background
 - **📊 Synthetic Datasets**: Built-in generators for testing and development
-- **✅ Comprehensive Testing**: 284 tests with 86%+ coverage
+- **✅ Comprehensive Testing**: 361 tests with 86%+ coverage
 
 ## 🚀 Quick Start
 
@@ -101,6 +102,7 @@ PyVR includes an interactive matplotlib-based interface for real-time volume vis
 from pyvr.interface import InteractiveVolumeRenderer
 from pyvr.datasets import create_sample_volume
 from pyvr.volume import Volume
+import numpy as np
 
 # Create volume
 volume_data = create_sample_volume(128, 'sphere')
@@ -108,15 +110,27 @@ volume = Volume(data=volume_data)
 
 # Launch interactive interface
 interface = InteractiveVolumeRenderer(volume=volume)
+
+# NEW in v0.3.1: Enable camera-linked lighting
+interface.set_camera_linked_lighting(azimuth_offset=np.pi/4)
+
+# Launch (FPS counter and histogram enabled by default)
 interface.show()
+
+# After closing: Capture ultra-quality image
+# path = interface.capture_high_quality_image("render.png")
 ```
 
 **Features:**
 - 🎥 **Real-time camera controls**: Mouse drag to orbit, scroll to zoom
 - 🎨 **Interactive opacity transfer function editor**: Add, remove, and drag control points
 - 🌈 **Colormap selection**: Choose from 12+ matplotlib colormaps
-- ⌨️ **Keyboard shortcuts**: Reset view (r), save image (s), deselect (Esc), delete point (Del)
 - ⚡ **Performance optimized**: Render throttling, caching, and smart updates
+- **NEW in v0.3.1:**
+  - 📊 **FPS Counter**: Real-time performance monitoring with rolling average
+  - ⚙️ **Quality Presets**: 5 rendering quality levels (preview → ultra)
+  - 💡 **Camera-Linked Lighting**: Light follows camera for consistent illumination
+  - 📈 **Histogram Background**: Log-scale data distribution in opacity editor
 
 **Mouse Controls:**
 - **Image Display**: Drag to orbit camera, scroll to zoom
@@ -125,12 +139,28 @@ interface.show()
 **Keyboard Shortcuts:**
 - `r`: Reset camera to isometric view
 - `s`: Save current rendering to PNG file
+- `f`: Toggle FPS counter ✨ *NEW in v0.3.1*
+- `h`: Toggle histogram background ✨ *NEW in v0.3.1*
+- `l`: Toggle light linking to camera ✨ *NEW in v0.3.1*
+- `q`: Toggle automatic quality switching ✨ *NEW in v0.3.1*
 - `Esc`: Deselect control point
 - `Delete`/`Backspace`: Remove selected control point
 
+**Quality Presets (v0.3.1):**
+- **Preview**: Extremely fast (~50 samples/ray)
+- **Fast**: Interactive quality (~86 samples/ray)
+- **Balanced**: Default quality (~173 samples/ray)
+- **High Quality**: Publication quality (~346 samples/ray)
+- **Ultra**: Maximum quality (~1732 samples/ray)
+
+**Performance Features (v0.3.1):**
+- Auto-quality switching: Automatically uses "fast" preset during camera interaction
+- Histogram caching: >5x speedup with persistent cache
+- All monitoring features: <1% overhead
+
 **Note:** This is a testing/development interface. For production use, consider implementing a custom backend.
 
-See `example/ModernglRender/interactive_interface_demo.py` for a complete example.
+See `example/ModernglRender/v031_features_demo.py` for a complete v0.3.1 example.
 
 ## 🏗️ Architecture
 
@@ -144,7 +174,7 @@ pyvr/
 │   ├── camera.py         # Camera class with matrix generation
 │   └── control.py        # Camera controllers and animation
 ├── lighting/             # Application Stage - Light configuration
-│   └── light.py          # Light class with presets
+│   └── light.py          # Light class with presets and camera linking
 ├── config.py             # Rasterization Stage - Rendering configuration
 ├── transferfunctions/    # Application Stage - Material properties
 │   ├── color.py          # Color transfer functions
@@ -152,6 +182,11 @@ pyvr/
 ├── moderngl_renderer/    # OpenGL Volume Renderer
 │   ├── renderer.py       # ModernGLVolumeRenderer (main renderer)
 │   └── manager.py        # Low-level OpenGL resource management
+├── interface/            # Interactive Interface (v0.3.0+)
+│   ├── matplotlib_interface.py  # InteractiveVolumeRenderer with all features
+│   ├── widgets.py        # UI components (ImageDisplay, OpacityEditor, etc.)
+│   ├── state.py          # InterfaceState for state management
+│   └── cache.py          # Histogram caching (v0.3.1)
 ├── shaders/              # Fragment Stage - Shading operations
 │   ├── volume.vert.glsl  # Vertex shader
 │   └── volume.frag.glsl  # Fragment shader with RGBA lookups
@@ -662,6 +697,93 @@ poetry run pytest
 poetry run black pyvr/
 poetry run isort pyvr/
 ```
+
+## 📚 Version History
+
+### v0.3.1 (2025-MM-DD) - Interface Refinements ✨
+
+**New Features:**
+- 📊 **FPS Counter**: Real-time performance monitoring with rolling 30-frame average
+- ⚙️ **Quality Preset Selector**: 5 rendering quality levels (preview/fast/balanced/high_quality/ultra_quality)
+- 💡 **Camera-Linked Lighting**: Directional lights follow camera with configurable offsets
+- 📈 **Histogram Background**: Log-scale data distribution visualization in opacity editor
+- 🎯 **Automatic Quality Switching**: Auto-switches to "fast" during camera interaction
+- 📊 **Status Display**: Shows current preset, FPS, histogram, light linking states
+
+**Performance:**
+- All new features add <1% overhead
+- Histogram caching provides >5x speedup (100ms → <10ms)
+- Auto-quality makes interaction feel smoother
+- Persistent cache in `tmp_dev/histogram_cache/`
+
+**Convenience Methods:**
+- `interface.set_high_quality_mode()` - Quick HQ switch
+- `interface.set_camera_linked_lighting(offsets)` - Easy light setup
+- `interface.capture_high_quality_image(filename)` - Ultra quality screenshots
+
+**Keyboard Shortcuts (new):**
+- `f`: Toggle FPS counter
+- `h`: Toggle histogram
+- `l`: Toggle light linking
+- `q`: Toggle auto-quality
+
+**Tests:** +77 new tests (284 → 361)
+**Breaking Changes:** None - fully backward compatible with v0.3.0
+**See:** `version_notes/v0.3.1_interface_refinements.md` for complete release notes
+
+### v0.3.0 (2025-10-31) - Interactive Interface
+
+- Interactive matplotlib-based interface for real-time visualization
+- Mouse-based camera controls and opacity transfer function editing
+- Real-time rendering with throttling and caching
+- Colormap selection from matplotlib
+- Keyboard shortcuts for common operations
+
+### v0.2.7 (2025-10-28) - Architecture Simplification
+
+- Removed abstract base renderer class for simpler design
+- ModernGLVolumeRenderer now standalone (no inheritance)
+- Backward compatibility maintained via alias
+
+### v0.2.6 (2025-10-28) - RenderConfig System
+
+- Quality presets (preview, fast, balanced, high_quality, ultra_quality)
+- Performance estimation methods
+- Runtime quality switching
+
+### v0.2.5 (2025-10-28) - Volume Refactoring
+
+- Unified Volume class for backend-agnostic data management
+- Volume properties and operations (compute_normals, normalize, copy)
+- Simpler renderer API
+
+### v0.2.4 (2025-10-27) - Light System
+
+- Light class with presets (directional, point_light, ambient_only)
+- Easy light configuration and switching
+
+### v0.2.3 (2025-10-27) - Camera System
+
+- Camera class with matrix generation
+- Spherical coordinates and camera presets
+- Camera controller and animation paths
+
+### v0.2.2 - RGBA Texture Optimization
+
+- Combined RGBA transfer function textures
+- Single texture lookup (previously dual)
+- 64+ FPS performance improvement
+
+### v0.2.0 - Major Refactoring
+
+- Separated transfer functions into dedicated module
+- Advanced camera system
+- Modular architecture improvements
+
+### v0.1.0 - Initial Release
+
+- Basic ModernGL volume rendering
+- Core ray marching implementation
 
 ## 📄 License
 
