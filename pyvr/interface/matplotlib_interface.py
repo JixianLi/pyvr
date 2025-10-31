@@ -527,15 +527,20 @@ class InteractiveVolumeRenderer:
         if self.fig is None:
             return
 
-        if event.inaxes == self.image_display.ax:
-            # Hand cursor for camera controls
-            self.fig.canvas.set_cursor(1)  # Hand cursor
-        elif self.opacity_editor and event.inaxes == self.opacity_editor.ax:
-            # Crosshair for control point editing
-            self.fig.canvas.set_cursor(2)  # Crosshair cursor
-        else:
-            # Default cursor
-            self.fig.canvas.set_cursor(0)
+        try:
+            if event.inaxes == self.image_display.ax:
+                # Hand cursor for camera controls
+                self.fig.canvas.set_cursor(1)  # Hand cursor
+            elif self.opacity_editor and event.inaxes == self.opacity_editor.ax:
+                # Crosshair for control point editing
+                self.fig.canvas.set_cursor(2)  # Crosshair cursor
+            else:
+                # Default cursor
+                self.fig.canvas.set_cursor(0)
+        except (SystemError, RuntimeError):
+            # macOS backend sometimes returns NULL without setting an exception
+            # This is a known matplotlib issue - cursor change is non-critical
+            pass
 
     def show(self) -> None:
         """
