@@ -4,6 +4,7 @@ from typing import Optional
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+from matplotlib.gridspec import GridSpec
 
 from pyvr.volume import Volume
 from pyvr.moderngl_renderer import VolumeRenderer
@@ -41,6 +42,10 @@ class InteractiveVolumeRenderer:
         renderer: ModernGL volume renderer
         camera_controller: Camera controller for interactive manipulation
         state: Interface state manager
+        image_display: Widget for volume rendering display
+        opacity_editor: Widget for opacity transfer function editing
+        color_selector: Widget for colormap selection
+        fig: Matplotlib figure
     """
 
     def __init__(
@@ -64,6 +69,8 @@ class InteractiveVolumeRenderer:
             light: Light configuration (defaults to directional light)
         """
         self.volume = volume
+        self.width = width
+        self.height = height
 
         # Set up renderer with interactive-friendly defaults
         if config is None:
@@ -99,9 +106,93 @@ class InteractiveVolumeRenderer:
         self.state.needs_tf_update = False
 
     def _render_volume(self) -> np.ndarray:
-        """Render volume and return image array."""
+        """
+        Render volume and return image array.
+
+        Returns:
+            RGB image array of shape (H, W, 3)
+        """
+        # Update camera if controller changed it
+        self.renderer.set_camera(self.camera_controller.params)
+
+        # Render to PIL image and convert to numpy array
         image = self.renderer.render_to_pil()
         return np.array(image)
+
+    def _update_display(self) -> None:
+        """Update all display widgets based on current state."""
+        # Update transfer functions if needed
+        if self.state.needs_tf_update:
+            self._update_transfer_functions()
+            self.state.needs_render = True
+
+        # Update volume rendering if needed
+        if self.state.needs_render:
+            image_array = self._render_volume()
+            if self.image_display is not None:
+                self.image_display.update_image(image_array)
+            self.state.needs_render = False
+
+        # Update opacity editor
+        if self.opacity_editor is not None:
+            self.opacity_editor.update_plot(
+                self.state.control_points,
+                self.state.selected_control_point
+            )
+
+    def _create_layout(self) -> tuple:
+        """
+        Create matplotlib figure layout.
+
+        Returns:
+            Tuple of (figure, axes_dict) where axes_dict contains 'image', 'opacity', 'color', 'info'
+        """
+        # Create figure
+        fig = plt.figure(figsize=(14, 7))
+        fig.suptitle("PyVR Interactive Volume Renderer", fontsize=14, fontweight='bold')
+
+        # Create grid layout
+        # Left side: Large image display
+        # Right side: Stacked transfer function editors
+        gs = GridSpec(3, 2, figure=fig,
+                     width_ratios=[2, 1],
+                     height_ratios=[4, 2, 1],
+                     hspace=0.3, wspace=0.3)
+
+        # Create axes
+        ax_image = fig.add_subplot(gs[:, 0])  # Full left column
+        ax_opacity = fig.add_subplot(gs[0, 1])  # Top right
+        ax_color = fig.add_subplot(gs[1, 1])  # Middle right
+        ax_info = fig.add_subplot(gs[2, 1])  # Bottom right (for future info display)
+
+        axes_dict = {
+            'image': ax_image,
+            'opacity': ax_opacity,
+            'color': ax_color,
+            'info': ax_info,
+        }
+
+        return fig, axes_dict
+
+    def _setup_info_display(self, ax) -> None:
+        """
+        Set up info display panel.
+
+        Args:
+            ax: Matplotlib axes for info display
+        """
+        ax.axis('off')
+        info_text = (
+            "Controls:\n"
+            "  Image: Drag to orbit, scroll to zoom\n"
+            "  Opacity: Click to add, drag to move, right-click to remove"
+        )
+        ax.text(0.05, 0.5, info_text,
+               transform=ax.transAxes,
+               fontsize=9,
+               verticalalignment='center',
+               family='monospace',
+               bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
 
     def show(self) -> None:
         """
@@ -109,37 +200,62 @@ class InteractiveVolumeRenderer:
 
         Creates matplotlib figure with layout and starts event loop.
         """
-        # Create figure with grid layout
-        self.fig = plt.figure(figsize=(12, 6))
-        gs = self.fig.add_gridspec(2, 2, height_ratios=[3, 1], width_ratios=[2, 1])
-
-        # Create widget axes
-        ax_image = self.fig.add_subplot(gs[:, 0])
-        ax_opacity = self.fig.add_subplot(gs[0, 1])
-        ax_color = self.fig.add_subplot(gs[1, 1])
+        # Create figure and axes
+        self.fig, axes = self._create_layout()
 
         # Initialize widgets
-        self.image_display = ImageDisplay(ax_image)
-        self.opacity_editor = OpacityEditor(ax_opacity)
-        self.color_selector = ColorSelector(ax_color)
+        self.image_display = ImageDisplay(axes['image'])
+        self.opacity_editor = OpacityEditor(axes['opacity'])
+        self.color_selector = ColorSelector(axes['color'],
+                                           on_change=self._on_colormap_change)
 
-        # Initial render
-        image_array = self._render_volume()
-        self.image_display.update_image(image_array)
-        self.opacity_editor.update_plot(self.state.control_points)
+        # Set up info display
+        self._setup_info_display(axes['info'])
 
-        plt.tight_layout()
+        # Initial display update
+        self._update_display()
+
+        # Show figure
         plt.show()
 
+    def _on_colormap_change(self, colormap_name: str) -> None:
+        """
+        Callback when colormap changes.
 
-# Example usage
+        Args:
+            colormap_name: Name of new colormap
+        """
+        self.state.set_colormap(colormap_name)
+        self._update_display()
+
+    def update(self) -> None:
+        """
+        Manual update trigger (useful for external control).
+
+        Forces a refresh of all widgets based on current state.
+        """
+        self._update_display()
+
+
+# Example usage and testing
 if __name__ == "__main__":
-    from pyvr.datasets import create_sample_volume
+    from pyvr.datasets import create_sample_volume, compute_normal_volume
 
-    # Create sample volume
-    volume_data = create_sample_volume(128, 'sphere')
-    volume = Volume(data=volume_data)
+    # Create sample volume with normals
+    volume_data = create_sample_volume(128, 'double_sphere')
+    normals = compute_normal_volume(volume_data)
+    volume = Volume(data=volume_data, normals=normals)
+
+    # Create interface with custom initial settings
+    interface = InteractiveVolumeRenderer(
+        volume=volume,
+        width=512,
+        height=512,
+    )
+
+    # Test: Add some control points programmatically
+    interface.state.add_control_point(0.3, 0.2)
+    interface.state.add_control_point(0.7, 0.9)
 
     # Launch interface
-    interface = InteractiveVolumeRenderer(volume=volume)
     interface.show()
