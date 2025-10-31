@@ -163,8 +163,8 @@ class InteractiveVolumeRenderer:
         Returns:
             Tuple of (figure, axes_dict) where axes_dict contains 'image', 'opacity', 'color', 'info'
         """
-        # Create figure
-        fig = plt.figure(figsize=(14, 7))
+        # Create figure - slightly taller to accommodate radio buttons
+        fig = plt.figure(figsize=(14, 8))
         fig.suptitle("PyVR Interactive Volume Renderer", fontsize=14, fontweight='bold')
 
         # Create grid layout
@@ -172,13 +172,13 @@ class InteractiveVolumeRenderer:
         # Right side: Stacked transfer function editors
         gs = GridSpec(3, 2, figure=fig,
                      width_ratios=[2, 1],
-                     height_ratios=[4, 2, 1],
+                     height_ratios=[4, 3, 1],  # More space for color selector with radio buttons
                      hspace=0.3, wspace=0.3)
 
         # Create axes
         ax_image = fig.add_subplot(gs[:, 0])  # Full left column
         ax_opacity = fig.add_subplot(gs[0, 1])  # Top right
-        ax_color = fig.add_subplot(gs[1, 1])  # Middle right
+        ax_color = fig.add_subplot(gs[1, 1])  # Middle right - more space for radio buttons
         ax_info = fig.add_subplot(gs[2, 1])  # Bottom right (for future info display)
 
         axes_dict = {

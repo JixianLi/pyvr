@@ -5,6 +5,7 @@ from matplotlib.axes import Axes
 from matplotlib.image import AxesImage
 from matplotlib.lines import Line2D
 from matplotlib.collections import PathCollection
+from matplotlib.widgets import RadioButtons
 import numpy as np
 
 
@@ -157,19 +158,22 @@ class ColorSelector:
     """
     Widget for selecting color transfer function colormap.
 
-    Provides a dropdown menu of available matplotlib colormaps.
+    Provides interactive RadioButtons for colormap selection with real-time preview.
 
     Attributes:
         ax: Matplotlib axes for colormap display
         current_colormap: Name of currently selected colormap
         on_change: Callback function when colormap changes
+        radio: RadioButtons widget for colormap selection
+        colormap_preview: AxesImage for colormap preview
+        preview_ax: Axes for colormap preview display
     """
 
     # Popular matplotlib colormaps for volume rendering
     AVAILABLE_COLORMAPS = [
         'viridis', 'plasma', 'inferno', 'magma', 'cividis',
         'gray', 'bone', 'copper', 'hot', 'cool',
-        'turbo', 'jet', 'rainbow', 'nipy_spectral'
+        'turbo', 'jet'
     ]
 
     def __init__(self, ax: Axes, on_change: Optional[Callable[[str], None]] = None):
@@ -186,37 +190,69 @@ class ColorSelector:
 
         # Style axes
         self.ax.set_title("Color Transfer Function", fontsize=11, fontweight='bold')
-        self.ax.axis("off")
 
-        # Display current colormap as a color bar
-        self._display_colormap()
+        # Create colormap preview at the top
+        self._create_colormap_preview()
 
-    def _display_colormap(self) -> None:
-        """Display current colormap as a horizontal color bar."""
-        self.ax.clear()
-        self.ax.set_title("Color Transfer Function", fontsize=11, fontweight='bold')
-        self.ax.axis("off")
+        # Create radio buttons for colormap selection
+        self.radio = RadioButtons(
+            ax=self.ax,
+            labels=self.AVAILABLE_COLORMAPS,
+            active=0  # viridis is first
+        )
 
-        # Create colormap preview
+        # Style radio buttons
+        for label in self.radio.labels:
+            label.set_fontsize(9)
+
+        # Connect callback
+        self.radio.on_clicked(self._on_selection)
+
+    def _create_colormap_preview(self) -> None:
+        """Create a colormap preview bar above radio buttons."""
+        # Create a small axes for preview at the top of the color selector area
+        fig = self.ax.figure
+        ax_pos = self.ax.get_position()
+
+        # Position preview at top of the color selector area
+        self.preview_ax = fig.add_axes([
+            ax_pos.x0,
+            ax_pos.y1 - 0.04,
+            ax_pos.width,
+            0.025
+        ])
+        self.preview_ax.axis('off')
+
+        # Create gradient for colormap preview
         gradient = np.linspace(0, 1, 256).reshape(1, -1)
-        self.ax.imshow(gradient, aspect='auto', cmap=self.current_colormap,
-                      extent=[0, 1, 0, 0.3])
+        self.colormap_preview = self.preview_ax.imshow(
+            gradient,
+            aspect='auto',
+            cmap=self.current_colormap,
+            extent=[0, 1, 0, 1]
+        )
 
-        # Add colormap name label
-        self.ax.text(0.5, 0.6, f"Colormap: {self.current_colormap}",
-                    ha='center', va='center', transform=self.ax.transAxes,
-                    fontsize=10, fontweight='bold')
+    def _on_selection(self, label: str) -> None:
+        """
+        Handle colormap selection from radio buttons.
 
-        # Note: Interactive dropdown will be added in Phase 5
-        self.ax.text(0.5, 0.15, "(Interactive selection in Phase 5)",
-                    ha='center', va='center', transform=self.ax.transAxes,
-                    fontsize=8, style='italic', color='gray')
+        Args:
+            label: Name of selected colormap
+        """
+        self.current_colormap = label
 
-        self.ax.figure.canvas.draw_idle()
+        # Update preview
+        if hasattr(self, 'colormap_preview'):
+            self.colormap_preview.set_cmap(label)
+            self.ax.figure.canvas.draw_idle()
+
+        # Call external callback
+        if self.on_change:
+            self.on_change(label)
 
     def set_colormap(self, colormap_name: str) -> None:
         """
-        Set the current colormap.
+        Programmatically set the current colormap.
 
         Args:
             colormap_name: Name of matplotlib colormap
@@ -229,7 +265,12 @@ class ColorSelector:
                            f"Choose from: {self.AVAILABLE_COLORMAPS}")
 
         self.current_colormap = colormap_name
-        self._display_colormap()
 
-        if self.on_change:
-            self.on_change(colormap_name)
+        # Update radio button selection
+        idx = self.AVAILABLE_COLORMAPS.index(colormap_name)
+        self.radio.set_active(idx)
+
+        # Update preview
+        if hasattr(self, 'colormap_preview'):
+            self.colormap_preview.set_cmap(colormap_name)
+            self.ax.figure.canvas.draw_idle()

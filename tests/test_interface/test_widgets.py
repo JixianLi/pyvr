@@ -23,6 +23,18 @@ def mock_axes():
     mock_scatter = MagicMock()
     ax.scatter.return_value = mock_scatter
 
+    # Mock get_position() for ColorSelector preview axes
+    mock_position = MagicMock()
+    mock_position.x0 = 0.5
+    mock_position.y1 = 0.9
+    mock_position.width = 0.4
+    ax.get_position.return_value = mock_position
+
+    # Mock add_axes for preview axes
+    mock_preview_ax = MagicMock()
+    mock_preview_ax.imshow = MagicMock()
+    ax.figure.add_axes.return_value = mock_preview_ax
+
     return ax
 
 
@@ -116,6 +128,8 @@ class TestColorSelector:
         selector = ColorSelector(mock_axes)
         assert selector.current_colormap == "viridis"
         assert selector.on_change is None
+        assert hasattr(selector, 'radio')
+        assert hasattr(selector, 'colormap_preview')
 
     def test_initialization_with_callback(self, mock_axes):
         """Test initialization with callback."""
@@ -124,14 +138,19 @@ class TestColorSelector:
         assert selector.on_change == callback
 
     def test_set_colormap(self, mock_axes):
-        """Test setting colormap."""
+        """Test setting colormap programmatically."""
         callback = Mock()
         selector = ColorSelector(mock_axes, on_change=callback)
+
+        # Mock the radio.set_active method to avoid matplotlib internals
+        selector.radio.set_active = MagicMock()
 
         selector.set_colormap('plasma')
 
         assert selector.current_colormap == 'plasma'
-        callback.assert_called_once_with('plasma')
+        # Verify set_active was called with correct index
+        expected_index = ColorSelector.AVAILABLE_COLORMAPS.index('plasma')
+        selector.radio.set_active.assert_called_once_with(expected_index)
 
     def test_set_invalid_colormap(self, mock_axes):
         """Test setting invalid colormap."""
@@ -145,3 +164,46 @@ class TestColorSelector:
         assert len(ColorSelector.AVAILABLE_COLORMAPS) > 0
         assert 'viridis' in ColorSelector.AVAILABLE_COLORMAPS
         assert 'plasma' in ColorSelector.AVAILABLE_COLORMAPS
+
+    def test_on_selection_callback(self, mock_axes):
+        """Test colormap selection triggers callback."""
+        callback = Mock()
+        selector = ColorSelector(mock_axes, on_change=callback)
+
+        selector._on_selection('inferno')
+
+        assert selector.current_colormap == 'inferno'
+        callback.assert_called_once_with('inferno')
+
+    def test_colormap_preview_updates(self, mock_axes):
+        """Test colormap preview updates when selection changes."""
+        selector = ColorSelector(mock_axes)
+
+        # Mock the preview image
+        selector.colormap_preview = MagicMock()
+
+        selector._on_selection('hot')
+
+        assert selector.current_colormap == 'hot'
+        selector.colormap_preview.set_cmap.assert_called_once_with('hot')
+
+    def test_radio_buttons_created(self, mock_axes):
+        """Test that RadioButtons widget is created."""
+        selector = ColorSelector(mock_axes)
+
+        assert selector.radio is not None
+        # Radio has on_clicked method for connecting callbacks
+        assert hasattr(selector.radio, 'on_clicked')
+
+    def test_set_colormap_updates_radio(self, mock_axes):
+        """Test programmatic colormap change updates radio buttons."""
+        selector = ColorSelector(mock_axes)
+
+        # Mock the radio widget
+        selector.radio.set_active = MagicMock()
+
+        selector.set_colormap('inferno')
+
+        # inferno is at index 2 in AVAILABLE_COLORMAPS
+        expected_index = ColorSelector.AVAILABLE_COLORMAPS.index('inferno')
+        selector.radio.set_active.assert_called_once_with(expected_index)
