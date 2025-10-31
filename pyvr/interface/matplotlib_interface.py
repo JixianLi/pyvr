@@ -98,6 +98,9 @@ class InteractiveVolumeRenderer:
         self.color_selector: Optional[ColorSelector] = None
         self.fig: Optional[Figure] = None
 
+        # Render caching
+        self._cached_image: Optional[np.ndarray] = None
+
     def _update_transfer_functions(self) -> None:
         """Update renderer with current transfer functions from state."""
         ctf = ColorTransferFunction.from_colormap(self.state.current_colormap)
@@ -107,17 +110,30 @@ class InteractiveVolumeRenderer:
 
     def _render_volume(self) -> np.ndarray:
         """
-        Render volume and return image array.
+        Render volume and return image array with caching.
 
         Returns:
             RGB image array of shape (H, W, 3)
         """
-        # Update camera if controller changed it
-        self.renderer.set_camera(self.camera_controller.params)
+        # Return cached image if no re-render is needed
+        if not self.state.needs_render and self._cached_image is not None:
+            return self._cached_image
 
-        # Render to PIL image and convert to numpy array
-        image = self.renderer.render_to_pil()
-        return np.array(image)
+        try:
+            # Update camera if controller changed it
+            self.renderer.set_camera(self.camera_controller.params)
+
+            # Render to PIL image and convert to numpy array
+            image = self.renderer.render_to_pil()
+            self._cached_image = np.array(image)
+            return self._cached_image
+
+        except Exception as e:
+            # Handle OpenGL errors gracefully
+            print(f"Rendering error: {e}")
+            # Return a placeholder image (black)
+            placeholder = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+            return placeholder
 
     def _update_display(self) -> None:
         """Update all display widgets based on current state."""

@@ -153,3 +153,71 @@ def test_manual_update(mock_renderer_class, small_volume):
     # Verify update was called
     interface.image_display.update_image.assert_called_once()
     interface.opacity_editor.update_plot.assert_called_once()
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_render_caching(mock_renderer_class, small_volume):
+    """Test that rendering is cached when state doesn't change."""
+    mock_renderer = Mock()
+    mock_pil_image = Mock()
+    mock_pil_image.__array__ = lambda **kwargs: np.zeros((512, 512, 3), dtype=np.uint8)
+    mock_renderer.render_to_pil.return_value = mock_pil_image
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+
+    # First render
+    interface.state.needs_render = True
+    img1 = interface._render_volume()
+
+    # Second call with needs_render = False should return cached image
+    interface.state.needs_render = False
+    img2 = interface._render_volume()
+
+    # Should be the same object (cached)
+    assert img1 is img2
+    # Renderer should only be called once
+    assert mock_renderer.render_to_pil.call_count == 1
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_render_cache_invalidation(mock_renderer_class, small_volume):
+    """Test that cache is invalidated when needs_render is True."""
+    mock_renderer = Mock()
+    mock_pil_image = Mock()
+    mock_pil_image.__array__ = lambda **kwargs: np.zeros((512, 512, 3), dtype=np.uint8)
+    mock_renderer.render_to_pil.return_value = mock_pil_image
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+
+    # First render
+    interface.state.needs_render = True
+    img1 = interface._render_volume()
+
+    # Second render with needs_render = True should re-render
+    interface.state.needs_render = True
+    img2 = interface._render_volume()
+
+    # Should be different objects (re-rendered) - np.array() creates new objects
+    assert img1 is not img2
+    # Renderer should be called twice
+    assert mock_renderer.render_to_pil.call_count == 2
+
+
+@patch('pyvr.interface.matplotlib_interface.VolumeRenderer')
+def test_render_error_handling(mock_renderer_class, small_volume):
+    """Test rendering handles errors gracefully."""
+    mock_renderer = Mock()
+    mock_renderer.render_to_pil.side_effect = Exception("OpenGL error")
+    mock_renderer_class.return_value = mock_renderer
+
+    interface = InteractiveVolumeRenderer(volume=small_volume)
+
+    # Should not crash, returns placeholder
+    img = interface._render_volume()
+
+    assert isinstance(img, np.ndarray)
+    assert img.shape == (512, 512, 3)
+    # Placeholder is all zeros
+    assert np.all(img == 0)
