@@ -40,10 +40,18 @@ class ImageDisplay:
 
         # Style the axes
         self.ax.set_title("Volume Rendering", fontsize=12, fontweight='bold')
-        self.ax.axis("off")
+
+        # Hide tick labels and ticks but keep the border
+        self.ax.set_xticks([])
+        self.ax.set_yticks([])
+
+        # Style the border (spines)
+        for spine in self.ax.spines.values():
+            spine.set_edgecolor('gray')
+            spine.set_linewidth(2)
 
         # Set background color
-        self.ax.set_facecolor('#2e2e2e')
+        self.ax.set_facecolor("#625d5a")
 
     def update_image(self, image_array: np.ndarray) -> None:
         """

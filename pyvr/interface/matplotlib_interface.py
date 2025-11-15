@@ -218,14 +218,14 @@ class InteractiveVolumeRenderer:
             Tuple of (figure, axes_dict) with keys: 'image', 'opacity', 'color', 'preset', 'info'
         """
         # Create figure
-        fig = plt.figure(figsize=(16, 8))
+        fig = plt.figure(figsize=(18, 8))
         fig.suptitle("PyVR Interactive Volume Renderer", fontsize=14, fontweight='bold')
 
         # Create grid layout
-        # 3-column layout: image (2.5) | controls (1.0) | info (0.8)
+        # 3-column layout: image (2.0) | controls (1.0) | info (1.0)
         # Info panel spans full height to display all text without truncation
         gs = GridSpec(3, 3, figure=fig,
-                     width_ratios=[2.5, 1.0, 0.8],
+                     width_ratios=[2.0, 1.0, 1.0],
                      height_ratios=[3, 1, 1],
                      hspace=0.3, wspace=0.3)
 
