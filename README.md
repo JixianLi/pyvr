@@ -2,8 +2,8 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg)](http://www.wtfpl.net/about/)
-![Version](https://img.shields.io/badge/version-0.3.1-blue.svg)
-[![Tests](https://img.shields.io/badge/tests-361%20passing-brightgreen.svg)](#-testing)
+![Version](https://img.shields.io/badge/version-0.3.2-blue.svg)
+[![Tests](https://img.shields.io/badge/tests-368%20passing-brightgreen.svg)](#-testing)
 
 PyVR is a GPU-accelerated 3D volume rendering toolkit for real-time interactive visualization using OpenGL. Built with ModernGL, it provides high-performance volume rendering with a modern, modular architecture.
 
@@ -20,9 +20,10 @@ PyVR is a GPU-accelerated 3D volume rendering toolkit for real-time interactive 
 - **💡 Flexible Lighting System**: Directional, point, and ambient light presets with easy configuration
 - **🎨 Sophisticated Transfer Functions**: Color and opacity mappings with matplotlib integration
 - **🎮 Interactive Interface**: Real-time volume visualization with transfer function editing (v0.3.0+)
-  - **NEW in v0.3.1**: FPS counter, quality presets, camera-linked lighting, histogram background
+  - **v0.3.1**: FPS counter, quality presets, camera-linked lighting, histogram background
+  - **NEW in v0.3.2**: 3-column layout for better display of all interface information
 - **📊 Synthetic Datasets**: Built-in generators for testing and development
-- **✅ Comprehensive Testing**: 361 tests with 86%+ coverage
+- **✅ Comprehensive Testing**: 368 tests with 86%+ coverage
 
 ## 🚀 Quick Start
 
