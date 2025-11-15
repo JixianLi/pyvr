@@ -161,7 +161,7 @@ interface.show()
 
 **Note:** This is a testing/development interface. For production use, consider implementing a custom backend.
 
-See `example/ModernglRender/v031_features_demo.py` for a complete v0.3.1 example.
+See `example/basic_rendering.py` for a complete basic example.
 
 ## 🏗️ Architecture
 
@@ -551,17 +551,19 @@ new_light.ambient_intensity = 0.5
 
 ## 📸 Examples
 
-The `example/ModernglRender/` directory contains complete working examples:
+The `example/` directory contains complete working examples:
 
-- **`rgba_demo.py`**: RGBA transfer function demonstration
-- **`enhanced_camera_demo.py`**: Advanced camera system with presets and paths
-- **`multiview_example.py`**: Multi-view rendering example
+- **`basic_rendering.py`**: Minimal rendering pipeline with sphere dataset
+- **`camera_demo.py`**: Advanced camera system with presets and paths
+- **`transfer_functions_demo.py`**: Transfer function demonstration with interactive controls
+- **`benchmark.py`**: Performance comparison across quality presets
 
 Run examples:
 ```bash
-python example/ModernglRender/rgba_demo.py
-python example/ModernglRender/enhanced_camera_demo.py
-python example/ModernglRender/multiview_example.py
+python example/basic_rendering.py
+python example/camera_demo.py
+python example/transfer_functions_demo.py
+python example/benchmark.py
 ```
 
 ## ⚡ Performance
