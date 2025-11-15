@@ -493,13 +493,17 @@ class InteractiveVolumeRenderer:
         self._update_display()
 
         # Restore quality after short delay
-        if self.state.auto_quality_enabled:
-            import threading
+        if self.state.auto_quality_enabled and self.fig is not None:
             # Cancel any existing timer
             if hasattr(self, '_scroll_restore_timer') and self._scroll_restore_timer is not None:
-                self._scroll_restore_timer.cancel()
-            # Start new timer
-            self._scroll_restore_timer = threading.Timer(0.5, self._restore_quality_after_interaction)
+                self._scroll_restore_timer.stop()
+
+            # Create matplotlib timer (thread-safe: executes on main thread)
+            # Using fig.canvas.new_timer instead of threading.Timer to avoid
+            # thread-safety violations when updating matplotlib widgets
+            self._scroll_restore_timer = self.fig.canvas.new_timer(interval=500)  # 500ms
+            self._scroll_restore_timer.add_callback(self._restore_quality_after_interaction)
+            self._scroll_restore_timer.single_shot = True
             self._scroll_restore_timer.start()
 
     def _handle_opacity_left_click(self, event) -> None:
