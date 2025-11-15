@@ -3,7 +3,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg)](http://www.wtfpl.net/about/)
 ![Version](https://img.shields.io/badge/version-0.3.2-blue.svg)
-[![Tests](https://img.shields.io/badge/tests-368%20passing-brightgreen.svg)](#-testing)
+[![Tests](https://img.shields.io/badge/tests-398%20passing-brightgreen.svg)](#-testing)
 
 PyVR is a GPU-accelerated 3D volume rendering toolkit for real-time interactive visualization using OpenGL. Built with ModernGL, it provides high-performance volume rendering with a modern, modular architecture.
 
@@ -23,7 +23,7 @@ PyVR is a GPU-accelerated 3D volume rendering toolkit for real-time interactive 
   - **v0.3.1**: FPS counter, quality presets, camera-linked lighting, histogram background
   - **NEW in v0.3.2**: 3-column layout for better display of all interface information
 - **📊 Synthetic Datasets**: Built-in generators for testing and development
-- **✅ Comprehensive Testing**: 368 tests with 86%+ coverage
+- **✅ Comprehensive Testing**: 398 tests with 86%+ coverage
 
 ## 🚀 Quick Start
 
@@ -343,6 +343,50 @@ samples = config.estimate_samples_per_ray()      # ~346 samples
 relative_time = config.estimate_render_time_relative()  # ~5.0x slower than balanced
 ```
 
+### Opacity Correction
+
+PyVR implements Beer-Lambert law for physically correct opacity accumulation (v0.3.3+). This ensures all quality presets produce consistent visual appearance.
+
+**How It Works:**
+
+Transfer functions define opacity at a reference step size. When rendering at different step sizes, opacity is automatically corrected:
+
+```python
+# Formula: alpha_corrected = 1.0 - exp(-alpha_tf * step_size / reference_step_size)
+```
+
+**Default Behavior:**
+
+```python
+# All presets use reference_step_size=0.01 by default
+# This means transfer functions are designed for "balanced" quality
+config = RenderConfig.high_quality()  # Works correctly, looks same as balanced
+```
+
+**Customizing for Your Data:**
+
+```python
+# Feature-dense volumes (medical, turbulence): use smaller reference
+config = RenderConfig(
+    step_size=0.01,
+    max_steps=500,
+    reference_step_size=0.005  # Denser sampling reference
+)
+
+# Simple volumes (synthetic, smooth): use larger reference
+config = RenderConfig(
+    step_size=0.01,
+    max_steps=500,
+    reference_step_size=0.02  # Sparser sampling reference
+)
+```
+
+**Benefits:**
+- All presets produce same overall appearance
+- Switch quality without changing how it looks
+- Physically accurate (Beer-Lambert law)
+- Industry standard (matches VTK, ParaView)
+
 ## 🎨 Transfer Functions
 
 ### Color Transfer Functions
@@ -549,7 +593,7 @@ renderer = VolumeRenderer(256, 256, step_size=0.02, max_steps=100)
 PyVR has comprehensive test coverage for reliability:
 
 ```bash
-# Run all tests (204 tests)
+# Run all tests (398 tests)
 pytest tests/
 
 # Run with coverage report
@@ -568,13 +612,14 @@ pytest tests/test_transferfunctions/   # Transfer function tests (36 tests)
 Module                        Tests    Coverage
 ----------------------------------------------
 📷 Camera System              42       95-97%
-⚙️  RenderConfig              33       100%
+⚙️  RenderConfig              63       100%
 💡 Lighting System            22       100%
 🎨 Transfer Functions         36       88-100%
-🖥️  ModernGL Renderer         71       93-98%
-📊 Volume & Datasets          -        56-93%
+🖥️  ModernGL Renderer         101      93-98%
+🎮 Interactive Interface      80       >90%
+📊 Volume & Datasets          54       56-93%
 ----------------------------------------------
-📈 Total                     204       ~86%
+📈 Total                     398       ~86%
 ```
 
 **Key Testing Features:**
