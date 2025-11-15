@@ -207,3 +207,5 @@ cython_debug/
 # tmp_dev directory for local file caching
 tmp_dev/
 
+# data directory for local data storage
+test_data/
