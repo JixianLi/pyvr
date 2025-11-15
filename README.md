@@ -746,111 +746,44 @@ poetry run isort pyvr/
 
 ## 📚 Version History
 
-### v0.3.1 (2025-MM-DD) - Interface Refinements ✨
+### v0.3.3 (2025-11-15) - Ray Marching Consistency + Bug Fixes
+Bug fixes for opacity accumulation, threading crash, and light linking. Implements Beer-Lambert law for physically correct rendering. **Breaking:** Visual changes and light offset functionality removed.
+**See:** [`version_notes/v0.3.3_ray_marching_consistency.md`](version_notes/v0.3.3_ray_marching_consistency.md)
 
-**New Features:**
-- 📊 **FPS Counter**: Real-time performance monitoring with rolling 30-frame average
-- ⚙️ **Quality Preset Selector**: 5 rendering quality levels (preview/fast/balanced/high_quality/ultra_quality)
-- 💡 **Camera-Linked Lighting**: Directional lights follow camera with configurable offsets
-- 📈 **Histogram Background**: Log-scale data distribution visualization in opacity editor
-- 🎯 **Automatic Quality Switching**: Auto-switches to "fast" during camera interaction
-- 📊 **Status Display**: Shows current preset, FPS, histogram, light linking states
+### v0.3.2 (2025-11-14) - Interface Relayout
+Redesigned 3-column layout (18"×8") for better widescreen displays. All controls and info visible without truncation.
+**See:** [`version_notes/v0.3.2_interface_relayout.md`](version_notes/v0.3.2_interface_relayout.md)
 
-**Performance:**
-- All new features add <1% overhead
-- Histogram caching provides >5x speedup (100ms → <10ms)
-- Auto-quality makes interaction feel smoother
-- Persistent cache in `tmp_dev/histogram_cache/`
-
-**Convenience Methods:**
-- `interface.set_high_quality_mode()` - Quick HQ switch
-- `interface.set_camera_linked_lighting(offsets)` - Easy light setup
-- `interface.capture_high_quality_image(filename)` - Ultra quality screenshots
-
-**Keyboard Shortcuts (new):**
-- `f`: Toggle FPS counter
-- `h`: Toggle histogram
-- `l`: Toggle light linking
-- `q`: Toggle auto-quality
-
-**Tests:** +77 new tests (284 → 361)
-**Breaking Changes:** None - fully backward compatible with v0.3.0
-**See:** `version_notes/v0.3.1_interface_refinements.md` for complete release notes
-
-### v0.3.2 (2025-11-14) - Interface Relayout 🎨
-
-**Layout Redesign:**
-- 🖼️ **3-Column Layout**: Redesigned from 2-column to 3-column layout
-  - Left: Image display (50% width)
-  - Middle: Opacity editor + Color selector (25% width)
-  - Right: Info panel + Quality preset selector (25% width)
-- 📏 **Figure Size**: Increased from 14" × 8" to 18" × 8"
-- ✨ **Gray Border**: Added 2px border around rendering window for better visual distinction
-- 📊 **Full Visibility**: All controls, shortcuts, and status visible without truncation
-
-**Benefits:**
-- Better use of widescreen displays
-- All information visible at a glance
-- Improved demo and presentation experience
-- Balanced layout with equal-width control and info panels
-
-**Tests:** +7 new tests (361 → 368)
-**Breaking Changes:** None - purely visual enhancement
-**See:** `version_notes/v0.3.2_interface_relayout.md` for complete release notes
+### v0.3.1 (2025-10-31) - Interface Refinements
+FPS counter, quality preset selector, camera-linked lighting, histogram backgrounds, auto-quality switching. +77 tests.
+**See:** [`version_notes/v0.3.1_interface_refinements.md`](version_notes/v0.3.1_interface_refinements.md)
 
 ### v0.3.0 (2025-10-31) - Interactive Interface
-
-- Interactive matplotlib-based interface for real-time visualization
-- Mouse-based camera controls and opacity transfer function editing
-- Real-time rendering with throttling and caching
-- Colormap selection from matplotlib
-- Keyboard shortcuts for common operations
+Interactive matplotlib-based interface for real-time visualization with mouse controls and transfer function editing.
 
 ### v0.2.7 (2025-10-28) - Architecture Simplification
-
-- Removed abstract base renderer class for simpler design
-- ModernGLVolumeRenderer now standalone (no inheritance)
-- Backward compatibility maintained via alias
+Removed abstract base renderer class. ModernGLVolumeRenderer now standalone.
 
 ### v0.2.6 (2025-10-28) - RenderConfig System
-
-- Quality presets (preview, fast, balanced, high_quality, ultra_quality)
-- Performance estimation methods
-- Runtime quality switching
+Quality presets (preview, fast, balanced, high_quality, ultra_quality) with runtime switching.
 
 ### v0.2.5 (2025-10-28) - Volume Refactoring
-
-- Unified Volume class for backend-agnostic data management
-- Volume properties and operations (compute_normals, normalize, copy)
-- Simpler renderer API
+Unified Volume class for backend-agnostic data management.
 
 ### v0.2.4 (2025-10-27) - Light System
-
-- Light class with presets (directional, point_light, ambient_only)
-- Easy light configuration and switching
+Light class with presets (directional, point_light, ambient_only).
 
 ### v0.2.3 (2025-10-27) - Camera System
-
-- Camera class with matrix generation
-- Spherical coordinates and camera presets
-- Camera controller and animation paths
+Camera class with matrix generation, spherical coordinates, and animation paths.
 
 ### v0.2.2 - RGBA Texture Optimization
-
-- Combined RGBA transfer function textures
-- Single texture lookup (previously dual)
-- 64+ FPS performance improvement
+Combined RGBA transfer function textures. Single texture lookup, 64+ FPS.
 
 ### v0.2.0 - Major Refactoring
-
-- Separated transfer functions into dedicated module
-- Advanced camera system
-- Modular architecture improvements
+Separated transfer functions into dedicated module. Advanced camera system.
 
 ### v0.1.0 - Initial Release
-
-- Basic ModernGL volume rendering
-- Core ray marching implementation
+Basic ModernGL volume rendering with core ray marching implementation.
 
 ## 📄 License
 
