@@ -476,3 +476,10 @@ relative_time = config.estimate_render_time_relative()  # ~5.0x slower
 - Test: Ensure all tests pass
 - Document: Update README, version notes, examples
 - Clean up: Remove plan files after completion
+
+**Version Updates**:
+When releasing a new version, update version numbers in these files:
+- `pyproject.toml` - Line 3: `version = "X.Y.Z"`
+- `pyvr/__init__.py` - Line 13: `__version__ = "X.Y.Z"` (also update docstring description)
+- `README.md` - Line 5: Version badge `version-X.Y.Z-blue.svg`
+- Create version notes in `version_notes/vX.Y.Z_feature_name.md`
