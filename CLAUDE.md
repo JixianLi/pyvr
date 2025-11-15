@@ -72,14 +72,14 @@ poetry run black pyvr/ && poetry run isort pyvr/
 
 ### Running Examples
 ```bash
-# Run multiview example
-python example/ModernglRender/multiview_example.py
+# Run basic rendering example
+python example/basic_rendering.py
 
 # Run camera demo
-python example/ModernglRender/enhanced_camera_demo.py
+python example/camera_demo.py
 
-# Run RGBA transfer function demo
-python example/ModernglRender/rgba_demo.py
+# Run transfer functions demo
+python example/transfer_functions_demo.py
 
 # Run benchmark (compares quality presets)
 python example/benchmark.py
