@@ -1,0 +1,170 @@
+THREAD FLOW DIAGRAM: Quality Preset + Zoom Crash
+================================================
+
+TIMELINE: Events from left to right
+THREADS: MainThread (top), Timer Thread (bottom)
+
+
+Step 1: User Changes Preset
+============================
+
+[MainThread] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              │
+              ├─ User clicks "High Quality" preset
+              │
+              ├─ _on_preset_change('high_quality')
+              │  ├─ state.current_preset_name = 'high_quality'
+              │  ├─ renderer.set_config(RenderConfig.high_quality())
+              │  └─ _update_display(force_render=True)
+              │
+              ├─ state.saved_preset_name = None
+              │
+              v
+
+
+Step 2: User Scrolls to Zoom
+=============================
+
+[MainThread] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              │
+              ├─ User scrolls mouse wheel
+              │
+              ├─ _on_scroll(event)
+              │  │
+              │  ├─ auto_quality_enabled == True
+              │  │
+              │  ├─ _switch_to_interaction_quality()
+              │  │  ├─ state.saved_preset_name = 'high_quality'  ← SAVED
+              │  │  ├─ state.current_preset_name = 'fast'
+              │  │  └─ renderer.set_config(RenderConfig.fast())
+              │  │
+              │  ├─ camera_controller.zoom(factor)
+              │  │
+              │  ├─ _update_display()
+              │  │
+              │  └─ threading.Timer(0.5, callback).start()  ← TIMER CREATED
+              │     │
+              │     └─────────────────────┐
+              │                           │
+              v                           │
+                                          │
+          (User sees fast quality)       │
+          (0.5 seconds pass...)          │
+                                          │
+                                          │
+Step 3: Timer Fires (0.5s later)        │
+================================        │
+                                          │
+[MainThread] ━━━━━━━━━━━━━━━━━━━━━━━━━━━┼━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              (idle)                     │
+                                          │
+[Timer Thread] ────────────────────────<─┘  ← THREAD SWITCH! ❌
+              │
+              ├─ _restore_quality_after_interaction()  ← BACKGROUND THREAD!
+              │  │
+              │  ├─ restored_config = RenderConfig.high_quality()  ✓ OK
+              │  │
+              │  ├─ renderer.set_config(restored_config)  ⚠️ May be unsafe
+              │  │
+              │  ├─ preset_selector.set_preset('high_quality')  ❌ DANGER!
+              │  │  │
+              │  │  └─ radio.set_active(3)  ❌ GUI MODIFICATION FROM WRONG THREAD
+              │  │     │
+              │  │     └─ Calls into native GUI toolkit (Tk/Qt)
+              │  │        │
+              │  │        └─ NOT THREAD-SAFE → CRASH! 💥
+              │  │
+              │  ├─ _update_display(force_render=True)  ❌ DANGER!
+              │  │  │
+              │  │  ├─ renderer.render()  ⚠️ OpenGL from wrong thread
+              │  │  │
+              │  │  └─ fig.canvas.draw_idle()  ❌ matplotlib draw from wrong thread
+              │  │     │
+              │  │     └─ Backend GUI operations → CRASH! 💥
+              │  │
+              │  └─ state.saved_preset_name = None
+              │
+              💥 CRASH (silent window close or exception)
+              │
+              v
+
+
+PROBLEM SUMMARY
+===============
+
+❌ threading.Timer callback executes in BACKGROUND THREAD (Thread-1)
+❌ Matplotlib widgets (RadioButtons) modified from background thread
+❌ Matplotlib canvas drawing (draw_idle) called from background thread
+❌ Native GUI toolkits (Tk, Qt) are NOT thread-safe
+❌ Result: Undefined behavior → Silent crash
+
+
+THREAD OWNERSHIP
+================
+
+MAIN THREAD (safe):
+  ✓ All GUI operations (widgets, drawing, events)
+  ✓ Matplotlib figure/axes modifications
+  ✓ OpenGL context operations
+  ✓ User event handlers (_on_scroll, _on_mouse_press, etc.)
+
+BACKGROUND THREAD (UNSAFE):
+  ✓ Pure computation (no GUI)
+  ✓ File I/O (with care)
+  ✓ Network requests (with care)
+  ❌ Any matplotlib operations
+  ❌ Any GUI widget modifications
+  ❌ Any canvas drawing
+  ❌ Any OpenGL operations
+
+
+SOLUTION
+========
+
+Replace threading.Timer with matplotlib's native timer:
+
+[MainThread] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              │
+              ├─ _on_scroll(event)
+              │  │
+              │  └─ fig.canvas.new_timer(interval=500)  ← matplotlib timer
+              │     │
+              │     └─────────────────────┐
+              │                           │
+              v                           │
+                                          │
+          (0.5 seconds pass...)          │
+                                          │
+[MainThread] ━━━━━━━━━━━━━━━━━━━━━━━━━━━┼━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              │                           │
+              ├─────────────────────────<─┘  ← STAYS ON MAIN THREAD! ✓
+              │
+              ├─ _restore_quality_after_interaction()  ✓ MAIN THREAD
+              │  │
+              │  ├─ preset_selector.set_preset('high_quality')  ✓ SAFE
+              │  │
+              │  └─ _update_display(force_render=True)  ✓ SAFE
+              │
+              ✓ No crash!
+              │
+              v
+
+
+CODE LOCATIONS
+==============
+
+BUG: pyvr/interface/matplotlib_interface.py:502
+    threading.Timer(0.5, self._restore_quality_after_interaction)
+
+BUG: pyvr/interface/matplotlib_interface.py:346
+    self.preset_selector.set_preset(self.state.saved_preset_name)
+
+BUG: pyvr/interface/widgets.py:509
+    self.radio.set_active(preset_index)
+
+
+REPRODUCTION
+============
+
+Run: python tmp_dev/reproduce_zoom_crash.py
+Trace: python tmp_dev/trace_threading_bug.py

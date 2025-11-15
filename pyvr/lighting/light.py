@@ -199,15 +199,16 @@ class Light:
         diffuse: float = 0.8,
     ) -> "Light":
         """
-        Create a camera-linked directional light.
+        Create a camera-linked directional light (headlight mode).
 
-        The light will follow camera movement with specified offsets,
-        providing consistent illumination from the camera's perspective.
+        The light will be positioned at the camera's location and point
+        toward the camera's target, providing consistent illumination
+        from the viewer's perspective.
 
         Args:
-            azimuth_offset: Horizontal angle offset in radians (default: 0.0)
-            elevation_offset: Vertical angle offset in radians (default: 0.0)
-            distance_offset: Additional distance from target (default: 0.0)
+            azimuth_offset: Horizontal angle offset in radians (currently ignored)
+            elevation_offset: Vertical angle offset in radians (currently ignored)
+            distance_offset: Additional distance from target (currently ignored)
             ambient: Ambient light intensity (default: 0.2)
             diffuse: Diffuse light intensity (default: 0.8)
 
@@ -215,13 +216,17 @@ class Light:
             Light instance configured for camera linking
 
         Example:
-            >>> # Light follows camera with 45° horizontal offset
-            >>> light = Light.camera_linked(azimuth_offset=np.pi/4)
+            >>> # Light follows camera position (headlight mode)
+            >>> light = Light.camera_linked()
             >>> renderer = VolumeRenderer(light=light)
             >>>
             >>> # In render loop:
             >>> light.update_from_camera(camera)
             >>> renderer.set_light(light)
+
+        Note:
+            Current implementation uses headlight mode. Offset parameters
+            are stored but not currently used.
         """
         # Start with default light
         light = cls(
@@ -301,24 +306,29 @@ class Light:
         distance_offset: float = 0.0,
     ) -> "Light":
         """
-        Link this light to follow camera movement with offsets.
+        Link this light to follow camera movement (headlight mode).
 
-        The light position will be calculated relative to camera orientation
-        using the provided offsets. This creates consistent illumination
-        from the camera's perspective.
+        The light will be positioned at the camera's location and point
+        toward the camera's target, providing consistent illumination
+        from the viewer's perspective.
 
         Args:
-            azimuth_offset: Horizontal angle offset in radians (default: 0.0)
-            elevation_offset: Vertical angle offset in radians (default: 0.0)
-            distance_offset: Additional distance from target (default: 0.0)
+            azimuth_offset: Horizontal angle offset in radians (currently ignored)
+            elevation_offset: Vertical angle offset in radians (currently ignored)
+            distance_offset: Additional distance from target (currently ignored)
 
         Returns:
             Self for method chaining
 
         Example:
             >>> light = Light.directional([1, -1, 0])
-            >>> light.link_to_camera(azimuth_offset=np.pi/4, elevation_offset=0.0)
-            >>> # Now light will follow camera with 45° horizontal offset
+            >>> light.link_to_camera()
+            >>> # Light now follows camera position (headlight mode)
+
+        Note:
+            Current implementation uses headlight mode (light at camera position).
+            Offset parameters are stored but not currently used. Future versions
+            may support offsets in camera's local coordinate space.
         """
         self._is_linked = True
         self._camera_offsets = {
@@ -347,12 +357,14 @@ class Light:
 
     def update_from_camera(self, camera) -> None:
         """
-        Update light position based on camera and offsets.
+        Update light position to follow camera (headlight mode).
 
-        This method should be called each frame if the light is linked.
+        The light is positioned at the camera's location and points toward
+        the camera's target. This provides consistent illumination from the
+        viewer's perspective as the camera moves.
 
         Args:
-            camera: Camera instance to derive position from
+            camera: Camera instance to follow
 
         Raises:
             ValueError: If light is not linked or camera is invalid
@@ -361,6 +373,12 @@ class Light:
             >>> if light.is_linked:
             ...     light.update_from_camera(camera)
             ...     renderer.set_light(light)
+
+        Note:
+            Previous versions used spherical coordinate offsets which didn't
+            match the camera's quaternion-based positioning. The current
+            implementation uses headlight mode (light at camera position)
+            for correct and intuitive behavior.
         """
         if not self._is_linked:
             raise ValueError("Light is not linked to camera. Call link_to_camera() first.")
@@ -373,20 +391,10 @@ class Light:
         if not isinstance(camera, Camera):
             raise ValueError("camera must be a Camera instance")
 
-        # Calculate light position from camera orientation + offsets
-        azimuth = camera.azimuth + self._camera_offsets['azimuth']
-        elevation = camera.elevation + self._camera_offsets['elevation']
-        distance = camera.distance + self._camera_offsets['distance']
-
-        # Convert spherical coordinates to Cartesian position
-        # This mirrors the Camera.get_camera_vectors() logic
-        cos_elev = np.cos(elevation)
-        x = distance * cos_elev * np.cos(azimuth)
-        y = distance * np.sin(elevation)
-        z = distance * cos_elev * np.sin(azimuth)
-
-        # Position relative to camera target
-        self.position = camera.target + np.array([x, y, z], dtype=np.float32)
+        # Position light at camera position (headlight mode)
+        # This ensures light truly follows camera rotation
+        camera_pos, _ = camera.get_camera_vectors()
+        self.position = camera_pos.copy()
         self.target = camera.target.copy()
 
     def get_offsets(self) -> Optional[dict]:
