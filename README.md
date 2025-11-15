@@ -748,6 +748,10 @@ poetry run isort pyvr/
 
 ## 📚 Version History
 
+### v0.3.4 (2025-11-15) - Examples Rework
+Complete overhaul of examples directory with 4 focused, well-documented examples. Flat structure, heavy inline comments, and copy-paste usability.
+**See:** [`version_notes/v0.3.4_examples_rework.md`](version_notes/v0.3.4_examples_rework.md)
+
 ### v0.3.3 (2025-11-15) - Ray Marching Consistency + Bug Fixes
 Bug fixes for opacity accumulation, threading crash, and light linking. Implements Beer-Lambert law for physically correct rendering. **Breaking:** Visual changes and light offset functionality removed.
 **See:** [`version_notes/v0.3.3_ray_marching_consistency.md`](version_notes/v0.3.3_ray_marching_consistency.md)
