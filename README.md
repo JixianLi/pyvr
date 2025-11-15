@@ -777,6 +777,27 @@ poetry run isort pyvr/
 **Breaking Changes:** None - fully backward compatible with v0.3.0
 **See:** `version_notes/v0.3.1_interface_refinements.md` for complete release notes
 
+### v0.3.2 (2025-11-14) - Interface Relayout 🎨
+
+**Layout Redesign:**
+- 🖼️ **3-Column Layout**: Redesigned from 2-column to 3-column layout
+  - Left: Image display (50% width)
+  - Middle: Opacity editor + Color selector (25% width)
+  - Right: Info panel + Quality preset selector (25% width)
+- 📏 **Figure Size**: Increased from 14" × 8" to 18" × 8"
+- ✨ **Gray Border**: Added 2px border around rendering window for better visual distinction
+- 📊 **Full Visibility**: All controls, shortcuts, and status visible without truncation
+
+**Benefits:**
+- Better use of widescreen displays
+- All information visible at a glance
+- Improved demo and presentation experience
+- Balanced layout with equal-width control and info panels
+
+**Tests:** +7 new tests (361 → 368)
+**Breaking Changes:** None - purely visual enhancement
+**See:** `version_notes/v0.3.2_interface_relayout.md` for complete release notes
+
 ### v0.3.0 (2025-10-31) - Interactive Interface
 
 - Interactive matplotlib-based interface for real-time visualization
