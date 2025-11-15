@@ -9,6 +9,7 @@ uniform mat4 projection_matrix;
 uniform vec3 camera_pos;
 uniform float step_size;
 uniform int max_steps;
+uniform float reference_step_size;
 uniform vec3 volume_min_bounds;
 uniform vec3 volume_max_bounds;
 
@@ -94,7 +95,10 @@ void main() {
             // Single RGBA texture lookup for transfer function
             vec4 rgba = texture(transfer_function_lut, vec2(density, 0.5));
             vec3 rgb = rgba.rgb;
-            float alpha = rgba.a;
+            float alpha_tf = rgba.a;
+
+            // Beer-Lambert opacity correction
+            float alpha_step_size_corrected = 1.0 - exp(-alpha_tf * step_size / reference_step_size);
 
             vec3 normal = texture(normal_volume, tex_coord).rgb;
             normal = normalize(normal);
@@ -105,7 +109,7 @@ void main() {
             float diffuse_intensity = max(dot(normal, light_dir), 0.0);
             float light = ambient_light + diffuse_light * diffuse_intensity;
 
-            vec4 sample_color = vec4(rgb * light, alpha);
+            vec4 sample_color = vec4(rgb * light, alpha_step_size_corrected);
             sample_color.rgb *= sample_color.a;
             accumulated_color += (1.0 - accumulated_alpha) * sample_color;
             accumulated_alpha += (1.0 - accumulated_alpha) * sample_color.a;

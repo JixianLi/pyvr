@@ -663,8 +663,11 @@ class TestVolumeRendererRenderConfig:
 
         assert renderer.config is new_config
         # Should have updated GL uniforms
-        renderer.gl_manager.set_uniform_float.assert_called_with(
+        renderer.gl_manager.set_uniform_float.assert_any_call(
             "step_size", new_config.step_size
+        )
+        renderer.gl_manager.set_uniform_float.assert_any_call(
+            "reference_step_size", new_config.reference_step_size
         )
         renderer.gl_manager.set_uniform_int.assert_called_with(
             "max_steps", new_config.max_steps

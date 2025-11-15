@@ -25,6 +25,23 @@ class RenderConfig:
                               Stops ray when accumulated opacity reaches threshold.
         opacity_threshold: Opacity threshold for early ray termination (0.0-1.0).
                           Only used if early_ray_termination is True.
+        reference_step_size: Reference step size for opacity correction.
+                            Transfer functions define opacity at this reference step size.
+                            When rendering at different step sizes, opacity is corrected
+                            using Beer-Lambert law to maintain physical consistency.
+
+                            Guidelines:
+                            - Feature-dense volumes (medical, turbulence): 0.005-0.008
+                            - Simple volumes (synthetic, smooth fields): 0.015-0.02
+                            - Default (0.01): Matches balanced preset, good for most cases
+
+                            The same transfer function will produce identical appearance
+                            across all quality presets when reference_step_size is set correctly.
+
+                            Physical basis:
+                                alpha_corrected = 1.0 - exp(-alpha_tf * step_size / reference_step_size)
+
+                            This implements Beer-Lambert law for light absorption through a medium.
 
     Example:
         >>> # Use a preset
@@ -38,6 +55,7 @@ class RenderConfig:
     max_steps: int = 500
     early_ray_termination: bool = True
     opacity_threshold: float = 0.95
+    reference_step_size: float = 0.01
 
     def __post_init__(self):
         """Validate configuration after initialization."""
@@ -259,6 +277,7 @@ class RenderConfig:
             max_steps=self.max_steps,
             early_ray_termination=self.early_ray_termination,
             opacity_threshold=self.opacity_threshold,
+            reference_step_size=self.reference_step_size,
         )
 
     def with_step_size(self, step_size: float) -> "RenderConfig":
