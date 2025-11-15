@@ -209,27 +209,32 @@ class InteractiveVolumeRenderer:
         """
         Create matplotlib figure layout.
 
+        Uses 3-column layout:
+        - Left (2.5): Image display (full height)
+        - Middle (1.0): Stacked control widgets
+        - Right (0.8): Info panel (full height)
+
         Returns:
             Tuple of (figure, axes_dict) with keys: 'image', 'opacity', 'color', 'preset', 'info'
         """
         # Create figure
-        fig = plt.figure(figsize=(14, 8))
+        fig = plt.figure(figsize=(16, 8))
         fig.suptitle("PyVR Interactive Volume Renderer", fontsize=14, fontweight='bold')
 
         # Create grid layout
-        # Left side: Large image display
-        # Right side: Stacked control panels
-        gs = GridSpec(4, 2, figure=fig,
-                     width_ratios=[2, 1],
-                     height_ratios=[4, 2, 2, 1],  # Image, Opacity, Color, Preset+Info
+        # 3-column layout: image (2.5) | controls (1.0) | info (0.8)
+        # Info panel spans full height to display all text without truncation
+        gs = GridSpec(3, 3, figure=fig,
+                     width_ratios=[2.5, 1.0, 0.8],
+                     height_ratios=[3, 1, 1],
                      hspace=0.3, wspace=0.3)
 
         # Create axes
-        ax_image = fig.add_subplot(gs[:, 0])         # Full left column
-        ax_opacity = fig.add_subplot(gs[0, 1])       # Top right
-        ax_color = fig.add_subplot(gs[1, 1])         # Middle-top right
-        ax_preset = fig.add_subplot(gs[2, 1])        # Middle-bottom right
-        ax_info = fig.add_subplot(gs[3, 1])          # Bottom right
+        ax_image = fig.add_subplot(gs[:, 0])      # Full left column (all rows)
+        ax_opacity = fig.add_subplot(gs[0, 1])    # Top middle
+        ax_color = fig.add_subplot(gs[1, 1])      # Middle middle
+        ax_preset = fig.add_subplot(gs[2, 1])     # Bottom middle
+        ax_info = fig.add_subplot(gs[:, 2])       # Full right column (all rows)
 
         axes_dict = {
             'image': ax_image,
