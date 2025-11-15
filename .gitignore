@@ -208,4 +208,8 @@ cython_debug/
 tmp_dev/
 
 # data directory for local data storage
-test_data/
+example_data/
+
+#exceptions
+!example_data/fuel.vti
+!example_data/hydrogen.vti
