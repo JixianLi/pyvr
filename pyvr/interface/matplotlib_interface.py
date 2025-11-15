@@ -210,9 +210,9 @@ class InteractiveVolumeRenderer:
         Create matplotlib figure layout.
 
         Uses 3-column layout:
-        - Left (2.5): Image display (full height)
-        - Middle (1.0): Stacked control widgets
-        - Right (0.8): Info panel (full height)
+        - Left (2.0): Image display (full height)
+        - Middle (1.0): Opacity and color transfer function editors
+        - Right (1.0): Info panel (top) and rendering quality preset selector (bottom)
 
         Returns:
             Tuple of (figure, axes_dict) with keys: 'image', 'opacity', 'color', 'preset', 'info'
@@ -222,8 +222,9 @@ class InteractiveVolumeRenderer:
         fig.suptitle("PyVR Interactive Volume Renderer", fontsize=14, fontweight='bold')
 
         # Create grid layout
-        # 3-column layout: image (2.0) | controls (1.0) | info (1.0)
-        # Info panel spans full height to display all text without truncation
+        # 3-column layout: image (2.0) | controls (1.0) | info+preset (1.0)
+        # Middle: Opacity (top), Color (bottom)
+        # Right: Info (top, rows 0-1), Preset (bottom, row 2)
         gs = GridSpec(3, 3, figure=fig,
                      width_ratios=[2.0, 1.0, 1.0],
                      height_ratios=[3, 1, 1],
@@ -232,9 +233,9 @@ class InteractiveVolumeRenderer:
         # Create axes
         ax_image = fig.add_subplot(gs[:, 0])      # Full left column (all rows)
         ax_opacity = fig.add_subplot(gs[0, 1])    # Top middle
-        ax_color = fig.add_subplot(gs[1, 1])      # Middle middle
-        ax_preset = fig.add_subplot(gs[2, 1])     # Bottom middle
-        ax_info = fig.add_subplot(gs[:, 2])       # Full right column (all rows)
+        ax_color = fig.add_subplot(gs[1:, 1])     # Bottom middle (rows 1-2 combined)
+        ax_info = fig.add_subplot(gs[0:2, 2])     # Top right (rows 0-1)
+        ax_preset = fig.add_subplot(gs[2, 2])     # Bottom right (row 2)
 
         axes_dict = {
             'image': ax_image,
