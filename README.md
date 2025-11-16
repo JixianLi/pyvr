@@ -2,7 +2,7 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg)](http://www.wtfpl.net/about/)
-![Version](https://img.shields.io/badge/version-0.3.4-blue.svg)
+![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)
 [![Tests](https://img.shields.io/badge/tests-398%20passing-brightgreen.svg)](#-testing)
 
 PyVR is a GPU-accelerated 3D volume rendering toolkit for real-time interactive visualization using OpenGL. Built with ModernGL, it provides high-performance volume rendering with a modern, modular architecture.
@@ -161,7 +161,7 @@ interface.show()
 
 **Note:** This is a testing/development interface. For production use, consider implementing a custom backend.
 
-See `example/basic_rendering.py` for a complete basic example.
+See `examples/basic_rendering.py` for a complete basic example.
 
 ## 🏗️ Architecture
 
@@ -276,6 +276,43 @@ blob = create_sample_volume(256, 'random_blob')
 # Compute normal vectors for lighting
 normals = compute_normal_volume(sphere)
 ```
+
+## 📁 Loading VTK Data
+
+PyVR supports loading scientific volume data from VTK ImageData (.vti) files:
+
+```python
+from pyvr.dataloaders import load_vtk_volume
+
+# Load VTK file - returns normalized, render-ready Volume
+volume = load_vtk_volume("example_data/hydrogen.vti")
+
+# Use with any renderer
+from pyvr.interface import InteractiveVolumeRenderer
+interface = InteractiveVolumeRenderer(volume)
+interface.show()
+```
+
+**Features:**
+- Automatic normalization to [0, 1] range
+- Preserves physical aspect ratio from VTK spacing
+- Centered at [0, 0, 0] in world space
+- Normal vectors computed automatically
+- Supports custom scalar array names
+
+**Example:**
+```python
+# Load with custom scalar array name
+volume = load_vtk_volume("data.vti", scalars_name="Temperature")
+
+# Volume properties
+print(f"Shape: {volume.shape}")
+print(f"Bounds: {volume.min_bounds} to {volume.max_bounds}")
+print(f"Physical dimensions: {volume.dimensions}")
+```
+
+**Requirements:**
+VTK is included as a core dependency (required for VTK data loading).
 
 ## ⚙️ Rendering Configuration
 
@@ -551,19 +588,21 @@ new_light.ambient_intensity = 0.5
 
 ## 📸 Examples
 
-The `example/` directory contains complete working examples:
+The `examples/` directory contains complete working examples:
 
 - **`basic_rendering.py`**: Minimal rendering pipeline with sphere dataset
 - **`camera_demo.py`**: Advanced camera system with presets and paths
 - **`transfer_functions_demo.py`**: Transfer function demonstration with interactive controls
 - **`benchmark.py`**: Performance comparison across quality presets
+- **`vtk_loading_demo.py`**: VTK data loader demonstration with hydrogen.vti dataset
 
 Run examples:
 ```bash
-python example/basic_rendering.py
-python example/camera_demo.py
-python example/transfer_functions_demo.py
-python example/benchmark.py
+python examples/basic_rendering.py
+python examples/camera_demo.py
+python examples/transfer_functions_demo.py
+python examples/benchmark.py
+python examples/vtk_loading_demo.py
 ```
 
 ## ⚡ Performance
