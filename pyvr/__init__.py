@@ -7,12 +7,13 @@ Version 0.3.4 reworks examples with clean flat structure and comprehensive
 inline documentation for improved usability.
 """
 
-from . import camera, datasets, interface, lighting, moderngl_renderer, transferfunctions, volume
+from . import camera, dataloaders, datasets, interface, lighting, moderngl_renderer, transferfunctions, volume
 from .config import RenderConfig
 
 __version__ = "0.3.4"
 __all__ = [
     "camera",
+    "dataloaders",
     "datasets",
     "interface",
     "lighting",
