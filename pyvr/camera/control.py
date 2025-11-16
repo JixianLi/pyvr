@@ -539,6 +539,114 @@ class CameraController:
         # Prevent getting too close or too far
         self.params.distance = np.clip(self.params.distance, 0.01, 1000.0)
 
+    def trackball(
+        self,
+        dx: float,
+        dy: float,
+        viewport_width: int,
+        viewport_height: int,
+        sensitivity: float = 1.0
+    ) -> None:
+        """
+        Rotate camera using trackball/arcball control.
+
+        Provides intuitive 3D rotation following mouse movement,
+        like rotating a physical ball. Mouse movement is mapped to
+        rotation on a virtual sphere centered on the target.
+
+        Args:
+            dx: Mouse delta in pixels (horizontal, right is positive)
+            dy: Mouse delta in pixels (vertical, down is positive)
+            viewport_width: Viewport width in pixels
+            viewport_height: Viewport height in pixels
+            sensitivity: Rotation sensitivity multiplier (default: 1.0)
+                        Higher values = more rotation per pixel
+
+        Raises:
+            ValueError: If viewport dimensions are invalid (<= 0)
+
+        Example:
+            >>> controller = CameraController()
+            >>> # User dragged mouse 50 pixels right, 30 pixels down
+            >>> controller.trackball(
+            ...     dx=50, dy=-30,
+            ...     viewport_width=800, viewport_height=600
+            ... )
+            >>> # Camera has rotated smoothly
+
+        Notes:
+            - Uses quaternion-based arcball algorithm for smooth rotation
+            - No gimbal lock artifacts
+            - Movement is relative to current camera orientation
+            - Small movements (< 0.001 normalized) are ignored for stability
+        """
+        # Validate viewport dimensions
+        if viewport_width <= 0 or viewport_height <= 0:
+            raise ValueError(
+                f"Viewport dimensions must be positive, got width={viewport_width}, height={viewport_height}"
+            )
+
+        # Early exit for zero movement
+        if dx == 0 and dy == 0:
+            return
+
+        # Normalize pixel deltas to [-1, 1] range
+        # Use the smaller dimension for uniform scaling
+        scale = min(viewport_width, viewport_height)
+        dx_norm = (dx / scale) * sensitivity
+        dy_norm = (dy / scale) * sensitivity
+
+        # Invert dx and dy for intuitive movement
+        # (drag right = rotate left, drag up = rotate up)
+        dx_norm = -dx_norm
+        dy_norm = -dy_norm
+
+        # Early exit for very small movements (avoid numerical instability)
+        if abs(dx_norm) < 0.001 and abs(dy_norm) < 0.001:
+            return
+
+        # Map start and end points to sphere
+        start_point = _map_to_sphere(0.0, 0.0)
+        end_point = _map_to_sphere(dx_norm, dy_norm)
+
+        # Compute rotation axis and angle
+        axis = np.cross(start_point, end_point)
+        axis_length = np.linalg.norm(axis)
+
+        # Check for parallel vectors (no rotation needed)
+        if axis_length < 1e-8:
+            return
+
+        axis = axis / axis_length
+
+        # Compute rotation angle
+        dot_product = np.clip(np.dot(start_point, end_point), -1.0, 1.0)
+        angle = np.arccos(dot_product)
+
+        # Create trackball rotation quaternion
+        trackball_rotation = R.from_rotvec(angle * axis)
+
+        # Get current camera orientation as quaternion
+        current_rotation = _camera_to_quaternion(self.params)
+
+        # Apply trackball rotation to current orientation
+        # Important: trackball rotation is in camera-local space
+        new_rotation = current_rotation * trackball_rotation
+
+        # Decompose back to spherical angles
+        new_azimuth, new_elevation, new_roll = _quaternion_to_camera_angles(
+            new_rotation,
+            self.params.target,
+            self.params.distance,
+            self.params.init_pos,
+            self.params.init_up
+        )
+
+        # Update camera parameters
+        self.params.azimuth = new_azimuth
+        self.params.elevation = new_elevation
+        self.params.roll = new_roll
+
     def pan(self, delta_target: np.ndarray) -> None:
         """
         Pan camera (move target position).

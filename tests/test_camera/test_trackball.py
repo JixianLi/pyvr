@@ -6,6 +6,7 @@ from scipy.spatial.transform import Rotation as R
 
 from pyvr.camera import Camera
 from pyvr.camera.control import (
+    CameraController,
     _map_to_sphere,
     _camera_to_quaternion,
     _quaternion_to_camera_angles,
@@ -251,3 +252,226 @@ class TestQuaternionToCameraAngles:
         np.testing.assert_allclose(az1, az2, atol=1e-5)
         np.testing.assert_allclose(el1, el2, atol=1e-5)
         np.testing.assert_allclose(roll1, roll2, atol=1e-5)
+
+
+class TestCameraControllerTrackball:
+    """Tests for CameraController.trackball() method."""
+
+    def test_trackball_horizontal_right(self):
+        """Dragging right should rotate camera left around target."""
+        controller = CameraController(Camera.front_view(distance=3.0))
+        initial_azimuth = controller.params.azimuth
+
+        # Drag right
+        controller.trackball(
+            dx=100, dy=0,
+            viewport_width=800, viewport_height=600
+        )
+
+        # Azimuth should decrease (camera rotates left)
+        assert controller.params.azimuth < initial_azimuth
+
+    def test_trackball_horizontal_left(self):
+        """Dragging left should rotate camera right around target."""
+        controller = CameraController(Camera.front_view(distance=3.0))
+        initial_azimuth = controller.params.azimuth
+
+        # Drag left
+        controller.trackball(
+            dx=-100, dy=0,
+            viewport_width=800, viewport_height=600
+        )
+
+        # Azimuth should increase (camera rotates right)
+        assert controller.params.azimuth > initial_azimuth
+
+    def test_trackball_vertical_up(self):
+        """Dragging up should rotate camera up (increase elevation)."""
+        controller = CameraController(Camera.front_view(distance=3.0))
+        initial_elevation = controller.params.elevation
+
+        # Drag up (negative dy in screen coords)
+        controller.trackball(
+            dx=0, dy=-100,
+            viewport_width=800, viewport_height=600
+        )
+
+        # Elevation should increase (camera looks up)
+        assert controller.params.elevation > initial_elevation
+
+    def test_trackball_vertical_down(self):
+        """Dragging down should rotate camera down (decrease elevation)."""
+        controller = CameraController(Camera.front_view(distance=3.0))
+        initial_elevation = controller.params.elevation
+
+        # Drag down (positive dy in screen coords)
+        controller.trackball(
+            dx=0, dy=100,
+            viewport_width=800, viewport_height=600
+        )
+
+        # Elevation should decrease (camera looks down)
+        assert controller.params.elevation < initial_elevation
+
+    def test_trackball_diagonal(self):
+        """Diagonal drag should combine horizontal and vertical rotation."""
+        controller = CameraController(Camera.front_view(distance=3.0))
+        initial_azimuth = controller.params.azimuth
+        initial_elevation = controller.params.elevation
+
+        # Drag diagonally (right and up)
+        controller.trackball(
+            dx=100, dy=-100,
+            viewport_width=800, viewport_height=600
+        )
+
+        # Both angles should change
+        assert controller.params.azimuth != initial_azimuth
+        assert controller.params.elevation != initial_elevation
+
+    def test_trackball_zero_movement(self):
+        """Zero mouse movement should not change camera."""
+        controller = CameraController(Camera.isometric_view(distance=3.0))
+        initial_azimuth = controller.params.azimuth
+        initial_elevation = controller.params.elevation
+        initial_roll = controller.params.roll
+
+        # No movement
+        controller.trackball(
+            dx=0, dy=0,
+            viewport_width=800, viewport_height=600
+        )
+
+        # Camera should be unchanged
+        assert controller.params.azimuth == initial_azimuth
+        assert controller.params.elevation == initial_elevation
+        assert controller.params.roll == initial_roll
+
+    def test_trackball_very_small_movement(self):
+        """Very small movements should be ignored for stability."""
+        controller = CameraController(Camera.isometric_view(distance=3.0))
+        initial_azimuth = controller.params.azimuth
+        initial_elevation = controller.params.elevation
+
+        # Very small movement (< 0.001 normalized)
+        controller.trackball(
+            dx=0.1, dy=0.1,
+            viewport_width=800, viewport_height=600
+        )
+
+        # Camera should be unchanged (below threshold)
+        assert controller.params.azimuth == initial_azimuth
+        assert controller.params.elevation == initial_elevation
+
+    def test_trackball_sensitivity_scaling(self):
+        """Higher sensitivity should produce larger rotation."""
+        # Test with sensitivity=1.0
+        controller1 = CameraController(Camera.front_view(distance=3.0))
+        controller1.trackball(
+            dx=50, dy=0,
+            viewport_width=800, viewport_height=600,
+            sensitivity=1.0
+        )
+        rotation1 = abs(controller1.params.azimuth)
+
+        # Test with sensitivity=2.0
+        controller2 = CameraController(Camera.front_view(distance=3.0))
+        controller2.trackball(
+            dx=50, dy=0,
+            viewport_width=800, viewport_height=600,
+            sensitivity=2.0
+        )
+        rotation2 = abs(controller2.params.azimuth)
+
+        # Higher sensitivity should produce more rotation
+        assert rotation2 > rotation1
+        # Should be approximately double
+        assert abs(rotation2 / rotation1 - 2.0) < 0.5
+
+    def test_trackball_invalid_viewport_width(self):
+        """Invalid viewport width should raise ValueError."""
+        controller = CameraController(Camera.front_view(distance=3.0))
+
+        with pytest.raises(ValueError, match="Viewport dimensions must be positive"):
+            controller.trackball(
+                dx=10, dy=10,
+                viewport_width=0, viewport_height=600
+            )
+
+    def test_trackball_invalid_viewport_height(self):
+        """Invalid viewport height should raise ValueError."""
+        controller = CameraController(Camera.front_view(distance=3.0))
+
+        with pytest.raises(ValueError, match="Viewport dimensions must be positive"):
+            controller.trackball(
+                dx=10, dy=10,
+                viewport_width=800, viewport_height=-100
+            )
+
+    def test_trackball_preserves_distance(self):
+        """Trackball rotation should not change distance to target."""
+        controller = CameraController(Camera.isometric_view(distance=5.0))
+        initial_distance = controller.params.distance
+
+        # Apply several trackball movements
+        controller.trackball(dx=50, dy=30, viewport_width=800, viewport_height=600)
+        controller.trackball(dx=-30, dy=50, viewport_width=800, viewport_height=600)
+
+        # Distance should be unchanged
+        assert abs(controller.params.distance - initial_distance) < 1e-6
+
+    def test_trackball_preserves_target(self):
+        """Trackball rotation should not change target position."""
+        target = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+        camera = Camera.isometric_view(target=target, distance=5.0)
+        controller = CameraController(camera)
+
+        # Apply trackball movement
+        controller.trackball(dx=50, dy=30, viewport_width=800, viewport_height=600)
+
+        # Target should be unchanged
+        np.testing.assert_allclose(controller.params.target, target)
+
+    def test_trackball_continuous_rotation(self):
+        """Multiple small trackball movements should accumulate smoothly."""
+        controller = CameraController(Camera.front_view(distance=3.0))
+        initial_azimuth = controller.params.azimuth
+
+        # Apply 5 small movements
+        for _ in range(5):
+            controller.trackball(
+                dx=20, dy=0,
+                viewport_width=800, viewport_height=600
+            )
+
+        # Total rotation should be accumulated
+        total_rotation = abs(controller.params.azimuth - initial_azimuth)
+        assert total_rotation > 0.1  # Significant rotation
+
+    def test_trackball_different_viewport_sizes(self):
+        """Trackball should work with different viewport aspect ratios."""
+        # Wide viewport
+        controller1 = CameraController(Camera.front_view(distance=3.0))
+        controller1.trackball(dx=50, dy=0, viewport_width=1600, viewport_height=600)
+
+        # Tall viewport
+        controller2 = CameraController(Camera.front_view(distance=3.0))
+        controller2.trackball(dx=50, dy=0, viewport_width=600, viewport_height=1600)
+
+        # Both should produce rotation (exact values may differ due to scaling)
+        assert abs(controller1.params.azimuth) > 0
+        assert abs(controller2.params.azimuth) > 0
+
+    def test_trackball_from_different_orientations(self):
+        """Trackball should work correctly from various starting orientations."""
+        # Test from side view
+        controller = CameraController(Camera.side_view(distance=3.0))
+        initial_az = controller.params.azimuth
+        controller.trackball(dx=50, dy=0, viewport_width=800, viewport_height=600)
+        assert controller.params.azimuth != initial_az
+
+        # Test from top view
+        controller = CameraController(Camera.top_view(distance=3.0))
+        initial_el = controller.params.elevation
+        controller.trackball(dx=0, dy=50, viewport_width=800, viewport_height=600)
+        assert controller.params.elevation != initial_el
