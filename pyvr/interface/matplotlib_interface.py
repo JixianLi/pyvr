@@ -266,7 +266,7 @@ class InteractiveVolumeRenderer:
         """Get complete info text with controls and status."""
         controls = (
             "Mouse Controls:\n"
-            "  Image: Drag=orbit, Scroll=zoom\n"
+            "  Image: Drag=rotate, Scroll=zoom\n"
             "  Opacity: L-click=add/select, R-click=remove, Drag=move\n\n"
             "Keyboard Shortcuts:\n"
             "  r: Reset view\n"
@@ -275,6 +275,7 @@ class InteractiveVolumeRenderer:
             "  h: Toggle histogram\n"
             "  l: Toggle light link\n"
             "  q: Toggle auto-quality\n"
+            "  t: Toggle control mode\n"
             "  Esc: Deselect\n"
             "  Del: Remove selected\n"
         )
@@ -283,6 +284,7 @@ class InteractiveVolumeRenderer:
         light = self.renderer.get_light()
         status = (
             f"\nCurrent Status:\n"
+            f"  Control Mode: {self.state.camera_control_mode.capitalize()}\n"
             f"  Preset: {self.state.current_preset_name}\n"
             f"  FPS: {'ON' if self.state.show_fps else 'OFF'}\n"
             f"  Histogram: {'ON' if self.state.show_histogram else 'OFF'}\n"
@@ -422,17 +424,26 @@ class InteractiveVolumeRenderer:
                 dx = event.xdata - self.state.drag_start_pos[0]
                 dy = event.ydata - self.state.drag_start_pos[1]
 
-                # Convert pixel movement to camera angles
-                # Sensitivity factor for camera movement
-                sensitivity = 0.005
-                delta_azimuth = -dx * sensitivity
-                delta_elevation = dy * sensitivity
+                # Apply camera control based on current mode
+                if self.state.camera_control_mode == 'trackball':
+                    # Trackball control: intuitive 3D rotation
+                    self.camera_controller.trackball(
+                        dx=dx,
+                        dy=dy,
+                        viewport_width=self.width,
+                        viewport_height=self.height,
+                        sensitivity=1.0
+                    )
+                else:  # orbit mode
+                    # Orbit control: traditional azimuth/elevation
+                    sensitivity = 0.005
+                    delta_azimuth = -dx * sensitivity
+                    delta_elevation = dy * sensitivity
 
-                # Update camera using controller
-                self.camera_controller.orbit(
-                    delta_azimuth=delta_azimuth,
-                    delta_elevation=delta_elevation
-                )
+                    self.camera_controller.orbit(
+                        delta_azimuth=delta_azimuth,
+                        delta_elevation=delta_elevation
+                    )
 
                 # Update drag start position for next move
                 self.state.drag_start_pos = (event.xdata, event.ydata)
@@ -657,6 +668,16 @@ class InteractiveVolumeRenderer:
                     self._update_display(force_render=True)
                 except ValueError:
                     pass  # Can't delete first/last
+
+        elif event.key == 't':
+            # Toggle camera control mode
+            if self.state.camera_control_mode == 'trackball':
+                self.state.camera_control_mode = 'orbit'
+                print("Switched to orbit control (azimuth/elevation)")
+            else:
+                self.state.camera_control_mode = 'trackball'
+                print("Switched to trackball control (arcball)")
+            self._update_status_display()
 
     def _save_image(self) -> None:
         """Save current rendering to file."""

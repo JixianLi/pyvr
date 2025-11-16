@@ -19,6 +19,7 @@ class InterfaceState:
         is_dragging_camera: Whether user is currently dragging to orbit camera
         is_dragging_control_point: Whether user is currently dragging a control point
         drag_start_pos: (x, y) position where drag started (in axes coordinates)
+        camera_control_mode: Current camera control mode ('trackball' or 'orbit')
         needs_render: Flag indicating volume needs to be re-rendered
         needs_tf_update: Flag indicating transfer function needs update
         show_fps: Flag indicating whether FPS counter should be displayed
@@ -35,6 +36,7 @@ class InterfaceState:
     is_dragging_camera: bool = False
     is_dragging_control_point: bool = False
     drag_start_pos: Optional[Tuple[float, float]] = None
+    camera_control_mode: str = 'trackball'  # or 'orbit'
 
     # Update flags
     needs_render: bool = True
