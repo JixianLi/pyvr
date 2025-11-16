@@ -312,7 +312,7 @@ print(f"Physical dimensions: {volume.dimensions}")
 ```
 
 **Requirements:**
-VTK is included as a core dependency starting from v0.4.0.
+VTK is included as a core dependency (required for VTK data loading).
 
 ## ⚙️ Rendering Configuration
 
