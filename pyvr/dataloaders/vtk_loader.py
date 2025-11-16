@@ -7,7 +7,7 @@ from typing import Union
 
 import numpy as np
 import vtk
-from vtk.util.numpy_support import vtk_to_numpy
+from vtk.util.numpy_support import vtk_to_numpy # type: ignore -- VTK is a large C++ library with Python bindings and often has incomplete type annotations.
 
 from pyvr.volume import Volume
 
