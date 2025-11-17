@@ -73,16 +73,16 @@ poetry run black pyvr/ && poetry run isort pyvr/
 ### Running Examples
 ```bash
 # Run basic rendering example
-python example/basic_rendering.py
+python examples/basic_rendering.py
 
 # Run camera demo
-python example/camera_demo.py
+python examples/camera_demo.py
 
 # Run transfer functions demo
-python example/transfer_functions_demo.py
+python examples/transfer_functions_demo.py
 
 # Run benchmark (compares quality presets)
-python example/benchmark.py
+python examples/benchmark.py
 ```
 
 ## Architecture & Design
