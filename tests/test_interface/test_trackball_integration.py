@@ -57,7 +57,7 @@ class TestInterfaceTrackballMode:
             mock_trackball.assert_called_once()
             call_args = mock_trackball.call_args
             assert call_args[1]["dx"] == 50  # 150 - 100
-            assert call_args[1]["dy"] == 20  # 120 - 100
+            assert call_args[1]["dy"] == -20  # -(120 - 100), inverted for matplotlib coords
             assert call_args[1]["viewport_width"] == 512
             assert call_args[1]["viewport_height"] == 512
 

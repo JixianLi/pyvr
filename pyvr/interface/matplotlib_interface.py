@@ -443,9 +443,11 @@ class InteractiveVolumeRenderer:
                 # Apply camera control based on current mode
                 if self.state.camera_control_mode == "trackball":
                     # Trackball control: intuitive 3D rotation
+                    # Note: Invert dy for matplotlib's coordinate system (y increases upward)
+                    # The trackball() method expects screen coordinates (y increases downward)
                     self.camera_controller.trackball(
                         dx=dx,
-                        dy=dy,
+                        dy=-dy,  # Invert for matplotlib coordinates
                         viewport_width=self.width,
                         viewport_height=self.height,
                         sensitivity=1.0,
