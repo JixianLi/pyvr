@@ -332,9 +332,9 @@ class Light:
         """
         self._is_linked = True
         self._camera_offsets = {
-            'azimuth': azimuth_offset,
-            'elevation': elevation_offset,
-            'distance': distance_offset,
+            "azimuth": azimuth_offset,
+            "elevation": elevation_offset,
+            "distance": distance_offset,
         }
         return self
 
@@ -381,13 +381,16 @@ class Light:
             for correct and intuitive behavior.
         """
         if not self._is_linked:
-            raise ValueError("Light is not linked to camera. Call link_to_camera() first.")
+            raise ValueError(
+                "Light is not linked to camera. Call link_to_camera() first."
+            )
 
         if self._camera_offsets is None:
             raise ValueError("Camera offsets not set. Call link_to_camera() first.")
 
         # Import Camera here to avoid circular dependency
         from pyvr.camera import Camera
+
         if not isinstance(camera, Camera):
             raise ValueError("camera must be a Camera instance")
 

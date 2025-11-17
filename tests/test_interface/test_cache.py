@@ -12,7 +12,7 @@ from pyvr.interface import cache
 def temp_cache_dir(monkeypatch):
     """Create temporary cache directory for testing."""
     temp_dir = Path(tempfile.mkdtemp())
-    monkeypatch.setattr(cache, 'CACHE_DIR', temp_dir)
+    monkeypatch.setattr(cache, "CACHE_DIR", temp_dir)
 
     yield temp_dir
 
@@ -58,7 +58,7 @@ class TestVolumeHash:
         hash_str = cache.compute_volume_hash(data)
 
         assert len(hash_str) == 64
-        assert all(c in '0123456789abcdef' for c in hash_str)
+        assert all(c in "0123456789abcdef" for c in hash_str)
 
 
 class TestHistogramCaching:
@@ -185,11 +185,12 @@ class TestGetOrComputeHistogram:
         # Mock compute to detect if called
         compute_called = []
         original_compute = cache.compute_log_histogram
+
         def mock_compute(*args, **kwargs):
             compute_called.append(True)
             return original_compute(*args, **kwargs)
 
-        monkeypatch.setattr(cache, 'compute_log_histogram', mock_compute)
+        monkeypatch.setattr(cache, "compute_log_histogram", mock_compute)
 
         # Second call should use cache
         bin_edges2, log_counts2 = cache.get_or_compute_histogram(data)

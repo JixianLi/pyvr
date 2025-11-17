@@ -13,7 +13,7 @@ from pyvr.camera.camera import Camera
 
 class TestVolumeRendererInitialization:
     """Test VolumeRenderer initialization and setup."""
-    
+
     def test_init_default_parameters(self, mock_moderngl_context):
         """Test initialization with default parameters."""
         renderer = VolumeRenderer()
@@ -23,7 +23,7 @@ class TestVolumeRendererInitialization:
         assert renderer.config.step_size == 0.01
         assert renderer.config.max_steps == 500  # balanced preset default
         assert renderer.gl_manager is not None
-        
+
     def test_init_custom_parameters(self, mock_moderngl_context):
         """Test initialization with custom parameters."""
         from pyvr.config import RenderConfig
@@ -37,39 +37,47 @@ class TestVolumeRendererInitialization:
         assert renderer.config.max_steps == 500
 
 
-
-
 class TestVolumeRendererTransferFunctions:
     """Test transfer function management - v0.2.2 RGBA feature."""
-    
-    def test_set_transfer_functions(self, mock_moderngl_context, mock_transfer_functions):
+
+    def test_set_transfer_functions(
+        self, mock_moderngl_context, mock_transfer_functions
+    ):
         """Test setting color and opacity transfer functions."""
         renderer = VolumeRenderer()
         color_tf, opacity_tf = mock_transfer_functions
-        
+
         # Mock the manager's RGBA texture creation
-        renderer.gl_manager.create_rgba_transfer_function_texture = MagicMock(return_value=0)
+        renderer.gl_manager.create_rgba_transfer_function_texture = MagicMock(
+            return_value=0
+        )
         renderer.gl_manager.set_uniform_int = MagicMock()
-        
+
         renderer.set_transfer_functions(color_tf, opacity_tf)
-        
+
         # Should create RGBA texture and set uniform
         renderer.gl_manager.create_rgba_transfer_function_texture.assert_called_once_with(
             color_tf, opacity_tf, None
         )
-        renderer.gl_manager.set_uniform_int.assert_called_with('transfer_function_lut', 0)
-        
-    def test_set_transfer_functions_with_custom_size(self, mock_moderngl_context, mock_transfer_functions):
+        renderer.gl_manager.set_uniform_int.assert_called_with(
+            "transfer_function_lut", 0
+        )
+
+    def test_set_transfer_functions_with_custom_size(
+        self, mock_moderngl_context, mock_transfer_functions
+    ):
         """Test setting transfer functions with custom size."""
         renderer = VolumeRenderer()
         color_tf, opacity_tf = mock_transfer_functions
-        
+
         # Mock the manager's RGBA texture creation
-        renderer.gl_manager.create_rgba_transfer_function_texture = MagicMock(return_value=1)
+        renderer.gl_manager.create_rgba_transfer_function_texture = MagicMock(
+            return_value=1
+        )
         renderer.gl_manager.set_uniform_int = MagicMock()
-        
+
         renderer.set_transfer_functions(color_tf, opacity_tf, size=512)
-        
+
         # Should create RGBA texture with custom size
         renderer.gl_manager.create_rgba_transfer_function_texture.assert_called_once_with(
             color_tf, opacity_tf, 512
@@ -78,7 +86,7 @@ class TestVolumeRendererTransferFunctions:
 
 class TestVolumeRendererCameraManagement:
     """Test camera and view management."""
-    
+
     def test_set_camera(self, mock_moderngl_context):
         """Test setting camera parameters."""
         from pyvr.camera import Camera
@@ -94,12 +102,12 @@ class TestVolumeRendererCameraManagement:
         assert True
 
 
-
-
 class TestVolumeRendererRenderingProcess:
     """Test the complete rendering process."""
-    
-    def test_render_basic(self, mock_moderngl_context, sample_volume_data, mock_transfer_functions):
+
+    def test_render_basic(
+        self, mock_moderngl_context, sample_volume_data, mock_transfer_functions
+    ):
         """Test basic rendering pipeline."""
         from pyvr.volume import Volume
 
@@ -113,13 +121,17 @@ class TestVolumeRendererRenderingProcess:
         renderer.gl_manager.create_volume_texture = MagicMock(return_value=0)
         renderer.gl_manager.set_uniform_int = MagicMock()
         renderer.gl_manager.set_uniform_vector = MagicMock()
-        renderer.gl_manager.create_rgba_transfer_function_texture = MagicMock(return_value=1)
+        renderer.gl_manager.create_rgba_transfer_function_texture = MagicMock(
+            return_value=1
+        )
         renderer.gl_manager.set_uniform_float = MagicMock()
         renderer.gl_manager.set_uniform_matrix = MagicMock()
         renderer.gl_manager.clear_framebuffer = MagicMock()
         renderer.gl_manager.setup_blending = MagicMock()
         renderer.gl_manager.render_quad = MagicMock()
-        renderer.gl_manager.read_pixels = MagicMock(return_value=np.random.rand(512, 512, 4))
+        renderer.gl_manager.read_pixels = MagicMock(
+            return_value=np.random.rand(512, 512, 4)
+        )
 
         # Setup volume and transfer functions
         renderer.load_volume(volume)
@@ -128,8 +140,10 @@ class TestVolumeRendererRenderingProcess:
         image = renderer.render()
 
         assert image is not None
-        
-    def test_render_to_pil(self, mock_moderngl_context, sample_volume_data, mock_transfer_functions):
+
+    def test_render_to_pil(
+        self, mock_moderngl_context, sample_volume_data, mock_transfer_functions
+    ):
         """Test rendering to PIL image."""
         from pyvr.volume import Volume
 
@@ -138,7 +152,9 @@ class TestVolumeRendererRenderingProcess:
 
         # Mock the manager methods BEFORE loading volume
         renderer.gl_manager.create_volume_texture = MagicMock(return_value=0)
-        renderer.gl_manager.create_rgba_transfer_function_texture = MagicMock(return_value=1)
+        renderer.gl_manager.create_rgba_transfer_function_texture = MagicMock(
+            return_value=1
+        )
         renderer.gl_manager.set_uniform_int = MagicMock()
         renderer.gl_manager.set_uniform_vector = MagicMock()
         renderer.gl_manager.set_uniform_float = MagicMock()
@@ -150,31 +166,37 @@ class TestVolumeRendererRenderingProcess:
         # Setup volume and transfer functions
         volume = Volume(data=sample_volume_data)
         renderer.load_volume(volume)
-        
+
         # Mock read_pixels to return proper image data as bytes
-        mock_pixel_data = b'\\x00' * (512 * 512 * 4)  # Mock RGBA pixel data
+        mock_pixel_data = b"\\x00" * (512 * 512 * 4)  # Mock RGBA pixel data
         renderer.gl_manager.read_pixels = MagicMock(return_value=mock_pixel_data)
-        
+
         renderer.set_transfer_functions(color_tf, opacity_tf)
-        
-        with patch('PIL.Image.frombytes') as mock_frombytes:
-            with patch.object(renderer, 'render', return_value=mock_pixel_data) as mock_render:
+
+        with patch("PIL.Image.frombytes") as mock_frombytes:
+            with patch.object(
+                renderer, "render", return_value=mock_pixel_data
+            ) as mock_render:
                 mock_image = MagicMock()
                 mock_image.transpose.return_value = mock_image
                 mock_frombytes.return_value = mock_image
-                
+
                 pil_image = renderer.render_to_pil()
-                
+
                 # Check that frombytes was called with correct parameters
-                mock_frombytes.assert_called_once_with("RGBA", (512, 512), mock_pixel_data)
+                mock_frombytes.assert_called_once_with(
+                    "RGBA", (512, 512), mock_pixel_data
+                )
                 mock_image.transpose.assert_called_once()
                 assert pil_image is not None
 
 
 class TestVolumeRendererIntegration:
     """Test integration scenarios and complex workflows."""
-    
-    def test_multi_frame_rendering(self, mock_moderngl_context, sample_volume_data, mock_transfer_functions):
+
+    def test_multi_frame_rendering(
+        self, mock_moderngl_context, sample_volume_data, mock_transfer_functions
+    ):
         """Test rendering multiple frames with parameter changes."""
         from pyvr.volume import Volume
 
@@ -183,7 +205,9 @@ class TestVolumeRendererIntegration:
 
         # Mock all manager operations BEFORE loading volume
         renderer.gl_manager.create_volume_texture = MagicMock(return_value=0)
-        renderer.gl_manager.create_rgba_transfer_function_texture = MagicMock(return_value=1)
+        renderer.gl_manager.create_rgba_transfer_function_texture = MagicMock(
+            return_value=1
+        )
         renderer.gl_manager.set_uniform_int = MagicMock()
         renderer.gl_manager.set_uniform_vector = MagicMock()
         renderer.gl_manager.set_uniform_float = MagicMock()
@@ -191,7 +215,9 @@ class TestVolumeRendererIntegration:
         renderer.gl_manager.clear_framebuffer = MagicMock()
         renderer.gl_manager.setup_blending = MagicMock()
         renderer.gl_manager.render_quad = MagicMock()
-        renderer.gl_manager.read_pixels = MagicMock(return_value=np.random.rand(512, 512, 4))
+        renderer.gl_manager.read_pixels = MagicMock(
+            return_value=np.random.rand(512, 512, 4)
+        )
 
         # Setup volume and transfer functions
         volume = Volume(data=sample_volume_data)
@@ -211,8 +237,10 @@ class TestVolumeRendererIntegration:
 
         assert image1 is not None
         assert image2 is not None
-        
-    def test_volume_data_replacement(self, mock_moderngl_context, mock_transfer_functions):
+
+    def test_volume_data_replacement(
+        self, mock_moderngl_context, mock_transfer_functions
+    ):
         """Test replacing volume data mid-session."""
         from pyvr.volume import Volume
 
@@ -231,13 +259,17 @@ class TestVolumeRendererIntegration:
         renderer.set_transfer_functions(color_tf, opacity_tf)
 
         # Mock manager for rendering
-        renderer.gl_manager.create_rgba_transfer_function_texture = MagicMock(return_value=1)
+        renderer.gl_manager.create_rgba_transfer_function_texture = MagicMock(
+            return_value=1
+        )
         renderer.gl_manager.set_uniform_float = MagicMock()
         renderer.gl_manager.set_uniform_matrix = MagicMock()
         renderer.gl_manager.clear_framebuffer = MagicMock()
         renderer.gl_manager.setup_blending = MagicMock()
         renderer.gl_manager.render_quad = MagicMock()
-        renderer.gl_manager.read_pixels = MagicMock(return_value=np.random.rand(512, 512, 4))
+        renderer.gl_manager.read_pixels = MagicMock(
+            return_value=np.random.rand(512, 512, 4)
+        )
 
         renderer.render()
 
@@ -245,16 +277,16 @@ class TestVolumeRendererIntegration:
         volume2_data = np.random.rand(32, 32, 32).astype(np.float32)
         volume2 = Volume(data=volume2_data)
         renderer.load_volume(volume2)
-        
+
         renderer.render()
-        
+
         # Should have created volume texture twice (once for each load_volume call)
         assert renderer.gl_manager.create_volume_texture.call_count == 2
 
 
 class TestVolumeRendererErrorHandling:
     """Test error handling and edge cases."""
-    
+
     def test_parameter_validation(self, mock_moderngl_context):
         """Test config parameter validation."""
         from pyvr.config import RenderConfig
@@ -270,11 +302,11 @@ class TestVolumeRendererErrorHandling:
         renderer.set_config(config)
         assert renderer.config.step_size == 0.005
         assert renderer.config.max_steps == 1000
-        
+
     def test_render_without_setup(self, mock_moderngl_context):
         """Test that rendering without proper setup fails gracefully."""
         renderer = VolumeRenderer()
-        
+
         # Mock the gl_manager methods to avoid actual OpenGL calls
         renderer.gl_manager.set_uniform_float = MagicMock()
         renderer.gl_manager.set_uniform_int = MagicMock()
@@ -282,8 +314,10 @@ class TestVolumeRendererErrorHandling:
         renderer.gl_manager.clear_framebuffer = MagicMock()
         renderer.gl_manager.setup_blending = MagicMock()
         renderer.gl_manager.render_quad = MagicMock()
-        renderer.gl_manager.read_pixels = MagicMock(return_value=np.random.rand(512, 512, 4))
-        
+        renderer.gl_manager.read_pixels = MagicMock(
+            return_value=np.random.rand(512, 512, 4)
+        )
+
         try:
             image = renderer.render()
             # If it succeeds, that's also acceptable
@@ -295,28 +329,30 @@ class TestVolumeRendererErrorHandling:
 
 class TestVolumeRendererResourceManagement:
     """Test resource management and cleanup."""
-    
+
     def test_initialization_creates_manager(self, mock_moderngl_context):
         """Test that initialization properly creates GL manager."""
         renderer = VolumeRenderer()
-        
+
         assert renderer.gl_manager is not None
-        assert hasattr(renderer.gl_manager, 'ctx')
-        
+        assert hasattr(renderer.gl_manager, "ctx")
+
     def test_manager_delegation(self, mock_moderngl_context, mock_transfer_functions):
         """Test that renderer properly delegates to GL manager."""
         renderer = VolumeRenderer()
         color_tf, opacity_tf = mock_transfer_functions
-        
+
         # Mock manager method
-        renderer.gl_manager.create_rgba_transfer_function_texture = MagicMock(return_value=5)
+        renderer.gl_manager.create_rgba_transfer_function_texture = MagicMock(
+            return_value=5
+        )
         renderer.gl_manager.set_uniform_int = MagicMock()
-        
+
         renderer.set_transfer_functions(color_tf, opacity_tf)
-        
+
         # Should have delegated to manager
         renderer.gl_manager.create_rgba_transfer_function_texture.assert_called_once()
-    
+
     def test_load_volume_edge_cases(self, mock_moderngl_context):
         """Test edge cases for volume loading."""
         from pyvr.volume import Volume
@@ -338,11 +374,11 @@ class TestVolumeRendererResourceManagement:
         invalid_volume = np.random.random((10, 10, 10))  # numpy array, not Volume
         with pytest.raises(TypeError, match="Expected Volume instance"):
             renderer.load_volume(invalid_volume)
-    
+
     def test_rendering_with_minimal_setup(self, mock_moderngl_context):
         """Test rendering with minimal setup to cover edge cases."""
         renderer = VolumeRenderer()
-        
+
         # Mock all the GL operations
         renderer.gl_manager.set_uniform_float = MagicMock()
         renderer.gl_manager.set_uniform_int = MagicMock()
@@ -350,17 +386,20 @@ class TestVolumeRendererResourceManagement:
         renderer.gl_manager.clear_framebuffer = MagicMock()
         renderer.gl_manager.setup_blending = MagicMock()
         renderer.gl_manager.render_quad = MagicMock()
-        renderer.gl_manager.read_pixels = MagicMock(return_value=np.zeros((100, 100, 4), dtype=np.uint8))
-        
+        renderer.gl_manager.read_pixels = MagicMock(
+            return_value=np.zeros((100, 100, 4), dtype=np.uint8)
+        )
+
         # Set camera using Camera class
         from pyvr.camera import Camera
+
         camera = Camera.front_view(distance=3.0)
         renderer.set_camera(camera)
-        
+
         # Should not crash
         pixels = renderer.render()
         assert pixels is not None
-        
+
     def test_parameter_validation_comprehensive(self, mock_moderngl_context):
         """Test comprehensive parameter validation."""
         from pyvr.config import RenderConfig
@@ -387,7 +426,7 @@ class TestVolumeRendererLightIntegration:
 
         renderer = VolumeRenderer()
 
-        assert hasattr(renderer, 'light')
+        assert hasattr(renderer, "light")
         assert isinstance(renderer.light, Light)
 
     def test_volume_renderer_custom_light(self, mock_moderngl_context):
@@ -507,7 +546,9 @@ class TestVolumeRendererVolumeClass:
         # Should have created texture and set uniforms
         renderer.gl_manager.create_volume_texture.assert_called_once_with(data)
         renderer.gl_manager.set_uniform_int.assert_called_with("volume_texture", 0)
-        assert renderer.gl_manager.set_uniform_vector.call_count >= 2  # min_bounds and max_bounds
+        assert (
+            renderer.gl_manager.set_uniform_vector.call_count >= 2
+        )  # min_bounds and max_bounds
 
     def test_load_volume_with_normals(self, mock_moderngl_context):
         """VolumeRenderer should handle Volume with normals."""
@@ -555,8 +596,12 @@ class TestVolumeRendererVolumeClass:
         renderer.load_volume(volume)
 
         # Should have set the custom bounds
-        renderer.gl_manager.set_uniform_vector.assert_any_call("volume_min_bounds", (-1.0, -1.0, -1.0))
-        renderer.gl_manager.set_uniform_vector.assert_any_call("volume_max_bounds", (1.0, 1.0, 1.0))
+        renderer.gl_manager.set_uniform_vector.assert_any_call(
+            "volume_min_bounds", (-1.0, -1.0, -1.0)
+        )
+        renderer.gl_manager.set_uniform_vector.assert_any_call(
+            "volume_max_bounds", (1.0, 1.0, 1.0)
+        )
 
     def test_get_volume(self, mock_moderngl_context):
         """get_volume should return current Volume instance."""

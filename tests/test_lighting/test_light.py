@@ -1,4 +1,5 @@
 """Tests for Light class."""
+
 import numpy as np
 import pytest
 
@@ -175,11 +176,7 @@ class TestLightDirectionalFactory:
 
     def test_directional_custom_intensities(self):
         """Directional light should respect custom intensities."""
-        light = Light.directional(
-            direction=[0, 1, 0],
-            ambient=0.1,
-            diffuse=0.95
-        )
+        light = Light.directional(direction=[0, 1, 0], ambient=0.1, diffuse=0.95)
 
         assert light.ambient_intensity == 0.1
         assert light.diffuse_intensity == 0.95
@@ -215,11 +212,7 @@ class TestLightPointFactory:
 
     def test_point_light_custom_intensities(self):
         """Point light should respect custom intensities."""
-        light = Light.point_light(
-            position=[0, 0, 0],
-            ambient=0.15,
-            diffuse=0.75
-        )
+        light = Light.point_light(position=[0, 0, 0], ambient=0.15, diffuse=0.75)
 
         assert light.ambient_intensity == 0.15
         assert light.diffuse_intensity == 0.75

@@ -111,7 +111,9 @@ def test_initial_state_validation():
 
 def test_remove_control_point_updates_selection():
     """Test that removing a control point updates selected index."""
-    state = InterfaceState(control_points=[(0.0, 0.0), (0.3, 0.3), (0.5, 0.5), (1.0, 1.0)])
+    state = InterfaceState(
+        control_points=[(0.0, 0.0), (0.3, 0.3), (0.5, 0.5), (1.0, 1.0)]
+    )
     state.select_control_point(1)
 
     # Remove the selected control point
@@ -119,7 +121,9 @@ def test_remove_control_point_updates_selection():
     assert state.selected_control_point is None
 
     # Test removing point before selected
-    state = InterfaceState(control_points=[(0.0, 0.0), (0.3, 0.3), (0.5, 0.5), (1.0, 1.0)])
+    state = InterfaceState(
+        control_points=[(0.0, 0.0), (0.3, 0.3), (0.5, 0.5), (1.0, 1.0)]
+    )
     state.select_control_point(2)
     state.remove_control_point(1)
     assert state.selected_control_point == 1  # Index shifted down
@@ -127,7 +131,9 @@ def test_remove_control_point_updates_selection():
 
 def test_update_control_point_maintains_order():
     """Test updating control point re-sorts when needed."""
-    state = InterfaceState(control_points=[(0.0, 0.0), (0.3, 0.3), (0.5, 0.5), (1.0, 1.0)])
+    state = InterfaceState(
+        control_points=[(0.0, 0.0), (0.3, 0.3), (0.5, 0.5), (1.0, 1.0)]
+    )
 
     # Move middle point past another
     state.update_control_point(1, 0.7, 0.3)  # Move 0.3 to 0.7

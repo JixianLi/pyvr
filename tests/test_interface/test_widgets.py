@@ -128,8 +128,8 @@ class TestColorSelector:
         selector = ColorSelector(mock_axes)
         assert selector.current_colormap == "viridis"
         assert selector.on_change is None
-        assert hasattr(selector, 'radio')
-        assert hasattr(selector, 'colormap_preview')
+        assert hasattr(selector, "radio")
+        assert hasattr(selector, "colormap_preview")
 
     def test_initialization_with_callback(self, mock_axes):
         """Test initialization with callback."""
@@ -145,11 +145,11 @@ class TestColorSelector:
         # Mock the radio.set_active method to avoid matplotlib internals
         selector.radio.set_active = MagicMock()
 
-        selector.set_colormap('plasma')
+        selector.set_colormap("plasma")
 
-        assert selector.current_colormap == 'plasma'
+        assert selector.current_colormap == "plasma"
         # Verify set_active was called with correct index
-        expected_index = ColorSelector.AVAILABLE_COLORMAPS.index('plasma')
+        expected_index = ColorSelector.AVAILABLE_COLORMAPS.index("plasma")
         selector.radio.set_active.assert_called_once_with(expected_index)
 
     def test_set_invalid_colormap(self, mock_axes):
@@ -157,23 +157,23 @@ class TestColorSelector:
         selector = ColorSelector(mock_axes)
 
         with pytest.raises(ValueError, match="not available"):
-            selector.set_colormap('invalid_colormap')
+            selector.set_colormap("invalid_colormap")
 
     def test_available_colormaps(self):
         """Test that AVAILABLE_COLORMAPS is properly defined."""
         assert len(ColorSelector.AVAILABLE_COLORMAPS) > 0
-        assert 'viridis' in ColorSelector.AVAILABLE_COLORMAPS
-        assert 'plasma' in ColorSelector.AVAILABLE_COLORMAPS
+        assert "viridis" in ColorSelector.AVAILABLE_COLORMAPS
+        assert "plasma" in ColorSelector.AVAILABLE_COLORMAPS
 
     def test_on_selection_callback(self, mock_axes):
         """Test colormap selection triggers callback."""
         callback = Mock()
         selector = ColorSelector(mock_axes, on_change=callback)
 
-        selector._on_selection('inferno')
+        selector._on_selection("inferno")
 
-        assert selector.current_colormap == 'inferno'
-        callback.assert_called_once_with('inferno')
+        assert selector.current_colormap == "inferno"
+        callback.assert_called_once_with("inferno")
 
     def test_colormap_preview_updates(self, mock_axes):
         """Test colormap preview updates when selection changes."""
@@ -182,10 +182,10 @@ class TestColorSelector:
         # Mock the preview image
         selector.colormap_preview = MagicMock()
 
-        selector._on_selection('hot')
+        selector._on_selection("hot")
 
-        assert selector.current_colormap == 'hot'
-        selector.colormap_preview.set_cmap.assert_called_once_with('hot')
+        assert selector.current_colormap == "hot"
+        selector.colormap_preview.set_cmap.assert_called_once_with("hot")
 
     def test_radio_buttons_created(self, mock_axes):
         """Test that RadioButtons widget is created."""
@@ -193,7 +193,7 @@ class TestColorSelector:
 
         assert selector.radio is not None
         # Radio has on_clicked method for connecting callbacks
-        assert hasattr(selector.radio, 'on_clicked')
+        assert hasattr(selector.radio, "on_clicked")
 
     def test_set_colormap_updates_radio(self, mock_axes):
         """Test programmatic colormap change updates radio buttons."""
@@ -202,11 +202,12 @@ class TestColorSelector:
         # Mock the radio widget
         selector.radio.set_active = MagicMock()
 
-        selector.set_colormap('inferno')
+        selector.set_colormap("inferno")
 
         # inferno is at index 2 in AVAILABLE_COLORMAPS
-        expected_index = ColorSelector.AVAILABLE_COLORMAPS.index('inferno')
+        expected_index = ColorSelector.AVAILABLE_COLORMAPS.index("inferno")
         selector.radio.set_active.assert_called_once_with(expected_index)
+
 
 class TestOpacityEditorHistogram:
     """Tests for histogram integration in OpacityEditor."""

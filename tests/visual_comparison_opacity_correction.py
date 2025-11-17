@@ -27,7 +27,7 @@ import numpy as np
 def render_all_presets():
     """Render test volume at all presets for visual comparison."""
     print("Creating test volume...")
-    volume_data = create_sample_volume(128, 'double_sphere')
+    volume_data = create_sample_volume(128, "double_sphere")
     volume = Volume(data=volume_data)
 
     print("Setting up renderer...")
@@ -35,11 +35,11 @@ def render_all_presets():
     renderer.load_volume(volume)
 
     # Use same transfer functions for all
-    ctf = ColorTransferFunction.from_colormap('viridis')
+    ctf = ColorTransferFunction.from_colormap("viridis")
     otf = OpacityTransferFunction.linear(0.0, 0.3)
     renderer.set_transfer_functions(ctf, otf)
 
-    presets = ['preview', 'fast', 'balanced', 'high_quality', 'ultra_quality']
+    presets = ["preview", "fast", "balanced", "high_quality", "ultra_quality"]
 
     print("\nRendering at all presets...")
     stats = []
@@ -62,36 +62,40 @@ def render_all_presets():
         img_array = np.array(image)
 
         # Compute statistics
-        mean_alpha = img_array[:,:,3].mean()
-        max_alpha = img_array[:,:,3].max()
-        mean_rgb = img_array[:,:,:3].mean()
+        mean_alpha = img_array[:, :, 3].mean()
+        max_alpha = img_array[:, :, 3].max()
+        mean_rgb = img_array[:, :, :3].mean()
 
         print(f"  Mean alpha: {mean_alpha:.1f}")
         print(f"  Max alpha: {max_alpha}")
         print(f"  Mean RGB: {mean_rgb:.1f}")
 
-        stats.append({
-            'preset': preset_name,
-            'mean_alpha': mean_alpha,
-            'max_alpha': max_alpha,
-            'mean_rgb': mean_rgb
-        })
+        stats.append(
+            {
+                "preset": preset_name,
+                "mean_alpha": mean_alpha,
+                "max_alpha": max_alpha,
+                "mean_rgb": mean_rgb,
+            }
+        )
 
         # Save image
-        filename = f'opacity_comparison_{preset_name}.png'
+        filename = f"opacity_comparison_{preset_name}.png"
         image.save(filename)
         print(f"  Saved: {filename}")
 
     # Print comparison summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("COMPARISON SUMMARY")
-    print("="*60)
+    print("=" * 60)
     print(f"{'Preset':<20} {'Mean Alpha':>12} {'Max Alpha':>12} {'Mean RGB':>12}")
-    print("-"*60)
+    print("-" * 60)
 
     for stat in stats:
-        print(f"{stat['preset']:<20} {stat['mean_alpha']:>12.1f} "
-              f"{stat['max_alpha']:>12} {stat['mean_rgb']:>12.1f}")
+        print(
+            f"{stat['preset']:<20} {stat['mean_alpha']:>12.1f} "
+            f"{stat['max_alpha']:>12} {stat['mean_rgb']:>12.1f}"
+        )
 
     print("\n✓ Visual comparison images saved")
     print("\nManual Verification:")
@@ -100,5 +104,5 @@ def render_all_presets():
     print("- No image should be significantly lighter or darker than others")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     render_all_presets()

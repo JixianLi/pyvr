@@ -304,7 +304,9 @@ class ModernGLVolumeRenderer:
         """Update OpenGL uniforms from current render configuration."""
         self.gl_manager.set_uniform_float("step_size", self.config.step_size)
         self.gl_manager.set_uniform_int("max_steps", self.config.max_steps)
-        self.gl_manager.set_uniform_float("reference_step_size", self.config.reference_step_size)
+        self.gl_manager.set_uniform_float(
+            "reference_step_size", self.config.reference_step_size
+        )
 
     def _update_light(self):
         """Update OpenGL uniforms from light configuration."""

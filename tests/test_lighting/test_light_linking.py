@@ -29,16 +29,14 @@ class TestLightLinking:
         light = Light.default()
 
         light.link_to_camera(
-            azimuth_offset=np.pi/4,
-            elevation_offset=np.pi/6,
-            distance_offset=1.0
+            azimuth_offset=np.pi / 4, elevation_offset=np.pi / 6, distance_offset=1.0
         )
 
         offsets = light.get_offsets()
         assert offsets is not None
-        assert offsets['azimuth'] == pytest.approx(np.pi/4)
-        assert offsets['elevation'] == pytest.approx(np.pi/6)
-        assert offsets['distance'] == pytest.approx(1.0)
+        assert offsets["azimuth"] == pytest.approx(np.pi / 4)
+        assert offsets["elevation"] == pytest.approx(np.pi / 6)
+        assert offsets["distance"] == pytest.approx(1.0)
 
     def test_unlink_from_camera(self):
         """Test unlinking light from camera."""
@@ -61,7 +59,7 @@ class TestLightLinking:
             distance=3.0,
             azimuth=0.0,
             elevation=0.0,
-            roll=0.0
+            roll=0.0,
         )
 
         with pytest.raises(ValueError, match="not linked"):
@@ -78,14 +76,16 @@ class TestLightLinking:
     def test_update_from_camera_updates_position(self):
         """Test update_from_camera() updates light position."""
         light = Light.default()
-        light.link_to_camera(azimuth_offset=0.0, elevation_offset=0.0, distance_offset=0.0)
+        light.link_to_camera(
+            azimuth_offset=0.0, elevation_offset=0.0, distance_offset=0.0
+        )
 
         camera = Camera.from_spherical(
             target=np.array([0.0, 0.0, 0.0]),
             distance=3.0,
-            azimuth=np.pi/2,  # 90 degrees
+            azimuth=np.pi / 2,  # 90 degrees
             elevation=0.0,
-            roll=0.0
+            roll=0.0,
         )
 
         original_position = light.position.copy()
@@ -105,14 +105,16 @@ class TestLightLinking:
         Light is positioned at camera location regardless of offset values.
         """
         light = Light.default()
-        light.link_to_camera(azimuth_offset=np.pi/4, elevation_offset=0.0, distance_offset=0.0)
+        light.link_to_camera(
+            azimuth_offset=np.pi / 4, elevation_offset=0.0, distance_offset=0.0
+        )
 
         camera = Camera.from_spherical(
             target=np.array([0.0, 0.0, 0.0]),
             distance=3.0,
             azimuth=0.0,
             elevation=0.0,
-            roll=0.0
+            roll=0.0,
         )
 
         light.update_from_camera(camera)
@@ -130,14 +132,16 @@ class TestLightLinking:
         Light is positioned at camera location regardless of offset values.
         """
         light = Light.default()
-        light.link_to_camera(azimuth_offset=0.0, elevation_offset=np.pi/6, distance_offset=0.0)
+        light.link_to_camera(
+            azimuth_offset=0.0, elevation_offset=np.pi / 6, distance_offset=0.0
+        )
 
         camera = Camera.from_spherical(
             target=np.array([0.0, 0.0, 0.0]),
             distance=3.0,
             azimuth=0.0,
             elevation=0.0,
-            roll=0.0
+            roll=0.0,
         )
 
         light.update_from_camera(camera)
@@ -155,14 +159,16 @@ class TestLightLinking:
         Light is positioned at camera location regardless of offset values.
         """
         light = Light.default()
-        light.link_to_camera(azimuth_offset=0.0, elevation_offset=0.0, distance_offset=1.0)
+        light.link_to_camera(
+            azimuth_offset=0.0, elevation_offset=0.0, distance_offset=1.0
+        )
 
         camera = Camera.from_spherical(
             target=np.array([0.0, 0.0, 0.0]),
             distance=3.0,
             azimuth=0.0,
             elevation=0.0,
-            roll=0.0
+            roll=0.0,
         )
 
         light.update_from_camera(camera)
@@ -187,7 +193,7 @@ class TestLightLinking:
             distance=3.0,
             azimuth=0.0,
             elevation=0.0,
-            roll=0.0
+            roll=0.0,
         )
 
         light.update_from_camera(camera)
@@ -198,18 +204,22 @@ class TestLightLinking:
     def test_get_offsets_returns_copy(self):
         """Test get_offsets() returns copy, not reference."""
         light = Light.default()
-        light.link_to_camera(azimuth_offset=1.0, elevation_offset=2.0, distance_offset=3.0)
+        light.link_to_camera(
+            azimuth_offset=1.0, elevation_offset=2.0, distance_offset=3.0
+        )
 
         offsets1 = light.get_offsets()
-        offsets1['azimuth'] = 999.0  # Modify copy
+        offsets1["azimuth"] = 999.0  # Modify copy
 
         offsets2 = light.get_offsets()
-        assert offsets2['azimuth'] == 1.0  # Original unchanged
+        assert offsets2["azimuth"] == 1.0  # Original unchanged
 
     def test_copy_preserves_linking_state(self):
         """Test that copy() preserves linking state."""
         light = Light.default()
-        light.link_to_camera(azimuth_offset=np.pi/4, elevation_offset=np.pi/6, distance_offset=1.0)
+        light.link_to_camera(
+            azimuth_offset=np.pi / 4, elevation_offset=np.pi / 6, distance_offset=1.0
+        )
 
         # Copy the light
         light_copy = light.copy()
@@ -218,9 +228,9 @@ class TestLightLinking:
         assert light_copy.is_linked is True
         offsets = light_copy.get_offsets()
         assert offsets is not None
-        assert offsets['azimuth'] == pytest.approx(np.pi/4)
-        assert offsets['elevation'] == pytest.approx(np.pi/6)
-        assert offsets['distance'] == pytest.approx(1.0)
+        assert offsets["azimuth"] == pytest.approx(np.pi / 4)
+        assert offsets["elevation"] == pytest.approx(np.pi / 6)
+        assert offsets["distance"] == pytest.approx(1.0)
 
     def test_copy_unlinked_light(self):
         """Test that copy() works for unlinked light."""
@@ -235,10 +245,7 @@ class TestLightLinking:
     def test_camera_linked_preset(self):
         """Test Light.camera_linked() preset."""
         light = Light.camera_linked(
-            azimuth_offset=np.pi/4,
-            elevation_offset=0.0,
-            ambient=0.3,
-            diffuse=0.9
+            azimuth_offset=np.pi / 4, elevation_offset=0.0, ambient=0.3, diffuse=0.9
         )
 
         assert light.is_linked is True
@@ -246,7 +253,7 @@ class TestLightLinking:
         assert light.diffuse_intensity == 0.9
 
         offsets = light.get_offsets()
-        assert offsets['azimuth'] == pytest.approx(np.pi/4)
+        assert offsets["azimuth"] == pytest.approx(np.pi / 4)
 
     def test_camera_linked_can_be_updated(self):
         """Test camera_linked light can be updated."""
@@ -257,7 +264,7 @@ class TestLightLinking:
             distance=3.0,
             azimuth=0.0,
             elevation=0.0,
-            roll=0.0
+            roll=0.0,
         )
 
         # Should not raise
@@ -276,7 +283,7 @@ class TestLightLinkingIntegration:
             distance=3.0,
             azimuth=0.0,
             elevation=0.0,
-            roll=0.0
+            roll=0.0,
         )
 
         # Update light from initial camera
@@ -285,8 +292,9 @@ class TestLightLinkingIntegration:
 
         # Orbit camera
         from pyvr.camera import CameraController
+
         controller = CameraController(camera)
-        controller.orbit(delta_azimuth=np.pi/4, delta_elevation=0.0)
+        controller.orbit(delta_azimuth=np.pi / 4, delta_elevation=0.0)
 
         # Update light from new camera position
         light.update_from_camera(controller.params)
@@ -300,7 +308,7 @@ class TestLightLinkingIntegration:
         Note: In headlight mode, the light is positioned at the camera location,
         so it maintains the camera's azimuth (offset is currently ignored).
         """
-        offset = np.pi/4
+        offset = np.pi / 4
         light = Light.camera_linked(azimuth_offset=offset)
 
         camera = Camera.from_spherical(
@@ -308,7 +316,7 @@ class TestLightLinkingIntegration:
             distance=3.0,
             azimuth=0.0,
             elevation=0.0,
-            roll=0.0
+            roll=0.0,
         )
 
         light.update_from_camera(camera)
@@ -327,23 +335,23 @@ class TestLightLinkingIntegration:
 
     def test_multiple_updates_maintain_consistency(self):
         """Test multiple updates maintain consistent light behavior."""
-        light = Light.camera_linked(azimuth_offset=np.pi/4)
+        light = Light.camera_linked(azimuth_offset=np.pi / 4)
         camera = Camera.from_spherical(
             target=np.array([0.0, 0.0, 0.0]),
             distance=3.0,
             azimuth=0.0,
             elevation=0.0,
-            roll=0.0
+            roll=0.0,
         )
 
         # Multiple updates with different camera positions
-        for azimuth in [0.0, np.pi/6, np.pi/3, np.pi/2]:
+        for azimuth in [0.0, np.pi / 6, np.pi / 3, np.pi / 2]:
             camera = Camera.from_spherical(
                 target=np.array([0.0, 0.0, 0.0]),
                 distance=3.0,
                 azimuth=azimuth,
                 elevation=0.0,
-            roll=0.0
+                roll=0.0,
             )
             light.update_from_camera(camera)
 
@@ -357,11 +365,7 @@ class TestLightLinkingIntegration:
         light = Light.camera_linked()
         target = np.array([5.0, 5.0, 5.0])
         camera = Camera.from_spherical(
-            target=target,
-            distance=3.0,
-            azimuth=0.0,
-            elevation=0.0,
-            roll=0.0
+            target=target, distance=3.0, azimuth=0.0, elevation=0.0, roll=0.0
         )
 
         light.update_from_camera(camera)

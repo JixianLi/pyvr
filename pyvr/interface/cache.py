@@ -62,7 +62,9 @@ def compute_volume_hash(volume_data: np.ndarray) -> str:
     return hasher.hexdigest()
 
 
-def get_cached_histogram(volume_data: np.ndarray) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+def get_cached_histogram(
+    volume_data: np.ndarray,
+) -> Optional[Tuple[np.ndarray, np.ndarray]]:
     """
     Retrieve cached histogram for volume if available.
 
@@ -85,9 +87,9 @@ def get_cached_histogram(volume_data: np.ndarray) -> Optional[Tuple[np.ndarray, 
 
     if cache_file.exists():
         try:
-            with open(cache_file, 'rb') as f:
+            with open(cache_file, "rb") as f:
                 cached_data = pickle.load(f)
-                return cached_data['bin_edges'], cached_data['counts']
+                return cached_data["bin_edges"], cached_data["counts"]
         except (pickle.UnpicklingError, KeyError, EOFError):
             # Corrupted cache file, remove it
             cache_file.unlink()
@@ -96,7 +98,9 @@ def get_cached_histogram(volume_data: np.ndarray) -> Optional[Tuple[np.ndarray, 
     return None
 
 
-def cache_histogram(volume_data: np.ndarray, bin_edges: np.ndarray, counts: np.ndarray) -> None:
+def cache_histogram(
+    volume_data: np.ndarray, bin_edges: np.ndarray, counts: np.ndarray
+) -> None:
     """
     Save histogram to cache.
 
@@ -116,19 +120,21 @@ def cache_histogram(volume_data: np.ndarray, bin_edges: np.ndarray, counts: np.n
     cache_file = CACHE_DIR / f"{cache_key}.pkl"
 
     cached_data = {
-        'bin_edges': bin_edges,
-        'counts': counts,
+        "bin_edges": bin_edges,
+        "counts": counts,
     }
 
     try:
-        with open(cache_file, 'wb') as f:
+        with open(cache_file, "wb") as f:
             pickle.dump(cached_data, f, protocol=pickle.HIGHEST_PROTOCOL)
     except (OSError, pickle.PicklingError) as e:
         # Cache write failed, not critical - just log
         print(f"Warning: Failed to cache histogram: {e}")
 
 
-def compute_log_histogram(volume_data: np.ndarray, num_bins: int = 256) -> Tuple[np.ndarray, np.ndarray]:
+def compute_log_histogram(
+    volume_data: np.ndarray, num_bins: int = 256
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute log-scale histogram of volume data.
 
@@ -145,7 +151,9 @@ def compute_log_histogram(volume_data: np.ndarray, num_bins: int = 256) -> Tuple
         >>> assert len(log_counts) == 256
     """
     # Compute histogram in [0, 1] range
-    counts, bin_edges = np.histogram(volume_data.ravel(), bins=num_bins, range=(0.0, 1.0))
+    counts, bin_edges = np.histogram(
+        volume_data.ravel(), bins=num_bins, range=(0.0, 1.0)
+    )
 
     # Apply log scale for better visibility (log10(count + 1))
     log_counts = np.log10(counts + 1)
@@ -153,7 +161,9 @@ def compute_log_histogram(volume_data: np.ndarray, num_bins: int = 256) -> Tuple
     return bin_edges, log_counts
 
 
-def get_or_compute_histogram(volume_data: np.ndarray, num_bins: int = 256) -> Tuple[np.ndarray, np.ndarray]:
+def get_or_compute_histogram(
+    volume_data: np.ndarray, num_bins: int = 256
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Get histogram from cache or compute if not cached.
 

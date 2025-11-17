@@ -28,7 +28,9 @@ class InterfaceState:
     """
 
     # Transfer function state
-    control_points: List[Tuple[float, float]] = field(default_factory=lambda: [(0.0, 0.0), (1.0, 1.0)])
+    control_points: List[Tuple[float, float]] = field(
+        default_factory=lambda: [(0.0, 0.0), (1.0, 1.0)]
+    )
     selected_control_point: Optional[int] = None
     current_colormap: str = "viridis"
 
@@ -36,7 +38,7 @@ class InterfaceState:
     is_dragging_camera: bool = False
     is_dragging_control_point: bool = False
     drag_start_pos: Optional[Tuple[float, float]] = None
-    camera_control_mode: str = 'trackball'  # or 'orbit'
+    camera_control_mode: str = "trackball"  # or 'orbit'
 
     # Update flags
     needs_render: bool = True
@@ -110,7 +112,10 @@ class InterfaceState:
         del self.control_points[index]
         if self.selected_control_point == index:
             self.selected_control_point = None
-        elif self.selected_control_point is not None and self.selected_control_point > index:
+        elif (
+            self.selected_control_point is not None
+            and self.selected_control_point > index
+        ):
             self.selected_control_point -= 1
 
         self.needs_tf_update = True
@@ -151,7 +156,9 @@ class InterfaceState:
             self.control_points = sorted(self.control_points, key=lambda cp: cp[0])
             # Update selected index if it changed due to re-sorting
             if self.selected_control_point == index:
-                self.selected_control_point = self.control_points.index((scalar, opacity))
+                self.selected_control_point = self.control_points.index(
+                    (scalar, opacity)
+                )
 
         self.needs_tf_update = True
 
@@ -187,9 +194,11 @@ class InterfaceState:
         Raises:
             ValueError: If preset_name is not valid
         """
-        valid_presets = ['preview', 'fast', 'balanced', 'high_quality', 'ultra_quality']
+        valid_presets = ["preview", "fast", "balanced", "high_quality", "ultra_quality"]
         if preset_name not in valid_presets:
-            raise ValueError(f"Invalid preset '{preset_name}'. Choose from: {valid_presets}")
+            raise ValueError(
+                f"Invalid preset '{preset_name}'. Choose from: {valid_presets}"
+            )
 
         self.current_preset_name = preset_name
         self.needs_render = True

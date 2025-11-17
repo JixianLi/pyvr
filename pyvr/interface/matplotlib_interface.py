@@ -12,7 +12,12 @@ from pyvr.config import RenderConfig
 from pyvr.camera import Camera, CameraController
 from pyvr.lighting import Light
 from pyvr.transferfunctions import ColorTransferFunction, OpacityTransferFunction
-from pyvr.interface.widgets import ImageDisplay, OpacityEditor, ColorSelector, PresetSelector
+from pyvr.interface.widgets import (
+    ImageDisplay,
+    OpacityEditor,
+    ColorSelector,
+    PresetSelector,
+)
 from pyvr.interface.state import InterfaceState
 
 
@@ -81,7 +86,9 @@ class InteractiveVolumeRenderer:
         if light is None:
             light = Light.directional([1, -1, 0])
 
-        self.renderer = VolumeRenderer(width=width, height=height, config=config, light=light)
+        self.renderer = VolumeRenderer(
+            width=width, height=height, config=config, light=light
+        )
         self.renderer.set_camera(camera)
         self.renderer.load_volume(volume)
 
@@ -160,6 +167,7 @@ class InteractiveVolumeRenderer:
             True if rendering should proceed, False otherwise
         """
         import time
+
         current_time = time.time()
         if current_time - self._last_render_time > self._min_render_interval:
             self._last_render_time = current_time
@@ -201,8 +209,7 @@ class InteractiveVolumeRenderer:
         # Always update opacity editor (fast)
         if self.opacity_editor is not None:
             self.opacity_editor.update_plot(
-                self.state.control_points,
-                self.state.selected_control_point
+                self.state.control_points, self.state.selected_control_point
             )
 
     def _create_layout(self) -> tuple:
@@ -219,47 +226,53 @@ class InteractiveVolumeRenderer:
         """
         # Create figure
         fig = plt.figure(figsize=(18, 8))
-        fig.suptitle("PyVR Interactive Volume Renderer", fontsize=14, fontweight='bold')
+        fig.suptitle("PyVR Interactive Volume Renderer", fontsize=14, fontweight="bold")
 
         # Create grid layout
         # 3-column layout: image (2.0) | controls (1.0) | info+preset (1.0)
         # Middle: Opacity (top), Color (bottom)
         # Right: Info (top, rows 0-1), Preset (bottom, row 2)
-        gs = GridSpec(3, 3, figure=fig,
-                     width_ratios=[2.0, 1.0, 1.0],
-                     height_ratios=[3, 1, 1],
-                     hspace=0.3, wspace=0.3)
+        gs = GridSpec(
+            3,
+            3,
+            figure=fig,
+            width_ratios=[2.0, 1.0, 1.0],
+            height_ratios=[3, 1, 1],
+            hspace=0.3,
+            wspace=0.3,
+        )
 
         # Create axes
-        ax_image = fig.add_subplot(gs[:, 0])      # Full left column (all rows)
-        ax_opacity = fig.add_subplot(gs[0, 1])    # Top middle
-        ax_color = fig.add_subplot(gs[1:, 1])     # Bottom middle (rows 1-2 combined)
-        ax_info = fig.add_subplot(gs[0:2, 2])     # Top right (rows 0-1)
-        ax_preset = fig.add_subplot(gs[2, 2])     # Bottom right (row 2)
+        ax_image = fig.add_subplot(gs[:, 0])  # Full left column (all rows)
+        ax_opacity = fig.add_subplot(gs[0, 1])  # Top middle
+        ax_color = fig.add_subplot(gs[1:, 1])  # Bottom middle (rows 1-2 combined)
+        ax_info = fig.add_subplot(gs[0:2, 2])  # Top right (rows 0-1)
+        ax_preset = fig.add_subplot(gs[2, 2])  # Bottom right (row 2)
 
         axes_dict = {
-            'image': ax_image,
-            'opacity': ax_opacity,
-            'color': ax_color,
-            'preset': ax_preset,
-            'info': ax_info,
+            "image": ax_image,
+            "opacity": ax_opacity,
+            "color": ax_color,
+            "preset": ax_preset,
+            "info": ax_info,
         }
 
         return fig, axes_dict
 
     def _setup_info_display(self, ax) -> None:
         """Set up info display panel with all controls and status indicators."""
-        ax.axis('off')
+        ax.axis("off")
 
         # Single text block with both controls and status (no overlap)
         self.info_text = ax.text(
-            0.05, 0.98,  # Top of axes
+            0.05,
+            0.98,  # Top of axes
             self._get_full_info_text(),
             transform=ax.transAxes,
             fontsize=8,
-            verticalalignment='top',
-            family='monospace',
-            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3)
+            verticalalignment="top",
+            family="monospace",
+            bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.3),
         )
 
     def _get_full_info_text(self) -> str:
@@ -302,7 +315,7 @@ class InteractiveVolumeRenderer:
 
     def _update_status_display(self) -> None:
         """Update status text with current settings."""
-        if hasattr(self, 'info_text') and self.info_text is not None:
+        if hasattr(self, "info_text") and self.info_text is not None:
             self.info_text.set_text(self._get_full_info_text())
             if self.fig is not None:
                 self.fig.canvas.draw_idle()
@@ -316,10 +329,10 @@ class InteractiveVolumeRenderer:
             self.state.saved_preset_name = self.state.current_preset_name
 
         # Switch to fast preset if not already
-        if self.state.current_preset_name != 'fast':
+        if self.state.current_preset_name != "fast":
             fast_config = RenderConfig.fast()
             self.renderer.set_config(fast_config)
-            self.state.current_preset_name = 'fast'
+            self.state.current_preset_name = "fast"
             # Don't update preset selector UI during interaction
 
     def _restore_quality_after_interaction(self) -> None:
@@ -332,11 +345,11 @@ class InteractiveVolumeRenderer:
         # Restore saved preset if different from current
         if self.state.current_preset_name != self.state.saved_preset_name:
             preset_map = {
-                'preview': RenderConfig.preview,
-                'fast': RenderConfig.fast,
-                'balanced': RenderConfig.balanced,
-                'high_quality': RenderConfig.high_quality,
-                'ultra_quality': RenderConfig.ultra_quality,
+                "preview": RenderConfig.preview,
+                "fast": RenderConfig.fast,
+                "balanced": RenderConfig.balanced,
+                "high_quality": RenderConfig.high_quality,
+                "ultra_quality": RenderConfig.ultra_quality,
             }
 
             restored_config = preset_map[self.state.saved_preset_name]()
@@ -391,7 +404,10 @@ class InteractiveVolumeRenderer:
             self.state.drag_start_pos = None
 
             # Restore quality after interaction
-            if self.state.auto_quality_enabled and self.state.saved_preset_name is not None:
+            if (
+                self.state.auto_quality_enabled
+                and self.state.saved_preset_name is not None
+            ):
                 self._restore_quality_after_interaction()
             else:
                 # Trigger final render after drag
@@ -425,14 +441,14 @@ class InteractiveVolumeRenderer:
                 dy = event.ydata - self.state.drag_start_pos[1]
 
                 # Apply camera control based on current mode
-                if self.state.camera_control_mode == 'trackball':
+                if self.state.camera_control_mode == "trackball":
                     # Trackball control: intuitive 3D rotation
                     self.camera_controller.trackball(
                         dx=dx,
                         dy=dy,
                         viewport_width=self.width,
                         viewport_height=self.height,
-                        sensitivity=1.0
+                        sensitivity=1.0,
                     )
                 else:  # orbit mode
                     # Orbit control: traditional azimuth/elevation
@@ -441,8 +457,7 @@ class InteractiveVolumeRenderer:
                     delta_elevation = dy * sensitivity
 
                     self.camera_controller.orbit(
-                        delta_azimuth=delta_azimuth,
-                        delta_elevation=delta_elevation
+                        delta_azimuth=delta_azimuth, delta_elevation=delta_elevation
                     )
 
                 # Update drag start position for next move
@@ -455,7 +470,11 @@ class InteractiveVolumeRenderer:
 
         # Handle control point drag
         if self.state.is_dragging_control_point:
-            if not self.opacity_editor or event.inaxes != self.opacity_editor.ax or event.xdata is None:
+            if (
+                not self.opacity_editor
+                or event.inaxes != self.opacity_editor.ax
+                or event.xdata is None
+            ):
                 return
 
             if self.state.selected_control_point is None:
@@ -467,15 +486,12 @@ class InteractiveVolumeRenderer:
 
             try:
                 self.state.update_control_point(
-                    self.state.selected_control_point,
-                    new_x,
-                    new_y
+                    self.state.selected_control_point, new_x, new_y
                 )
                 # Update opacity editor display (but don't re-render volume yet, too slow)
                 if self.opacity_editor:
                     self.opacity_editor.update_plot(
-                        self.state.control_points,
-                        self.state.selected_control_point
+                        self.state.control_points, self.state.selected_control_point
                     )
             except (ValueError, IndexError):
                 pass  # Invalid update, ignore
@@ -506,14 +522,21 @@ class InteractiveVolumeRenderer:
         # Restore quality after short delay
         if self.state.auto_quality_enabled and self.fig is not None:
             # Cancel any existing timer
-            if hasattr(self, '_scroll_restore_timer') and self._scroll_restore_timer is not None:
+            if (
+                hasattr(self, "_scroll_restore_timer")
+                and self._scroll_restore_timer is not None
+            ):
                 self._scroll_restore_timer.stop()
 
             # Create matplotlib timer (thread-safe: executes on main thread)
             # Using fig.canvas.new_timer instead of threading.Timer to avoid
             # thread-safety violations when updating matplotlib widgets
-            self._scroll_restore_timer = self.fig.canvas.new_timer(interval=500)  # 500ms
-            self._scroll_restore_timer.add_callback(self._restore_quality_after_interaction)
+            self._scroll_restore_timer = self.fig.canvas.new_timer(
+                interval=500
+            )  # 500ms
+            self._scroll_restore_timer.add_callback(
+                self._restore_quality_after_interaction
+            )
             self._scroll_restore_timer.single_shot = True
             self._scroll_restore_timer.start()
 
@@ -567,7 +590,9 @@ class InteractiveVolumeRenderer:
             except ValueError:
                 pass  # First/last point, cannot remove
 
-    def _find_control_point_near(self, x: float, y: float, threshold: float = 0.05) -> Optional[int]:
+    def _find_control_point_near(
+        self, x: float, y: float, threshold: float = 0.05
+    ) -> Optional[int]:
         """
         Find control point near given coordinates.
 
@@ -580,7 +605,7 @@ class InteractiveVolumeRenderer:
             Index of control point if found, None otherwise
         """
         for i, (cp_x, cp_y) in enumerate(self.state.control_points):
-            distance = np.sqrt((cp_x - x)**2 + (cp_y - y)**2)
+            distance = np.sqrt((cp_x - x) ** 2 + (cp_y - y) ** 2)
             if distance < threshold:
                 return i
         return None
@@ -592,17 +617,17 @@ class InteractiveVolumeRenderer:
         Args:
             event: Matplotlib key press event
         """
-        if event.key == 'r':
+        if event.key == "r":
             # Reset view to isometric
             self.camera_controller.params = Camera.isometric_view(distance=3.0)
             self.state.needs_render = True
             self._update_display(force_render=True)
 
-        elif event.key == 's':
+        elif event.key == "s":
             # Save current rendering
             self._save_image()
 
-        elif event.key == 'f':
+        elif event.key == "f":
             # Toggle FPS display
             self.state.show_fps = not self.state.show_fps
             if self.image_display is not None:
@@ -610,7 +635,7 @@ class InteractiveVolumeRenderer:
             self.fig.canvas.draw_idle()
             self._update_status_display()
 
-        elif event.key == 'h':
+        elif event.key == "h":
             # Toggle histogram display
             self.state.show_histogram = not self.state.show_histogram
             if self.opacity_editor is not None:
@@ -618,7 +643,7 @@ class InteractiveVolumeRenderer:
             print(f"Histogram {'visible' if self.state.show_histogram else 'hidden'}")
             self._update_status_display()
 
-        elif event.key == 'l':
+        elif event.key == "l":
             # Toggle light camera linking
             try:
                 light = self.renderer.get_light()
@@ -630,9 +655,7 @@ class InteractiveVolumeRenderer:
                 else:
                     # Link with default offsets (light follows camera)
                     light.link_to_camera(
-                        azimuth_offset=0.0,
-                        elevation_offset=0.0,
-                        distance_offset=0.0
+                        azimuth_offset=0.0, elevation_offset=0.0, distance_offset=0.0
                     )
                     light.update_from_camera(self.camera_controller.params)
                     self.renderer.set_light(light)
@@ -645,22 +668,23 @@ class InteractiveVolumeRenderer:
             except Exception as e:
                 print(f"Error toggling light linking: {e}")
                 import traceback
+
                 traceback.print_exc()
 
-        elif event.key == 'q':
+        elif event.key == "q":
             # Toggle automatic quality adjustment
             self.state.auto_quality_enabled = not self.state.auto_quality_enabled
-            status = 'enabled' if self.state.auto_quality_enabled else 'disabled'
+            status = "enabled" if self.state.auto_quality_enabled else "disabled"
             print(f"Automatic quality adjustment {status}")
             self._update_status_display()
 
-        elif event.key == 'escape':
+        elif event.key == "escape":
             # Deselect control point
             if self.state.selected_control_point is not None:
                 self.state.select_control_point(None)
                 self._update_display()
 
-        elif event.key == 'delete' or event.key == 'backspace':
+        elif event.key == "delete" or event.key == "backspace":
             # Delete selected control point
             if self.state.selected_control_point is not None:
                 try:
@@ -669,24 +693,26 @@ class InteractiveVolumeRenderer:
                 except ValueError:
                     pass  # Can't delete first/last
 
-        elif event.key == 't':
+        elif event.key == "t":
             # Toggle camera control mode
-            if self.state.camera_control_mode == 'trackball':
-                self.state.camera_control_mode = 'orbit'
+            if self.state.camera_control_mode == "trackball":
+                self.state.camera_control_mode = "orbit"
                 print("Switched to orbit control (azimuth/elevation)")
             else:
-                self.state.camera_control_mode = 'trackball'
+                self.state.camera_control_mode = "trackball"
                 print("Switched to trackball control (arcball)")
             self._update_status_display()
 
     def _save_image(self) -> None:
         """Save current rendering to file."""
         import datetime
+
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"pyvr_render_{timestamp}.png"
 
         if self._cached_image is not None:
             from PIL import Image
+
             img = Image.fromarray(self._cached_image)
             img.save(filename)
             print(f"Saved rendering to {filename}")
@@ -726,11 +752,11 @@ class InteractiveVolumeRenderer:
         """
         from pyvr.config import RenderConfig
 
-        self.state.set_preset('high_quality')
+        self.state.set_preset("high_quality")
         self.renderer.set_config(RenderConfig.high_quality())
 
         if self.preset_selector:
-            self.preset_selector.set_preset('high_quality')
+            self.preset_selector.set_preset("high_quality")
 
         self.state.needs_render = True
         self._update_display(force_render=True)
@@ -738,8 +764,9 @@ class InteractiveVolumeRenderer:
 
         print("Switched to high quality mode")
 
-    def set_camera_linked_lighting(self, azimuth_offset: float = 0.0,
-                                   elevation_offset: float = 0.0) -> None:
+    def set_camera_linked_lighting(
+        self, azimuth_offset: float = 0.0, elevation_offset: float = 0.0
+    ) -> None:
         """
         Enable camera-linked lighting with offsets.
 
@@ -751,8 +778,9 @@ class InteractiveVolumeRenderer:
             >>> interface.set_camera_linked_lighting(azimuth_offset=np.pi/4)
         """
         light = self.renderer.get_light()
-        light.link_to_camera(azimuth_offset=azimuth_offset,
-                            elevation_offset=elevation_offset)
+        light.link_to_camera(
+            azimuth_offset=azimuth_offset, elevation_offset=elevation_offset
+        )
         light.update_from_camera(self.camera_controller.params)
         self.renderer.set_light(light)
         self.state.light_linked_to_camera = True
@@ -760,7 +788,9 @@ class InteractiveVolumeRenderer:
         self._update_display(force_render=True)
         self._update_status_display()
 
-        print(f"Light linked to camera (az_offset={azimuth_offset:.2f}, el_offset={elevation_offset:.2f})")
+        print(
+            f"Light linked to camera (az_offset={azimuth_offset:.2f}, el_offset={elevation_offset:.2f})"
+        )
 
     def capture_high_quality_image(self, filename: Optional[str] = None) -> str:
         """
@@ -795,6 +825,7 @@ class InteractiveVolumeRenderer:
 
         # Save to file
         from PIL import Image
+
         if filename is None:
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"pyvr_hq_render_{timestamp}.png"
@@ -804,11 +835,11 @@ class InteractiveVolumeRenderer:
 
         # Restore original state
         preset_map = {
-            'preview': RenderConfig.preview,
-            'fast': RenderConfig.fast,
-            'balanced': RenderConfig.balanced,
-            'high_quality': RenderConfig.high_quality,
-            'ultra_quality': RenderConfig.ultra_quality,
+            "preview": RenderConfig.preview,
+            "fast": RenderConfig.fast,
+            "balanced": RenderConfig.balanced,
+            "high_quality": RenderConfig.high_quality,
+            "ultra_quality": RenderConfig.ultra_quality,
         }
         self.renderer.set_config(preset_map[original_preset]())
         self.state.auto_quality_enabled = original_auto_quality
@@ -827,60 +858,64 @@ class InteractiveVolumeRenderer:
 
         # Store original keymaps to restore later if needed
         self._original_keymaps = {
-            'fullscreen': mpl.rcParams['keymap.fullscreen'][:],
-            'home': mpl.rcParams['keymap.home'][:],
-            'back': mpl.rcParams['keymap.back'][:],
-            'forward': mpl.rcParams['keymap.forward'][:],
-            'pan': mpl.rcParams['keymap.pan'][:],
-            'zoom': mpl.rcParams['keymap.zoom'][:],
-            'save': mpl.rcParams['keymap.save'][:],
-            'quit': mpl.rcParams['keymap.quit'][:],
-            'grid': mpl.rcParams['keymap.grid'][:],
-            'yscale': mpl.rcParams['keymap.yscale'][:],
-            'xscale': mpl.rcParams['keymap.xscale'][:],
+            "fullscreen": mpl.rcParams["keymap.fullscreen"][:],
+            "home": mpl.rcParams["keymap.home"][:],
+            "back": mpl.rcParams["keymap.back"][:],
+            "forward": mpl.rcParams["keymap.forward"][:],
+            "pan": mpl.rcParams["keymap.pan"][:],
+            "zoom": mpl.rcParams["keymap.zoom"][:],
+            "save": mpl.rcParams["keymap.save"][:],
+            "quit": mpl.rcParams["keymap.quit"][:],
+            "grid": mpl.rcParams["keymap.grid"][:],
+            "yscale": mpl.rcParams["keymap.yscale"][:],
+            "xscale": mpl.rcParams["keymap.xscale"][:],
         }
 
         # Clear all default keybindings
-        mpl.rcParams['keymap.fullscreen'] = []
-        mpl.rcParams['keymap.home'] = []
-        mpl.rcParams['keymap.back'] = []
-        mpl.rcParams['keymap.forward'] = []
-        mpl.rcParams['keymap.pan'] = []
-        mpl.rcParams['keymap.zoom'] = []
-        mpl.rcParams['keymap.save'] = []
-        mpl.rcParams['keymap.quit'] = []
-        mpl.rcParams['keymap.grid'] = []
-        mpl.rcParams['keymap.yscale'] = []
-        mpl.rcParams['keymap.xscale'] = []
+        mpl.rcParams["keymap.fullscreen"] = []
+        mpl.rcParams["keymap.home"] = []
+        mpl.rcParams["keymap.back"] = []
+        mpl.rcParams["keymap.forward"] = []
+        mpl.rcParams["keymap.pan"] = []
+        mpl.rcParams["keymap.zoom"] = []
+        mpl.rcParams["keymap.save"] = []
+        mpl.rcParams["keymap.quit"] = []
+        mpl.rcParams["keymap.grid"] = []
+        mpl.rcParams["keymap.yscale"] = []
+        mpl.rcParams["keymap.xscale"] = []
 
         # Create figure and axes
         self.fig, axes = self._create_layout()
 
         # Initialize widgets - pass show_fps to ImageDisplay, show_histogram to OpacityEditor
-        self.image_display = ImageDisplay(axes['image'], show_fps=self.state.show_fps)
-        self.opacity_editor = OpacityEditor(axes['opacity'], show_histogram=self.state.show_histogram)
-        self.color_selector = ColorSelector(axes['color'],
-                                           on_change=self._on_colormap_change)
-        self.preset_selector = PresetSelector(axes['preset'],
-                                             initial_preset=self.state.current_preset_name,
-                                             on_change=self._on_preset_change)
+        self.image_display = ImageDisplay(axes["image"], show_fps=self.state.show_fps)
+        self.opacity_editor = OpacityEditor(
+            axes["opacity"], show_histogram=self.state.show_histogram
+        )
+        self.color_selector = ColorSelector(
+            axes["color"], on_change=self._on_colormap_change
+        )
+        self.preset_selector = PresetSelector(
+            axes["preset"],
+            initial_preset=self.state.current_preset_name,
+            on_change=self._on_preset_change,
+        )
 
         # Set histogram background
         self.opacity_editor.set_histogram(
-            self.histogram_bin_edges,
-            self.histogram_log_counts
+            self.histogram_bin_edges, self.histogram_log_counts
         )
 
         # Set up info display
-        self._setup_info_display(axes['info'])
+        self._setup_info_display(axes["info"])
 
         # Connect event handlers
-        self.fig.canvas.mpl_connect('button_press_event', self._on_mouse_press)
-        self.fig.canvas.mpl_connect('button_release_event', self._on_mouse_release)
-        self.fig.canvas.mpl_connect('motion_notify_event', self._on_mouse_move)
-        self.fig.canvas.mpl_connect('scroll_event', self._on_scroll)
-        self.fig.canvas.mpl_connect('key_press_event', self._on_key_press)
-        self.fig.canvas.mpl_connect('axes_enter_event', self._update_cursor)
+        self.fig.canvas.mpl_connect("button_press_event", self._on_mouse_press)
+        self.fig.canvas.mpl_connect("button_release_event", self._on_mouse_release)
+        self.fig.canvas.mpl_connect("motion_notify_event", self._on_mouse_move)
+        self.fig.canvas.mpl_connect("scroll_event", self._on_scroll)
+        self.fig.canvas.mpl_connect("key_press_event", self._on_key_press)
+        self.fig.canvas.mpl_connect("axes_enter_event", self._update_cursor)
 
         # Initial display update
         self._update_display()
@@ -890,10 +925,11 @@ class InteractiveVolumeRenderer:
 
     def _restore_matplotlib_keymaps(self) -> None:
         """Restore original matplotlib keymaps."""
-        if hasattr(self, '_original_keymaps'):
+        if hasattr(self, "_original_keymaps"):
             import matplotlib as mpl
+
             for key, value in self._original_keymaps.items():
-                mpl.rcParams[f'keymap.{key}'] = value
+                mpl.rcParams[f"keymap.{key}"] = value
 
     def _on_colormap_change(self, colormap_name: str) -> None:
         """
@@ -917,11 +953,11 @@ class InteractiveVolumeRenderer:
 
         # Get new config based on preset name
         preset_map = {
-            'preview': RenderConfig.preview,
-            'fast': RenderConfig.fast,
-            'balanced': RenderConfig.balanced,
-            'high_quality': RenderConfig.high_quality,
-            'ultra_quality': RenderConfig.ultra_quality,
+            "preview": RenderConfig.preview,
+            "fast": RenderConfig.fast,
+            "balanced": RenderConfig.balanced,
+            "high_quality": RenderConfig.high_quality,
+            "ultra_quality": RenderConfig.ultra_quality,
         }
 
         new_config = preset_map[preset_name]()
@@ -954,7 +990,7 @@ if __name__ == "__main__":
     from pyvr.datasets import create_sample_volume, compute_normal_volume
 
     # Create sample volume with normals
-    volume_data = create_sample_volume(128, 'double_sphere')
+    volume_data = create_sample_volume(128, "double_sphere")
     normals = compute_normal_volume(volume_data)
     volume = Volume(data=volume_data, normals=normals)
 

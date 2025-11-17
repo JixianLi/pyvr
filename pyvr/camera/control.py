@@ -105,7 +105,7 @@ def _quaternion_to_camera_angles(
     target: np.ndarray,
     distance: float,
     init_pos: np.ndarray,
-    init_up: np.ndarray
+    init_up: np.ndarray,
 ) -> Tuple[float, float, float]:
     """
     Decompose quaternion rotation to azimuth/elevation/roll angles.
@@ -203,7 +203,7 @@ def _quaternion_to_camera_angles(
         roll=0.0,
         distance=distance,
         init_pos=init_pos,
-        init_up=init_up
+        init_up=init_up,
     )
     _, expected_up = get_camera_pos_from_params(temp_camera)
 
@@ -545,7 +545,7 @@ class CameraController:
         dy: float,
         viewport_width: int,
         viewport_height: int,
-        sensitivity: float = 1.0
+        sensitivity: float = 1.0,
     ) -> None:
         """
         Rotate camera using trackball/arcball control.
@@ -639,7 +639,7 @@ class CameraController:
             self.params.target,
             self.params.distance,
             self.params.init_pos,
-            self.params.init_up
+            self.params.init_up,
         )
 
         # Update camera parameters

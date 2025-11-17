@@ -39,7 +39,7 @@ class ImageDisplay:
         self.fps_counter = FPSCounter(window_size=30)
 
         # Style the axes
-        self.ax.set_title("Volume Rendering", fontsize=12, fontweight='bold')
+        self.ax.set_title("Volume Rendering", fontsize=12, fontweight="bold")
 
         # Hide tick labels and ticks but keep the border
         self.ax.set_xticks([])
@@ -47,7 +47,7 @@ class ImageDisplay:
 
         # Style the border (spines)
         for spine in self.ax.spines.values():
-            spine.set_edgecolor('gray')
+            spine.set_edgecolor("gray")
             spine.set_linewidth(2)
 
         # Set background color
@@ -61,11 +61,13 @@ class ImageDisplay:
             image_array: RGB image array of shape (H, W, 3) or (H, W, 4)
         """
         if image_array.shape[2] not in [3, 4]:
-            raise ValueError(f"Image must have 3 or 4 channels, got {image_array.shape[2]}")
+            raise ValueError(
+                f"Image must have 3 or 4 channels, got {image_array.shape[2]}"
+            )
 
         # Update image
         if self.image is None:
-            self.image = self.ax.imshow(image_array, interpolation='nearest')
+            self.image = self.ax.imshow(image_array, interpolation="nearest")
         else:
             self.image.set_data(image_array)
 
@@ -84,13 +86,15 @@ class ImageDisplay:
         if self.fps_text is None:
             # Create FPS text in top-left corner
             self.fps_text = self.ax.text(
-                0.02, 0.98, fps_string,
+                0.02,
+                0.98,
+                fps_string,
                 transform=self.ax.transAxes,
                 fontsize=10,
-                verticalalignment='top',
-                color='#00ff00',  # Bright green
-                fontweight='bold',
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='black', alpha=0.7)
+                verticalalignment="top",
+                color="#00ff00",  # Bright green
+                fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="black", alpha=0.7),
             )
         else:
             self.fps_text.set_text(fps_string)
@@ -149,16 +153,16 @@ class OpacityEditor:
         self.show_histogram = show_histogram
 
         # Style the axes
-        self.ax.set_title("Opacity Transfer Function", fontsize=11, fontweight='bold')
+        self.ax.set_title("Opacity Transfer Function", fontsize=11, fontweight="bold")
         self.ax.set_xlabel("Scalar Value", fontsize=9)
         self.ax.set_ylabel("Opacity", fontsize=9)
         self.ax.set_xlim(-0.05, 1.05)
         self.ax.set_ylim(-0.05, 1.05)
-        self.ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
+        self.ax.grid(True, alpha=0.3, linestyle="--", linewidth=0.5)
         self.ax.tick_params(labelsize=8)
 
         # Set background
-        self.ax.set_facecolor('#f8f8f8')
+        self.ax.set_facecolor("#f8f8f8")
 
     def set_histogram(self, bin_edges: np.ndarray, log_counts: np.ndarray) -> None:
         """
@@ -196,16 +200,19 @@ class OpacityEditor:
             bin_centers,
             normalized_counts,
             width=bin_width,
-            color='#a0b0c0',  # Subtle blue-gray
+            color="#a0b0c0",  # Subtle blue-gray
             alpha=0.3,
             zorder=1,  # Behind control points and line
-            edgecolor='none'
+            edgecolor="none",
         )
 
         self.ax.figure.canvas.draw_idle()
 
-    def update_plot(self, control_points: List[Tuple[float, float]],
-                   selected_index: Optional[int] = None) -> None:
+    def update_plot(
+        self,
+        control_points: List[Tuple[float, float]],
+        selected_index: Optional[int] = None,
+    ) -> None:
         """
         Update the opacity transfer function plot.
 
@@ -222,7 +229,9 @@ class OpacityEditor:
 
         # Update line
         if self.line is None:
-            self.line, = self.ax.plot(x_vals, y_vals, 'b-', linewidth=2.5, alpha=0.7, zorder=3)
+            (self.line,) = self.ax.plot(
+                x_vals, y_vals, "b-", linewidth=2.5, alpha=0.7, zorder=3
+            )
         else:
             self.line.set_data(x_vals, y_vals)
 
@@ -231,18 +240,25 @@ class OpacityEditor:
         sizes = []
         for i in range(len(control_points)):
             if i == selected_index:
-                colors.append('#ff4444')  # Red for selected
+                colors.append("#ff4444")  # Red for selected
                 sizes.append(120)
             elif i == 0 or i == len(control_points) - 1:
-                colors.append('#4444ff')  # Blue for locked endpoints
+                colors.append("#4444ff")  # Blue for locked endpoints
                 sizes.append(80)
             else:
-                colors.append('#44ff44')  # Green for movable points
+                colors.append("#44ff44")  # Green for movable points
                 sizes.append(60)
 
         if self.points is None:
-            self.points = self.ax.scatter(x_vals, y_vals, c=colors, s=sizes,
-                                         zorder=5, edgecolors='black', linewidths=1)
+            self.points = self.ax.scatter(
+                x_vals,
+                y_vals,
+                c=colors,
+                s=sizes,
+                zorder=5,
+                edgecolors="black",
+                linewidths=1,
+            )
         else:
             self.points.set_offsets(np.c_[x_vals, y_vals])
             self.points.set_color(colors)
@@ -294,9 +310,18 @@ class ColorSelector:
 
     # Popular matplotlib colormaps for volume rendering
     AVAILABLE_COLORMAPS = [
-        'viridis', 'plasma', 'inferno', 'magma', 'cividis',
-        'gray', 'bone', 'copper', 'hot', 'cool',
-        'turbo', 'jet'
+        "viridis",
+        "plasma",
+        "inferno",
+        "magma",
+        "cividis",
+        "gray",
+        "bone",
+        "copper",
+        "hot",
+        "cool",
+        "turbo",
+        "jet",
     ]
 
     def __init__(self, ax: Axes, on_change: Optional[Callable[[str], None]] = None):
@@ -312,16 +337,14 @@ class ColorSelector:
         self.on_change = on_change
 
         # Style axes
-        self.ax.set_title("Color Transfer Function", fontsize=11, fontweight='bold')
+        self.ax.set_title("Color Transfer Function", fontsize=11, fontweight="bold")
 
         # Create colormap preview at the top
         self._create_colormap_preview()
 
         # Create radio buttons for colormap selection
         self.radio = RadioButtons(
-            ax=self.ax,
-            labels=self.AVAILABLE_COLORMAPS,
-            active=0  # viridis is first
+            ax=self.ax, labels=self.AVAILABLE_COLORMAPS, active=0  # viridis is first
         )
 
         # Style radio buttons
@@ -338,21 +361,15 @@ class ColorSelector:
         ax_pos = self.ax.get_position()
 
         # Position preview at top of the color selector area
-        self.preview_ax = fig.add_axes([
-            ax_pos.x0,
-            ax_pos.y1 - 0.04,
-            ax_pos.width,
-            0.025
-        ])
-        self.preview_ax.axis('off')
+        self.preview_ax = fig.add_axes(
+            [ax_pos.x0, ax_pos.y1 - 0.04, ax_pos.width, 0.025]
+        )
+        self.preview_ax.axis("off")
 
         # Create gradient for colormap preview
         gradient = np.linspace(0, 1, 256).reshape(1, -1)
         self.colormap_preview = self.preview_ax.imshow(
-            gradient,
-            aspect='auto',
-            cmap=self.current_colormap,
-            extent=[0, 1, 0, 1]
+            gradient, aspect="auto", cmap=self.current_colormap, extent=[0, 1, 0, 1]
         )
 
     def _on_selection(self, label: str) -> None:
@@ -365,7 +382,7 @@ class ColorSelector:
         self.current_colormap = label
 
         # Update preview
-        if hasattr(self, 'colormap_preview'):
+        if hasattr(self, "colormap_preview"):
             self.colormap_preview.set_cmap(label)
             self.ax.figure.canvas.draw_idle()
 
@@ -384,8 +401,10 @@ class ColorSelector:
             ValueError: If colormap name not in AVAILABLE_COLORMAPS
         """
         if colormap_name not in self.AVAILABLE_COLORMAPS:
-            raise ValueError(f"Colormap '{colormap_name}' not available. "
-                           f"Choose from: {self.AVAILABLE_COLORMAPS}")
+            raise ValueError(
+                f"Colormap '{colormap_name}' not available. "
+                f"Choose from: {self.AVAILABLE_COLORMAPS}"
+            )
 
         self.current_colormap = colormap_name
 
@@ -394,7 +413,7 @@ class ColorSelector:
         self.radio.set_active(idx)
 
         # Update preview
-        if hasattr(self, 'colormap_preview'):
+        if hasattr(self, "colormap_preview"):
             self.colormap_preview.set_cmap(colormap_name)
             self.ax.figure.canvas.draw_idle()
 
@@ -414,24 +433,28 @@ class PresetSelector:
 
     # RenderConfig presets in order from fastest to highest quality
     AVAILABLE_PRESETS = [
-        'preview',      # Extremely fast, low quality
-        'fast',         # Fast, interactive
-        'balanced',     # Default, good balance
-        'high_quality', # High quality, slower
-        'ultra_quality' # Maximum quality, very slow
+        "preview",  # Extremely fast, low quality
+        "fast",  # Fast, interactive
+        "balanced",  # Default, good balance
+        "high_quality",  # High quality, slower
+        "ultra_quality",  # Maximum quality, very slow
     ]
 
     # Human-readable labels with performance hints
     PRESET_LABELS = [
-        'Preview (fastest)',
-        'Fast',
-        'Balanced',
-        'High Quality',
-        'Ultra (slowest)'
+        "Preview (fastest)",
+        "Fast",
+        "Balanced",
+        "High Quality",
+        "Ultra (slowest)",
     ]
 
-    def __init__(self, ax: Axes, initial_preset: str = 'fast',
-                 on_change: Optional[Callable[[str], None]] = None):
+    def __init__(
+        self,
+        ax: Axes,
+        initial_preset: str = "fast",
+        on_change: Optional[Callable[[str], None]] = None,
+    ):
         """
         Initialize preset selector widget.
 
@@ -447,21 +470,21 @@ class PresetSelector:
         self.on_change = on_change
 
         if initial_preset not in self.AVAILABLE_PRESETS:
-            raise ValueError(f"Invalid preset '{initial_preset}'. "
-                           f"Choose from: {self.AVAILABLE_PRESETS}")
+            raise ValueError(
+                f"Invalid preset '{initial_preset}'. "
+                f"Choose from: {self.AVAILABLE_PRESETS}"
+            )
 
         self.current_preset = initial_preset
 
         # Style axes
-        self.ax.set_title("Rendering Quality", fontsize=11, fontweight='bold')
-        self.ax.axis('off')
+        self.ax.set_title("Rendering Quality", fontsize=11, fontweight="bold")
+        self.ax.axis("off")
 
         # Create radio buttons for preset selection
         initial_index = self.AVAILABLE_PRESETS.index(initial_preset)
         self.radio = RadioButtons(
-            ax=self.ax,
-            labels=self.PRESET_LABELS,
-            active=initial_index
+            ax=self.ax, labels=self.PRESET_LABELS, active=initial_index
         )
 
         # Style radio buttons
@@ -499,8 +522,10 @@ class PresetSelector:
             ValueError: If preset_name not in AVAILABLE_PRESETS
         """
         if preset_name not in self.AVAILABLE_PRESETS:
-            raise ValueError(f"Invalid preset '{preset_name}'. "
-                           f"Choose from: {self.AVAILABLE_PRESETS}")
+            raise ValueError(
+                f"Invalid preset '{preset_name}'. "
+                f"Choose from: {self.AVAILABLE_PRESETS}"
+            )
 
         self.current_preset = preset_name
 
@@ -538,6 +563,7 @@ class FPSCounter:
             window_size: Number of frames to average (default: 30)
         """
         from collections import deque
+
         self.window_size = window_size
         self.frame_times = deque(maxlen=window_size)
         self.last_time = None
@@ -545,6 +571,7 @@ class FPSCounter:
     def tick(self) -> None:
         """Record a frame render event."""
         import time
+
         current_time = time.perf_counter()
 
         if self.last_time is not None:

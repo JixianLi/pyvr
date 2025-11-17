@@ -7,10 +7,19 @@ Version 0.4.0 adds VTK data loader for loading scientific volume data
 from .vti files with automatic normalization and aspect ratio preservation.
 """
 
-from . import camera, dataloaders, datasets, interface, lighting, moderngl_renderer, transferfunctions, volume
+from . import (
+    camera,
+    dataloaders,
+    datasets,
+    interface,
+    lighting,
+    moderngl_renderer,
+    transferfunctions,
+    volume,
+)
 from .config import RenderConfig
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 __all__ = [
     "camera",
     "dataloaders",
@@ -22,4 +31,3 @@ __all__ = [
     "volume",
     "RenderConfig",
 ]
-

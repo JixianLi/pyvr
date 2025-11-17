@@ -7,7 +7,7 @@ from typing import Union
 
 import numpy as np
 import vtk
-from vtk.util.numpy_support import vtk_to_numpy # type: ignore -- VTK is a large C++ library with Python bindings and often has incomplete type annotations.
+from vtk.util.numpy_support import vtk_to_numpy  # type: ignore -- VTK is a large C++ library with Python bindings and often has incomplete type annotations.
 
 from pyvr.volume import Volume
 
@@ -82,8 +82,7 @@ def load_vtk_volume(
 
     if scalar_array is None:
         available = [
-            point_data.GetArrayName(i)
-            for i in range(point_data.GetNumberOfArrays())
+            point_data.GetArrayName(i) for i in range(point_data.GetNumberOfArrays())
         ]
         raise ValueError(
             f"Scalar array '{scalars_name}' not found in {file_path}. "

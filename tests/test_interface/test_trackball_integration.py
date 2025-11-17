@@ -19,12 +19,8 @@ def mock_volume():
 @pytest.fixture
 def mock_interface(mock_volume):
     """Create a mock interface for testing."""
-    with patch('pyvr.interface.matplotlib_interface.VolumeRenderer'):
-        interface = InteractiveVolumeRenderer(
-            volume=mock_volume,
-            width=512,
-            height=512
-        )
+    with patch("pyvr.interface.matplotlib_interface.VolumeRenderer"):
+        interface = InteractiveVolumeRenderer(volume=mock_volume, width=512, height=512)
         # Mock the display widgets to avoid matplotlib backend issues
         interface.image_display = MagicMock()
         interface.opacity_editor = MagicMock()
@@ -37,7 +33,7 @@ class TestInterfaceTrackballMode:
 
     def test_default_mode_is_trackball(self, mock_interface):
         """New interface should default to trackball mode."""
-        assert mock_interface.state.camera_control_mode == 'trackball'
+        assert mock_interface.state.camera_control_mode == "trackball"
 
     def test_trackball_mode_drag_calls_trackball(self, mock_interface):
         """Dragging in trackball mode should call controller.trackball()."""
@@ -46,7 +42,9 @@ class TestInterfaceTrackballMode:
         mock_interface.state.drag_start_pos = (100, 100)
 
         # Mock the trackball method
-        with patch.object(mock_interface.camera_controller, 'trackball') as mock_trackball:
+        with patch.object(
+            mock_interface.camera_controller, "trackball"
+        ) as mock_trackball:
             # Simulate mouse move
             event = MagicMock()
             event.inaxes = mock_interface.image_display.ax
@@ -58,22 +56,22 @@ class TestInterfaceTrackballMode:
             # Verify trackball was called
             mock_trackball.assert_called_once()
             call_args = mock_trackball.call_args
-            assert call_args[1]['dx'] == 50  # 150 - 100
-            assert call_args[1]['dy'] == 20  # 120 - 100
-            assert call_args[1]['viewport_width'] == 512
-            assert call_args[1]['viewport_height'] == 512
+            assert call_args[1]["dx"] == 50  # 150 - 100
+            assert call_args[1]["dy"] == 20  # 120 - 100
+            assert call_args[1]["viewport_width"] == 512
+            assert call_args[1]["viewport_height"] == 512
 
     def test_orbit_mode_drag_calls_orbit(self, mock_interface):
         """Dragging in orbit mode should call controller.orbit()."""
         # Switch to orbit mode
-        mock_interface.state.camera_control_mode = 'orbit'
+        mock_interface.state.camera_control_mode = "orbit"
 
         # Set up drag state
         mock_interface.state.is_dragging_camera = True
         mock_interface.state.drag_start_pos = (100, 100)
 
         # Mock the orbit method
-        with patch.object(mock_interface.camera_controller, 'orbit') as mock_orbit:
+        with patch.object(mock_interface.camera_controller, "orbit") as mock_orbit:
             # Simulate mouse move
             event = MagicMock()
             event.inaxes = mock_interface.image_display.ax
@@ -88,21 +86,21 @@ class TestInterfaceTrackballMode:
     def test_toggle_control_mode_key(self, mock_interface):
         """Pressing 't' should toggle control mode."""
         # Start in trackball mode
-        assert mock_interface.state.camera_control_mode == 'trackball'
+        assert mock_interface.state.camera_control_mode == "trackball"
 
         # Simulate 't' key press
         event = MagicMock()
-        event.key = 't'
+        event.key = "t"
         mock_interface._on_key_press(event)
 
         # Should switch to orbit
-        assert mock_interface.state.camera_control_mode == 'orbit'
+        assert mock_interface.state.camera_control_mode == "orbit"
 
         # Press again
         mock_interface._on_key_press(event)
 
         # Should switch back to trackball
-        assert mock_interface.state.camera_control_mode == 'trackball'
+        assert mock_interface.state.camera_control_mode == "trackball"
 
     def test_camera_updates_after_trackball_drag(self, mock_interface):
         """Camera should update after trackball drag."""
@@ -111,7 +109,7 @@ class TestInterfaceTrackballMode:
         # Set up drag state
         mock_interface.state.is_dragging_camera = True
         mock_interface.state.drag_start_pos = (100, 100)
-        mock_interface.state.camera_control_mode = 'trackball'
+        mock_interface.state.camera_control_mode = "trackball"
 
         # Simulate mouse move (right drag)
         event = MagicMock()
@@ -126,7 +124,7 @@ class TestInterfaceTrackballMode:
 
     def test_camera_updates_after_orbit_drag(self, mock_interface):
         """Camera should update after orbit drag (backward compatibility)."""
-        mock_interface.state.camera_control_mode = 'orbit'
+        mock_interface.state.camera_control_mode = "orbit"
         initial_azimuth = mock_interface.camera_controller.params.azimuth
 
         # Set up drag state
@@ -146,7 +144,7 @@ class TestInterfaceTrackballMode:
 
     def test_zoom_works_in_both_modes(self, mock_interface):
         """Zoom should work regardless of control mode."""
-        for mode in ['trackball', 'orbit']:
+        for mode in ["trackball", "orbit"]:
             mock_interface.state.camera_control_mode = mode
             initial_distance = mock_interface.camera_controller.params.distance
 
@@ -163,14 +161,14 @@ class TestInterfaceTrackballMode:
     def test_info_display_shows_control_mode(self, mock_interface):
         """Info display should show current control mode."""
         # Trackball mode
-        mock_interface.state.camera_control_mode = 'trackball'
+        mock_interface.state.camera_control_mode = "trackball"
         info_text = mock_interface._get_full_info_text()
-        assert 'Control Mode: Trackball' in info_text
+        assert "Control Mode: Trackball" in info_text
 
         # Orbit mode
-        mock_interface.state.camera_control_mode = 'orbit'
+        mock_interface.state.camera_control_mode = "orbit"
         info_text = mock_interface._get_full_info_text()
-        assert 'Control Mode: Orbit' in info_text
+        assert "Control Mode: Orbit" in info_text
 
 
 class TestControlModeToggle:
@@ -180,17 +178,17 @@ class TestControlModeToggle:
         """Toggling should print informative message."""
         # Toggle to orbit
         event = MagicMock()
-        event.key = 't'
+        event.key = "t"
         mock_interface._on_key_press(event)
 
         captured = capsys.readouterr()
-        assert 'orbit control' in captured.out.lower()
+        assert "orbit control" in captured.out.lower()
 
         # Toggle back to trackball
         mock_interface._on_key_press(event)
 
         captured = capsys.readouterr()
-        assert 'trackball control' in captured.out.lower()
+        assert "trackball control" in captured.out.lower()
 
     def test_toggle_updates_status_display(self, mock_interface):
         """Toggling should update status display."""
@@ -198,7 +196,7 @@ class TestControlModeToggle:
 
         # Toggle mode
         event = MagicMock()
-        event.key = 't'
+        event.key = "t"
         mock_interface._on_key_press(event)
 
         # Verify status display was updated
@@ -210,7 +208,7 @@ class TestBackwardCompatibility:
 
     def test_orbit_mode_maintains_functionality(self, mock_interface):
         """Orbit mode should work exactly as before."""
-        mock_interface.state.camera_control_mode = 'orbit'
+        mock_interface.state.camera_control_mode = "orbit"
 
         # Perform orbit drag
         mock_interface.state.is_dragging_camera = True
@@ -229,10 +227,7 @@ class TestBackwardCompatibility:
         initial_azimuth = mock_interface.camera_controller.params.azimuth
 
         # Call orbit directly
-        mock_interface.camera_controller.orbit(
-            delta_azimuth=0.5,
-            delta_elevation=0.2
-        )
+        mock_interface.camera_controller.orbit(delta_azimuth=0.5, delta_elevation=0.2)
 
         # Should work regardless of interface mode
         assert mock_interface.camera_controller.params.azimuth != initial_azimuth

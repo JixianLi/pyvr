@@ -106,7 +106,7 @@ class TestCameraToQuaternion:
             original.target,
             original.distance,
             original.init_pos,
-            original.init_up
+            original.init_up,
         )
 
         # Create new camera with computed angles
@@ -117,7 +117,7 @@ class TestCameraToQuaternion:
             roll=roll,
             distance=original.distance,
             init_pos=original.init_pos,
-            init_up=original.init_up
+            init_up=original.init_up,
         )
 
         # Compare camera positions and up vectors
@@ -139,11 +139,7 @@ class TestQuaternionToCameraAngles:
 
         # Convert back to angles
         az, el, roll = _quaternion_to_camera_angles(
-            quat,
-            camera.target,
-            camera.distance,
-            camera.init_pos,
-            camera.init_up
+            quat, camera.target, camera.distance, camera.init_pos, camera.init_up
         )
 
         # Should match camera's original angles
@@ -158,11 +154,7 @@ class TestQuaternionToCameraAngles:
         quat = _camera_to_quaternion(camera)
 
         az, el, roll = _quaternion_to_camera_angles(
-            quat,
-            camera.target,
-            camera.distance,
-            camera.init_pos,
-            camera.init_up
+            quat, camera.target, camera.distance, camera.init_pos, camera.init_up
         )
 
         # Should match original angles
@@ -174,46 +166,38 @@ class TestQuaternionToCameraAngles:
         """Elevation = π/2 (looking straight up) should be handled."""
         camera = Camera(
             target=np.array([0, 0, 0], dtype=np.float32),
-            azimuth=np.pi/4,
-            elevation=np.pi/2,
+            azimuth=np.pi / 4,
+            elevation=np.pi / 2,
             roll=0.0,
-            distance=3.0
+            distance=3.0,
         )
         quat = _camera_to_quaternion(camera)
 
         az, el, roll = _quaternion_to_camera_angles(
-            quat,
-            camera.target,
-            camera.distance,
-            camera.init_pos,
-            camera.init_up
+            quat, camera.target, camera.distance, camera.init_pos, camera.init_up
         )
 
         # Elevation should be correct
-        np.testing.assert_allclose(el, np.pi/2, atol=1e-5)
+        np.testing.assert_allclose(el, np.pi / 2, atol=1e-5)
         # Azimuth is undefined at gimbal lock, but shouldn't crash
 
     def test_gimbal_lock_elevation_neg90(self):
         """Elevation = -π/2 (looking straight down) should be handled."""
         camera = Camera(
             target=np.array([0, 0, 0], dtype=np.float32),
-            azimuth=np.pi/4,
-            elevation=-np.pi/2,
+            azimuth=np.pi / 4,
+            elevation=-np.pi / 2,
             roll=0.0,
-            distance=3.0
+            distance=3.0,
         )
         quat = _camera_to_quaternion(camera)
 
         az, el, roll = _quaternion_to_camera_angles(
-            quat,
-            camera.target,
-            camera.distance,
-            camera.init_pos,
-            camera.init_up
+            quat, camera.target, camera.distance, camera.init_pos, camera.init_up
         )
 
         # Elevation should be correct
-        np.testing.assert_allclose(el, -np.pi/2, atol=1e-5)
+        np.testing.assert_allclose(el, -np.pi / 2, atol=1e-5)
 
     def test_roundtrip_accuracy(self):
         """Multiple roundtrips should maintain accuracy."""
@@ -222,14 +206,13 @@ class TestQuaternionToCameraAngles:
             azimuth=1.2,
             elevation=0.8,
             roll=0.3,
-            distance=3.0
+            distance=3.0,
         )
 
         # Roundtrip 1: camera → quat → angles
         quat1 = _camera_to_quaternion(camera)
         az1, el1, roll1 = _quaternion_to_camera_angles(
-            quat1, camera.target, camera.distance,
-            camera.init_pos, camera.init_up
+            quat1, camera.target, camera.distance, camera.init_pos, camera.init_up
         )
 
         # Roundtrip 2: angles → camera → quat → angles
@@ -240,12 +223,11 @@ class TestQuaternionToCameraAngles:
             roll=roll1,
             distance=camera.distance,
             init_pos=camera.init_pos,
-            init_up=camera.init_up
+            init_up=camera.init_up,
         )
         quat2 = _camera_to_quaternion(camera2)
         az2, el2, roll2 = _quaternion_to_camera_angles(
-            quat2, camera2.target, camera2.distance,
-            camera2.init_pos, camera2.init_up
+            quat2, camera2.target, camera2.distance, camera2.init_pos, camera2.init_up
         )
 
         # Both roundtrips should give same result
@@ -263,10 +245,7 @@ class TestCameraControllerTrackball:
         initial_azimuth = controller.params.azimuth
 
         # Drag right
-        controller.trackball(
-            dx=100, dy=0,
-            viewport_width=800, viewport_height=600
-        )
+        controller.trackball(dx=100, dy=0, viewport_width=800, viewport_height=600)
 
         # Azimuth should decrease (camera rotates left)
         assert controller.params.azimuth < initial_azimuth
@@ -277,10 +256,7 @@ class TestCameraControllerTrackball:
         initial_azimuth = controller.params.azimuth
 
         # Drag left
-        controller.trackball(
-            dx=-100, dy=0,
-            viewport_width=800, viewport_height=600
-        )
+        controller.trackball(dx=-100, dy=0, viewport_width=800, viewport_height=600)
 
         # Azimuth should increase (camera rotates right)
         assert controller.params.azimuth > initial_azimuth
@@ -291,10 +267,7 @@ class TestCameraControllerTrackball:
         initial_elevation = controller.params.elevation
 
         # Drag up (negative dy in screen coords)
-        controller.trackball(
-            dx=0, dy=-100,
-            viewport_width=800, viewport_height=600
-        )
+        controller.trackball(dx=0, dy=-100, viewport_width=800, viewport_height=600)
 
         # Elevation should increase (camera looks up)
         assert controller.params.elevation > initial_elevation
@@ -305,10 +278,7 @@ class TestCameraControllerTrackball:
         initial_elevation = controller.params.elevation
 
         # Drag down (positive dy in screen coords)
-        controller.trackball(
-            dx=0, dy=100,
-            viewport_width=800, viewport_height=600
-        )
+        controller.trackball(dx=0, dy=100, viewport_width=800, viewport_height=600)
 
         # Elevation should decrease (camera looks down)
         assert controller.params.elevation < initial_elevation
@@ -320,10 +290,7 @@ class TestCameraControllerTrackball:
         initial_elevation = controller.params.elevation
 
         # Drag diagonally (right and up)
-        controller.trackball(
-            dx=100, dy=-100,
-            viewport_width=800, viewport_height=600
-        )
+        controller.trackball(dx=100, dy=-100, viewport_width=800, viewport_height=600)
 
         # Both angles should change
         assert controller.params.azimuth != initial_azimuth
@@ -337,10 +304,7 @@ class TestCameraControllerTrackball:
         initial_roll = controller.params.roll
 
         # No movement
-        controller.trackball(
-            dx=0, dy=0,
-            viewport_width=800, viewport_height=600
-        )
+        controller.trackball(dx=0, dy=0, viewport_width=800, viewport_height=600)
 
         # Camera should be unchanged
         assert controller.params.azimuth == initial_azimuth
@@ -354,10 +318,7 @@ class TestCameraControllerTrackball:
         initial_elevation = controller.params.elevation
 
         # Very small movement (< 0.001 normalized)
-        controller.trackball(
-            dx=0.1, dy=0.1,
-            viewport_width=800, viewport_height=600
-        )
+        controller.trackball(dx=0.1, dy=0.1, viewport_width=800, viewport_height=600)
 
         # Camera should be unchanged (below threshold)
         assert controller.params.azimuth == initial_azimuth
@@ -368,18 +329,14 @@ class TestCameraControllerTrackball:
         # Test with sensitivity=1.0
         controller1 = CameraController(Camera.front_view(distance=3.0))
         controller1.trackball(
-            dx=50, dy=0,
-            viewport_width=800, viewport_height=600,
-            sensitivity=1.0
+            dx=50, dy=0, viewport_width=800, viewport_height=600, sensitivity=1.0
         )
         rotation1 = abs(controller1.params.azimuth)
 
         # Test with sensitivity=2.0
         controller2 = CameraController(Camera.front_view(distance=3.0))
         controller2.trackball(
-            dx=50, dy=0,
-            viewport_width=800, viewport_height=600,
-            sensitivity=2.0
+            dx=50, dy=0, viewport_width=800, viewport_height=600, sensitivity=2.0
         )
         rotation2 = abs(controller2.params.azimuth)
 
@@ -393,20 +350,14 @@ class TestCameraControllerTrackball:
         controller = CameraController(Camera.front_view(distance=3.0))
 
         with pytest.raises(ValueError, match="Viewport dimensions must be positive"):
-            controller.trackball(
-                dx=10, dy=10,
-                viewport_width=0, viewport_height=600
-            )
+            controller.trackball(dx=10, dy=10, viewport_width=0, viewport_height=600)
 
     def test_trackball_invalid_viewport_height(self):
         """Invalid viewport height should raise ValueError."""
         controller = CameraController(Camera.front_view(distance=3.0))
 
         with pytest.raises(ValueError, match="Viewport dimensions must be positive"):
-            controller.trackball(
-                dx=10, dy=10,
-                viewport_width=800, viewport_height=-100
-            )
+            controller.trackball(dx=10, dy=10, viewport_width=800, viewport_height=-100)
 
     def test_trackball_preserves_distance(self):
         """Trackball rotation should not change distance to target."""
@@ -439,10 +390,7 @@ class TestCameraControllerTrackball:
 
         # Apply 5 small movements
         for _ in range(5):
-            controller.trackball(
-                dx=20, dy=0,
-                viewport_width=800, viewport_height=600
-            )
+            controller.trackball(dx=20, dy=0, viewport_width=800, viewport_height=600)
 
         # Total rotation should be accumulated
         total_rotation = abs(controller.params.azimuth - initial_azimuth)

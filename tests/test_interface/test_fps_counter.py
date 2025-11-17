@@ -101,6 +101,7 @@ class TestImageDisplayFPS:
     def test_update_image_ticks_fps(self, mock_axes):
         """Test update_image() calls FPS tick."""
         import numpy as np
+
         display = ImageDisplay(mock_axes, show_fps=True)
 
         # Initial state
@@ -116,6 +117,7 @@ class TestImageDisplayFPS:
     def test_fps_text_created_on_first_update(self, mock_axes):
         """Test FPS text is created on first image update."""
         import numpy as np
+
         display = ImageDisplay(mock_axes, show_fps=True)
 
         image = np.zeros((512, 512, 3), dtype=np.uint8)
@@ -127,6 +129,7 @@ class TestImageDisplayFPS:
     def test_set_fps_visible(self, mock_axes):
         """Test toggling FPS visibility."""
         import numpy as np
+
         display = ImageDisplay(mock_axes, show_fps=True)
 
         # Create FPS text
@@ -144,6 +147,7 @@ class TestImageDisplayFPS:
     def test_clear_removes_fps_text(self, mock_axes):
         """Test clear() removes FPS text."""
         import numpy as np
+
         display = ImageDisplay(mock_axes, show_fps=True)
 
         image = np.zeros((512, 512, 3), dtype=np.uint8)
@@ -156,6 +160,7 @@ class TestImageDisplayFPS:
     def test_fps_not_updated_when_disabled(self, mock_axes):
         """Test FPS counter not updated when show_fps is False."""
         import numpy as np
+
         display = ImageDisplay(mock_axes, show_fps=False)
 
         image = np.zeros((512, 512, 3), dtype=np.uint8)
@@ -167,6 +172,7 @@ class TestImageDisplayFPS:
     def test_set_fps_visible_resets_counter_when_hiding(self, mock_axes):
         """Test that hiding FPS resets the counter."""
         import numpy as np
+
         display = ImageDisplay(mock_axes, show_fps=True)
 
         # Create some FPS data

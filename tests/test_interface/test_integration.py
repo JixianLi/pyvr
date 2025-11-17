@@ -12,15 +12,18 @@ from pyvr.datasets import create_sample_volume, compute_normal_volume
 @pytest.fixture
 def full_interface():
     """Create a fully initialized interface for integration testing."""
-    volume_data = create_sample_volume(64, 'double_sphere')
+    volume_data = create_sample_volume(64, "double_sphere")
     normals = compute_normal_volume(volume_data)
     volume = Volume(data=volume_data, normals=normals)
 
-    with patch('pyvr.interface.matplotlib_interface.VolumeRenderer') as mock_renderer_class:
+    with patch(
+        "pyvr.interface.matplotlib_interface.VolumeRenderer"
+    ) as mock_renderer_class:
         mock_renderer = Mock()
         mock_renderer.render_to_pil.return_value = Mock()
-        mock_renderer.render_to_pil.return_value.__array__ = \
-            lambda **kwargs: np.zeros((512, 512, 3), dtype=np.uint8)
+        mock_renderer.render_to_pil.return_value.__array__ = lambda **kwargs: np.zeros(
+            (512, 512, 3), dtype=np.uint8
+        )
         mock_renderer_class.return_value = mock_renderer
 
         interface = InteractiveVolumeRenderer(volume=volume)
@@ -56,8 +59,8 @@ def test_full_workflow_camera_and_transfer_function(full_interface):
     assert len(interface.state.control_points) == 3
 
     # 4. Change colormap
-    interface._on_colormap_change('plasma')
-    assert interface.state.current_colormap == 'plasma'
+    interface._on_colormap_change("plasma")
+    assert interface.state.current_colormap == "plasma"
 
     # Verify state is consistent
     assert interface.state.needs_render or interface.state.needs_tf_update
@@ -111,7 +114,7 @@ def test_state_persistence_across_operations(full_interface):
     interface.opacity_editor.ax = Mock()
 
     # Perform multiple operations
-    interface._on_colormap_change('hot')
+    interface._on_colormap_change("hot")
     interface.state.add_control_point(0.4, 0.6)
 
     event = Mock(inaxes=interface.image_display.ax, step=-1)
@@ -119,9 +122,10 @@ def test_state_persistence_across_operations(full_interface):
 
     # State should be valid
     assert len(interface.state.control_points) >= 2
-    assert interface.state.current_colormap == 'hot'
-    assert all(0 <= cp[0] <= 1 and 0 <= cp[1] <= 1
-              for cp in interface.state.control_points)
+    assert interface.state.current_colormap == "hot"
+    assert all(
+        0 <= cp[0] <= 1 and 0 <= cp[1] <= 1 for cp in interface.state.control_points
+    )
 
 
 def test_keyboard_shortcuts_integration(full_interface):
@@ -135,13 +139,13 @@ def test_keyboard_shortcuts_integration(full_interface):
     interface.state.select_control_point(1)
 
     # Delete with keyboard
-    event = Mock(key='delete')
+    event = Mock(key="delete")
     interface._on_key_press(event)
     assert (0.5, 0.5) not in interface.state.control_points
 
     # Reset camera
     interface.camera_controller.orbit(delta_azimuth=1.0, delta_elevation=0.5)
-    event = Mock(key='r')
+    event = Mock(key="r")
     interface._on_key_press(event)
     # Camera should be reset
 
@@ -176,7 +180,7 @@ def test_preset_change_triggers_rerender(full_interface):
     interface = full_interface
 
     # Change preset
-    interface.state.set_preset('high_quality')
+    interface.state.set_preset("high_quality")
 
     # Should flag for re-render
     assert interface.state.needs_render is True
@@ -187,7 +191,7 @@ def test_preset_updates_renderer_config(full_interface):
     interface = full_interface
 
     # Simulate preset change callback
-    interface._on_preset_change('high_quality')
+    interface._on_preset_change("high_quality")
 
     # Renderer set_config should be called
     interface.renderer.set_config.assert_called_once()
@@ -198,7 +202,7 @@ def test_preset_change_prints_feedback(full_interface, capsys):
     interface = full_interface
 
     # Change preset
-    interface._on_preset_change('balanced')
+    interface._on_preset_change("balanced")
 
     # Should print feedback
     captured = capsys.readouterr()
@@ -211,12 +215,12 @@ def test_preset_integration_with_transfer_functions(full_interface):
     interface = full_interface
 
     # Change colormap
-    interface._on_colormap_change('plasma')
-    assert interface.state.current_colormap == 'plasma'
+    interface._on_colormap_change("plasma")
+    assert interface.state.current_colormap == "plasma"
 
     # Change preset
-    interface.state.set_preset('high_quality')
-    assert interface.state.current_preset_name == 'high_quality'
+    interface.state.set_preset("high_quality")
+    assert interface.state.current_preset_name == "high_quality"
 
     # Both should trigger renders
     assert interface.state.needs_render

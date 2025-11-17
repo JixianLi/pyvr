@@ -2,8 +2,8 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg)](http://www.wtfpl.net/about/)
-![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)
-[![Tests](https://img.shields.io/badge/tests-398%20passing-brightgreen.svg)](#-testing)
+![Version](https://img.shields.io/badge/version-0.4.1-blue.svg)
+[![Tests](https://img.shields.io/badge/tests-453%20passing-brightgreen.svg)](#-testing)
 
 PyVR is a GPU-accelerated 3D volume rendering toolkit for real-time interactive visualization using OpenGL. Built with ModernGL, it provides high-performance volume rendering with a modern, modular architecture.
 
@@ -22,6 +22,7 @@ PyVR is a GPU-accelerated 3D volume rendering toolkit for real-time interactive 
 - **🎮 Interactive Interface**: Real-time volume visualization with transfer function editing (v0.3.0+)
   - **v0.3.1**: FPS counter, quality presets, camera-linked lighting, histogram background
   - **NEW in v0.3.2**: 3-column layout for better display of all interface information
+- **Trackball Camera Control** - Intuitive 3D rotation (default) with orbit mode available
 - **📊 Synthetic Datasets**: Built-in generators for testing and development
 - **✅ Comprehensive Testing**: 398 tests with 86%+ coverage
 
@@ -133,13 +134,20 @@ interface.show()
   - 💡 **Camera-Linked Lighting**: Light follows camera for consistent illumination
   - 📈 **Histogram Background**: Log-scale data distribution in opacity editor
 
-**Mouse Controls:**
-- **Image Display**: Drag to orbit camera, scroll to zoom
-- **Opacity Editor**: Left-click to add/select points, right-click to remove, drag to move
+### Mouse Controls
+
+**Trackball mode (default):**
+- **Image display:** Drag to rotate camera (like rotating a ball), scroll to zoom
+- **Opacity editor:** Left-click to add/select control points, right-click to remove, drag to move
+
+**Orbit mode (press 't' to toggle):**
+- **Image display:** Drag left/right for azimuth, up/down for elevation, scroll to zoom
+- **Opacity editor:** Same as trackball mode
 
 **Keyboard Shortcuts:**
 - `r`: Reset camera to isometric view
 - `s`: Save current rendering to PNG file
+- `t`: Toggle camera control mode (trackball ↔ orbit)
 - `f`: Toggle FPS counter ✨ *NEW in v0.3.1*
 - `h`: Toggle histogram background ✨ *NEW in v0.3.1*
 - `l`: Toggle light linking to camera ✨ *NEW in v0.3.1*

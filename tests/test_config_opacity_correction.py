@@ -28,11 +28,7 @@ class TestReferenceStepSizeParameter:
 
     def test_reference_step_size_custom(self):
         """Test custom reference_step_size value."""
-        config = RenderConfig(
-            step_size=0.01,
-            max_steps=500,
-            reference_step_size=0.005
-        )
+        config = RenderConfig(step_size=0.01, max_steps=500, reference_step_size=0.005)
         assert config.reference_step_size == 0.005
 
     def test_reference_step_size_preserved_with_step_size(self):
@@ -107,13 +103,12 @@ class TestOpacityCorrectionFormula:
 
         step_sizes = [0.001, 0.005, 0.01, 0.02, 0.05]
         corrected_values = [
-            1.0 - np.exp(-alpha_tf * step / reference)
-            for step in step_sizes
+            1.0 - np.exp(-alpha_tf * step / reference) for step in step_sizes
         ]
 
         # Each value should be greater than or equal to previous
         for i in range(1, len(corrected_values)):
-            assert corrected_values[i] >= corrected_values[i-1]
+            assert corrected_values[i] >= corrected_values[i - 1]
 
     def test_correction_bounds(self):
         """Corrected alpha should always be in [0, 1) range."""

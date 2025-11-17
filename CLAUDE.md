@@ -173,6 +173,12 @@ The codebase follows a pipeline-aligned architecture with clean separation of co
 - `CameraController`: Stateful controller with methods like orbit(), zoom(), pan(), roll_camera()
 - `CameraPath`: Keyframe-based animation with interpolation
 
+**Camera Control Methods**:
+- `orbit(delta_azimuth, delta_elevation)`: Traditional spherical coordinate rotation
+- `trackball(dx, dy, width, height)`: Intuitive arcball rotation (default in interface)
+- `zoom(factor)`: Adjust distance to target
+- `pan(delta_target)`: Move target position
+
 **Lighting System Design**:
 - `Light`: Manages position, target, ambient_intensity, diffuse_intensity
 - Directional lights: Positioned far from target with normalized direction
@@ -270,45 +276,33 @@ current_camera = renderer.get_camera()  # Access current camera
 from pyvr.interface import InteractiveVolumeRenderer
 from pyvr.volume import Volume
 from pyvr.datasets import create_sample_volume
-from pyvr.config import RenderConfig
 import numpy as np
 
 # Create volume
 volume_data = create_sample_volume(128, 'sphere')
 volume = Volume(data=volume_data)
 
-# Create interface (histogram loaded automatically)
+# Create interface (trackball mode by default)
 interface = InteractiveVolumeRenderer(
     volume=volume,
     width=512,
-    height=512,
-    config=RenderConfig.balanced()  # Initial preset
+    height=512
 )
 
 # Configure features
-interface.state.show_fps = True  # FPS counter (default: True)
-interface.state.show_histogram = True  # Histogram (default: True)
-interface.state.auto_quality_enabled = True  # Auto-quality (default: True)
-
-# Set camera-linked lighting (headlight mode)
-interface.set_camera_linked_lighting()
+interface.state.camera_control_mode = 'trackball'  # or 'orbit'
 
 # Launch interface
 interface.show()
 
-# Programmatic control
-interface.set_high_quality_mode()  # Switch to high quality
-path = interface.capture_high_quality_image()  # Ultra quality screenshot
-
 # Keyboard shortcuts in interface:
-# 'f': Toggle FPS counter
+# 't': Toggle trackball/orbit mode
+# 'r': Reset view
+# 's': Save image
+# 'f': Toggle FPS
 # 'h': Toggle histogram
 # 'l': Toggle light linking
 # 'q': Toggle auto-quality
-# 'r': Reset view
-# 's': Save image
-# 'Esc': Deselect
-# 'Del': Delete selected
 ```
 
 ### Volume Operations
@@ -330,6 +324,37 @@ print(volume.voxel_spacing)  # [0.0039, 0.0039, 0.0039]
 volume.compute_normals()             # Generate normals from gradient
 normalized = volume.normalize("minmax")  # Scale to [0, 1]
 volume_copy = volume.copy()          # Independent copy
+```
+
+### Camera Control Methods
+
+```python
+from pyvr.camera import Camera, CameraController
+
+# Create controller
+camera = Camera.isometric_view(distance=3.0)
+controller = CameraController(camera)
+
+# Trackball control (for interactive UIs with mouse input)
+controller.trackball(
+    dx=50,        # Mouse moved 50 pixels right
+    dy=-30,       # Mouse moved 30 pixels up (negative = up)
+    viewport_width=800,
+    viewport_height=600,
+    sensitivity=1.0
+)
+
+# Orbit control (for scripted animations or legacy code)
+controller.orbit(
+    delta_azimuth=np.pi/4,    # 45 degrees horizontal
+    delta_elevation=np.pi/6   # 30 degrees vertical
+)
+
+# Zoom
+controller.zoom(factor=1.2)  # Zoom out 20%
+
+# Both methods update controller.params
+updated_camera = controller.params
 ```
 
 ### Camera Presets and Animation
@@ -455,6 +480,12 @@ relative_time = config.estimate_render_time_relative()  # ~5.0x slower
 - Google-style docstrings
 - Args/Returns/Raises sections
 - Examples in docstrings where helpful
+
+**Camera Control Patterns**:
+- Trackball: Use for interactive mouse-based interfaces (natural, intuitive)
+- Orbit: Use for scripted animations or when exact angles needed
+- Both modes work with zoom, pan, and other controls
+- Sensitivity parameter allows customization for different use cases
 
 ## Development Notes
 

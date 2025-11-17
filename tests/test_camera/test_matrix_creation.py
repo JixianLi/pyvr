@@ -8,7 +8,7 @@ import sys
 import os
 
 # Add the project root to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from pyvr.camera import Camera
 
@@ -165,7 +165,7 @@ def test_camera_vectors_integration():
         azimuth=np.pi / 4,
         elevation=np.pi / 6,
         roll=0.0,
-        distance=3.0
+        distance=3.0,
     )
 
     # Get camera position
@@ -190,7 +190,9 @@ def test_matrix_transformations():
     view_matrix = camera.get_view_matrix()
 
     # Test transformation of a point
-    world_point = np.array([0, 0, 0, 1], dtype=np.float32)  # Origin in homogeneous coords
+    world_point = np.array(
+        [0, 0, 0, 1], dtype=np.float32
+    )  # Origin in homogeneous coords
     view_point = view_matrix @ world_point
 
     # After transformation, point should be in camera space
@@ -219,7 +221,7 @@ def test_camera_copy_preserves_matrices():
         azimuth=np.pi / 3,
         elevation=np.pi / 4,
         roll=0.0,
-        distance=4.0
+        distance=4.0,
     )
 
     copy = original.copy()
@@ -227,8 +229,7 @@ def test_camera_copy_preserves_matrices():
     # Matrices should be identical
     assert np.allclose(original.get_view_matrix(), copy.get_view_matrix())
     assert np.allclose(
-        original.get_projection_matrix(1.0),
-        copy.get_projection_matrix(1.0)
+        original.get_projection_matrix(1.0), copy.get_projection_matrix(1.0)
     )
 
 

@@ -286,6 +286,7 @@ class Camera:
             >>> position, up = camera.get_camera_vectors()
         """
         from .control import get_camera_pos_from_params
+
         return get_camera_pos_from_params(self)
 
     def get_view_matrix(self) -> np.ndarray:
