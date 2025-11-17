@@ -97,6 +97,9 @@ class InteractiveVolumeRenderer:
         # Initialize state
         self.state = InterfaceState()
 
+        # Set state preset name to match actual config
+        self.state.current_preset_name = self._detect_preset_name(config)
+
         # Set up initial transfer functions
         self._update_transfer_functions()
 
@@ -121,6 +124,36 @@ class InteractiveVolumeRenderer:
         otf = OpacityTransferFunction(control_points=self.state.control_points)
         self.renderer.set_transfer_functions(ctf, otf)
         self.state.needs_tf_update = False
+
+    def _detect_preset_name(self, config: RenderConfig) -> str:
+        """
+        Detect which preset a config matches.
+
+        Args:
+            config: RenderConfig to check
+
+        Returns:
+            Preset name ('fast', 'balanced', etc.) or 'balanced' as default
+        """
+        presets = {
+            "preview": RenderConfig.preview(),
+            "fast": RenderConfig.fast(),
+            "balanced": RenderConfig.balanced(),
+            "high_quality": RenderConfig.high_quality(),
+            "ultra_quality": RenderConfig.ultra_quality(),
+        }
+
+        for name, preset in presets.items():
+            if (
+                config.step_size == preset.step_size
+                and config.max_steps == preset.max_steps
+                and config.early_ray_termination == preset.early_ray_termination
+                and config.opacity_threshold == preset.opacity_threshold
+            ):
+                return name
+
+        # If no exact match, default to balanced
+        return "balanced"
 
     def _load_histogram(self) -> None:
         """Load or compute volume histogram for opacity editor."""
