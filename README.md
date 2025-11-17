@@ -795,48 +795,7 @@ poetry run isort pyvr/
 
 ## 📚 Version History
 
-### v0.3.4 (2025-11-15) - Examples Rework
-Complete overhaul of examples directory with 4 focused, well-documented examples. Flat structure, heavy inline comments, and copy-paste usability.
-**See:** [`version_notes/v0.3.4_examples_rework.md`](version_notes/v0.3.4_examples_rework.md)
-
-### v0.3.3 (2025-11-15) - Ray Marching Consistency + Bug Fixes
-Bug fixes for opacity accumulation, threading crash, and light linking. Implements Beer-Lambert law for physically correct rendering. **Breaking:** Visual changes and light offset functionality removed.
-**See:** [`version_notes/v0.3.3_ray_marching_consistency.md`](version_notes/v0.3.3_ray_marching_consistency.md)
-
-### v0.3.2 (2025-11-14) - Interface Relayout
-Redesigned 3-column layout (18"×8") for better widescreen displays. All controls and info visible without truncation.
-**See:** [`version_notes/v0.3.2_interface_relayout.md`](version_notes/v0.3.2_interface_relayout.md)
-
-### v0.3.1 (2025-10-31) - Interface Refinements
-FPS counter, quality preset selector, camera-linked lighting, histogram backgrounds, auto-quality switching. +77 tests.
-**See:** [`version_notes/v0.3.1_interface_refinements.md`](version_notes/v0.3.1_interface_refinements.md)
-
-### v0.3.0 (2025-10-31) - Interactive Interface
-Interactive matplotlib-based interface for real-time visualization with mouse controls and transfer function editing.
-
-### v0.2.7 (2025-10-28) - Architecture Simplification
-Removed abstract base renderer class. ModernGLVolumeRenderer now standalone.
-
-### v0.2.6 (2025-10-28) - RenderConfig System
-Quality presets (preview, fast, balanced, high_quality, ultra_quality) with runtime switching.
-
-### v0.2.5 (2025-10-28) - Volume Refactoring
-Unified Volume class for backend-agnostic data management.
-
-### v0.2.4 (2025-10-27) - Light System
-Light class with presets (directional, point_light, ambient_only).
-
-### v0.2.3 (2025-10-27) - Camera System
-Camera class with matrix generation, spherical coordinates, and animation paths.
-
-### v0.2.2 - RGBA Texture Optimization
-Combined RGBA transfer function textures. Single texture lookup, 64+ FPS.
-
-### v0.2.0 - Major Refactoring
-Separated transfer functions into dedicated module. Advanced camera system.
-
-### v0.1.0 - Initial Release
-Basic ModernGL volume rendering with core ray marching implementation.
+See [CHANGELOG.md](CHANGELOG.md) for detailed version history and links to version notes.
 
 ## 📄 License
 
